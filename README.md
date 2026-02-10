@@ -17,9 +17,8 @@ El objetivo de este MVP es automatizar el ciclo de vida semanal de un Open Mic, 
 3. **Generación:** Creación automática del cartel del evento en Canva mediante su API.
 4. **Histórico:** Actualización automática de la base de datos tras la validación del host.
 
-```mermaid
-graph LR
-    subgraph Fuentes
+```graph LR
+    subgraph Entrada
         A[Google Forms]
     end
 
@@ -42,21 +41,34 @@ graph LR
         RLS((Seguridad RLS))
     end
 
+    subgraph Salida_Comunicacion
+        H[WhatsApp Bot]
+        I[Canva API]
+    end
+
+    %% Flujo de Ingesta
     A --> B
     B <--> C
+    C <--> F
+
+    %% Flujo de Scoring y Validación
     B <--> D
     D <--> G
-    C <--> F
     D <--> F
     F --- RLS
+    
+    %% Flujo de Bot y Canva
+    D --> H
+    H -->|Aprobación| B
     B --> E
-    E --> H[Canva API]
-    E --> F
+    E --> I
+    I -->|Imagen Cartel| H
+    H --> J((Cómicos & RRSS))
 
     style B fill:#f96,stroke:#333
     style G fill:#4285F4,color:#fff
     style F fill:#3ecf8e,color:#fff
-    style RLS fill:#ffcc00
+    style H fill:#25D366,color:#fff
 ```
 
 ## 🛠️ Stack Tecnológico Inicial
