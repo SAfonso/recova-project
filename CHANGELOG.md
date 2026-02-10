@@ -1,12 +1,15 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+Todos los cambios notables en este proyecto serán documentados en este archivo.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
+y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.0-alpha] - 2026-02-10
+## [0.1.0] - 2026-02-10
+
 ### Added
-- Initial project structure based on README.
-- Base configuration files (`package.json`, `pyproject.toml`, `.gitignore`).
-- Mermaid diagram syntax fix in README.
+- Definición de roles y responsabilidades en `AGENTS.md`.
+- Estructura de versionado híbrida (`package.json` + `pyproject.toml`).
+- Configuración de dependencias base para Python.
+- Definición de flujo de decisión híbrido (Lógica determinística + IA).
+- Roadmap inicial del MVP en el README.
