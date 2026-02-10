@@ -1,0 +1,44 @@
+# --- Secretos y Configuración ---
+.env
+.env.local
+.env.*.local
+*.secrets
+secrets.json
+
+# --- Python (PEP 8 & Herramientas) ---
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+.venv/
+venv/
+ENV/
+build/
+dist/
+*.egg-info/
+
+# --- Node.js (package.json) ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# --- Docker ---
+.dockerignore
+# Nota: No ignoramos el Dockerfile, solo archivos temporales si los hubiera
+
+# --- SO y Editores ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.bak
+
+# --- Datos Locales ---
+*.log
+/data/*.csv
+/data/*.json
+!/data/.gitkeep

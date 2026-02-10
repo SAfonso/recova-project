@@ -1,0 +1,18 @@
+[project]
+name = "ai-lineup-architect-backend"
+version = "0.1.0"
+description = "Backend scripts for LineUp scoring and ingestion"
+authors = [
+    {name = "SAfonso"}
+]
+dependencies = [
+    "supabase>=2.0.0",
+    "python-dotenv>=1.0.0",
+    "requests>=2.31.0",
+    "pydantic>=2.0.0"
+]
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"

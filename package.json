@@ -1,0 +1,16 @@
+{
+  "name": "ai-lineup-architect",
+  "version": "0.1.0",
+  "description": "Sistema de automatización para gestión de Open Mics de comedia",
+  "author": "SAfonso",
+  "private": true,
+  "scripts": {
+    "docker:build": "docker build -t lineup-arch .",
+    "docker:test": "docker run lineup-arch pytest",
+    "version:patch": "npm version patch",
+    "version:minor": "npm version minor"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
