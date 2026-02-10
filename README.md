@@ -17,7 +17,8 @@ El objetivo de este MVP es automatizar el ciclo de vida semanal de un Open Mic, 
 3. **Generación:** Creación automática del cartel del evento en Canva mediante su API.
 4. **Histórico:** Actualización automática de la base de datos tras la validación del host.
 
-```graph LR
+```mermaid
+graph LR
     subgraph Entrada
         A[Google Forms]
     end

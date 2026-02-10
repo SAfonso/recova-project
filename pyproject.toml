@@ -1,0 +1,10 @@
+[project]
+name = "ai-lineup-architect"
+version = "0.1.0-alpha"
+description = "Automatización de lineups y cartelería para Open Mics"
+readme = "README.md"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+pythonpath = ["backend/src"]
+testpaths = ["backend/tests"]

@@ -1,0 +1,9 @@
+{
+  "name": "ai-lineup-architect",
+  "version": "0.1.0-alpha",
+  "private": true,
+  "description": "Automatización de lineups y cartelería para Open Mics",
+  "scripts": {
+    "test": "echo \"No tests configured yet\""
+  }
+}
