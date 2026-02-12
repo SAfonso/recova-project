@@ -41,6 +41,8 @@ BEGIN
       'normalizado',
       'scorado',
       'aprobado',
+      'no_seleccionado',
+      'expirado',
       'rechazado',
       'error_ingesta'
     );
@@ -96,7 +98,7 @@ create index if not exists idx_comicos_master_categoria
 -- 5) Capa Silver - tabla transaccional refinada
 create table if not exists public.solicitudes_silver (
   id uuid primary key default gen_random_uuid(),
-  bronze_id uuid not null unique
+  bronze_id uuid not null
     references public.solicitudes_bronze(id) on delete restrict,
   proveedor_id uuid not null
     references public.proveedores(id) on delete restrict,
@@ -117,6 +119,12 @@ create table if not exists public.solicitudes_silver (
 
 create index if not exists idx_solicitudes_silver_bronze_id
   on public.solicitudes_silver (bronze_id);
+
+create unique index if not exists uq_solicitudes_silver_bronze_fecha
+  on public.solicitudes_silver (bronze_id, fecha_evento);
+
+create unique index if not exists uq_solicitudes_silver_comico_fecha
+  on public.solicitudes_silver (comico_id, fecha_evento);
 
 create index if not exists idx_solicitudes_silver_proveedor_fecha
   on public.solicitudes_silver (proveedor_id, fecha_evento);
