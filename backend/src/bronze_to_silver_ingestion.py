@@ -12,6 +12,7 @@ from typing import Iterable, Sequence
 from uuid import UUID
 
 import psycopg2
+from dotenv import load_dotenv
 from psycopg2.extras import RealDictCursor
 
 LOGGER = logging.getLogger("bronze_to_silver_ingestion")
@@ -78,13 +79,15 @@ def normalize_phone(phone_raw: str | None) -> str | None:
 
 
 def map_experience_level(experience_raw: str | None) -> int:
-    if not experience_raw:
-        raise ValueError("experiencia_raw vacío")
-
-    if experience_raw not in EXPERIENCE_MAP:
-        raise ValueError(f"experiencia_raw desconocido: {experience_raw}")
-
-    return EXPERIENCE_MAP[experience_raw]
+    normalized = (experience_raw or "").strip()
+    level = EXPERIENCE_MAP.get(normalized)
+    if level is None:
+        LOGGER.warning(
+            "experiencia_raw desconocido '%s'; se usará nivel por defecto=0",
+            experience_raw,
+        )
+        return 0
+    return level
 
 
 def parse_event_dates(raw_dates: str | None, today: date) -> list[date]:
@@ -97,7 +100,15 @@ def parse_event_dates(raw_dates: str | None, today: date) -> list[date]:
         if not token:
             continue
 
-        event_date = datetime.strptime(token, "%d-%m-%y").date()
+        try:
+            event_date = datetime.strptime(token, "%d-%m-%y").date()
+        except ValueError:
+            LOGGER.warning(
+                "Token de fecha inválido '%s'; formato esperado DD-MM-YY. Se ignora.",
+                token,
+            )
+            continue
+
         if event_date >= today:
             parsed_dates.append(event_date)
 
@@ -132,38 +143,6 @@ def fetch_pending_bronze_rows(conn) -> Sequence[BronzeRecord]:
         records = cursor.fetchall()
 
     return [BronzeRecord(**record) for record in records]
-
-
-def mark_bronze_as_error(conn, bronze_id: UUID, reason: str) -> None:
-    with conn.cursor() as cursor:
-        cursor.execute(
-            """
-            INSERT INTO public.solicitudes_silver (
-                bronze_id,
-                proveedor_id,
-                comico_id,
-                fecha_evento,
-                nivel_experiencia,
-                status,
-                metadata_ia
-            )
-            SELECT
-                b.id,
-                b.proveedor_id,
-                c.id,
-                CURRENT_DATE,
-                0,
-                'error_ingesta',
-                jsonb_build_object('error', %s)
-            FROM public.solicitudes_bronze b
-            JOIN public.comicos_master c ON c.instagram_user = %s
-            WHERE b.id = %s
-            ON CONFLICT (bronze_id, fecha_evento) DO UPDATE
-            SET status = EXCLUDED.status,
-                metadata_ia = EXCLUDED.metadata_ia
-            """,
-            (reason, "error_sistema", str(bronze_id)),
-        )
 
 
 def upsert_comico_identity(
@@ -224,6 +203,7 @@ def insert_silver_rows(
     inserted_count = 0
     with conn.cursor() as cursor:
         for event_date in event_dates:
+            # Estado previo al motor de scoring.
             cursor.execute(
                 """
                 INSERT INTO public.solicitudes_silver (
@@ -264,16 +244,20 @@ def process_pending_bronze(conn, today: date) -> tuple[int, int]:
 
     for bronze in pending_rows:
         savepoint_name = f"bronze_{str(bronze.id).replace('-', '_')}"
+        phase = "inicio"
         try:
             with conn.cursor() as cursor:
                 cursor.execute(f"SAVEPOINT {savepoint_name}")
 
+            phase = "normalizacion"
             instagram_user = normalize_instagram_user(bronze.instagram_raw)
             if not instagram_user:
                 raise ValueError("instagram_raw inválido")
 
             telefono = normalize_phone(bronze.whatsapp_raw)
+            phase = "parsing_fechas"
             event_dates = parse_event_dates(bronze.fechas_seleccionadas_raw, today)
+            phase = "mapeo_experiencia"
             level = map_experience_level(bronze.experiencia_raw)
             available_last_minute = parse_last_minute_availability(
                 bronze.disponibilidad_ultimo_minuto
@@ -289,6 +273,7 @@ def process_pending_bronze(conn, today: date) -> tuple[int, int]:
                 processed += 1
                 continue
 
+            phase = "upsert_comico"
             comico_id = upsert_comico_identity(
                 conn,
                 instagram_user=instagram_user,
@@ -296,6 +281,7 @@ def process_pending_bronze(conn, today: date) -> tuple[int, int]:
                 telefono=telefono,
             )
 
+            phase = "insert_silver"
             inserted += insert_silver_rows(
                 conn,
                 bronze=bronze,
@@ -312,7 +298,13 @@ def process_pending_bronze(conn, today: date) -> tuple[int, int]:
                 len(event_dates),
             )
         except Exception as exc:  # noqa: BLE001
-            LOGGER.exception("Error procesando Bronze %s: %s", bronze.id, exc)
+            error_timestamp = datetime.utcnow().isoformat(timespec="seconds") + "Z"
+            LOGGER.exception(
+                "Error procesando Bronze %s en fase=%s: %s",
+                bronze.id,
+                phase,
+                exc,
+            )
             with conn.cursor() as cursor:
                 cursor.execute(f"ROLLBACK TO SAVEPOINT {savepoint_name}")
                 cursor.execute(
@@ -320,16 +312,25 @@ def process_pending_bronze(conn, today: date) -> tuple[int, int]:
                     UPDATE public.solicitudes_bronze
                     SET procesado = true,
                         raw_data_extra = COALESCE(raw_data_extra, '{}'::jsonb)
-                          || jsonb_build_object('ingestion_error', %s)
+                          || jsonb_build_object(
+                                'error_log',
+                                jsonb_build_object(
+                                    'message', %s,
+                                    'timestamp', %s,
+                                    'phase', %s
+                                )
+                            )
                     WHERE id = %s
                     """,
-                    (str(exc), str(bronze.id)),
+                    (str(exc), error_timestamp, phase, str(bronze.id)),
                 )
+            processed += 1
 
     return processed, inserted
 
 
 def run_pipeline() -> None:
+    load_dotenv()
     configure_logging()
     today = date.today()
 
