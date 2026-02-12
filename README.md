@@ -11,6 +11,16 @@ El proyecto nace con una arquitectura **SaaS-Ready**, garantizando la privacidad
 ## 📝 Visión del Proyecto
 El objetivo de este MVP es automatizar el ciclo de vida semanal de un Open Mic, reduciendo la carga administrativa del organizador y utilizando IA para optimizar la selección de cómicos y la creación de activos visuales.
 
+## 🌳 Estrategia de Ramas (Git Flow)
+
+Para mantener la estabilidad del proyecto, seguimos una estructura de ramificación sencilla pero rigurosa:
+
+* **`main`**: Contiene exclusivamente código estable, probado y listo para producción (versiones cerradas).
+* **`dev`**: Rama principal de desarrollo. Todas las nuevas funcionalidades, correcciones y experimentos se integran aquí antes de pasar a `main`.
+
+> **Regla de oro:** Nunca se realizan commits directos en `main`. Todo cambio debe pasar primero por `dev` y ser validado.
+
+
 ## 🔄 Flujo de Trabajo (Lifecycle)
 1. **Ingesta:** Procesamiento de solicitudes recibidas a través de Google Forms.
 2. **Curación:** Selección asistida por IA del lineup semanal basada en el historial y criterios de puntuación.
