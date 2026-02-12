@@ -56,7 +56,7 @@ Flujo implementado:
 7. **Transaccionalidad y reintentos**
    - Transacción global (`autocommit = false`).
    - `SAVEPOINT` por fila Bronze.
-   - Ante error de una fila: rollback a savepoint, marcar Bronze procesado y registrar error en `raw_data_extra.ingestion_error`.
+   - Ante error de una fila: rollback a savepoint, marcar Bronze procesado y registrar error en `raw_data_extra.error_log` con `message`, `timestamp` y `phase`.
 
 ## Ejecución
 ```bash
