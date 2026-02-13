@@ -1,32 +1,16 @@
 -- =========================================================
--- AI LineUp Architect - Capa Bronze + Multi-Proveedor + Master Data
+-- AI LineUp Architect - Capa Bronze (schema dedicado)
 -- PostgreSQL / Supabase SQL Script
 -- =========================================================
 
--- 1) Extensiones requeridas
+-- 1) Extensión requerida.
 create extension if not exists pgcrypto;
 
--- 2) Enum para la categorización central de cómicos
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1
-    FROM pg_type t
-    JOIN pg_namespace n ON n.oid = t.typnamespace
-    WHERE t.typname = 'tipo_categoria_comico'
-      AND n.nspname = 'public'
-  ) THEN
-    CREATE TYPE public.tipo_categoria_comico AS ENUM (
-      'general',
-      'priority',
-      'gold',
-      'restricted'
-    );
-  END IF;
-END
-$$;
+-- 2) Esquemas físicos.
+create schema if not exists bronze;
+create schema if not exists silver;
 
--- 3) Función común para auto-actualizar updated_at
+-- 3) Función común para auto-actualizar updated_at.
 create or replace function public.set_updated_at()
 returns trigger
 language plpgsql
@@ -37,101 +21,153 @@ begin
 end;
 $$;
 
--- 4) Infraestructura de escalado: proveedores
-create table if not exists public.proveedores (
+-- 4) Compatibilidad con estructura legacy.
+DO $$
+BEGIN
+  IF to_regclass('bronze.solicitudes') IS NULL
+     AND to_regclass('public.solicitudes_bronze') IS NOT NULL THEN
+    ALTER TABLE public.solicitudes_bronze SET SCHEMA bronze;
+    ALTER TABLE bronze.solicitudes_bronze RENAME TO solicitudes;
+  END IF;
+
+  -- Eliminar tabla redundante de identidad en Bronze.
+  IF to_regclass('bronze.comicos') IS NOT NULL THEN
+    DROP TABLE bronze.comicos CASCADE;
+  END IF;
+
+  IF to_regclass('public.comicos_master_bronze') IS NOT NULL THEN
+    DROP TABLE public.comicos_master_bronze CASCADE;
+  END IF;
+END
+$$;
+
+-- 5) Solicitudes crudas Bronze (única tabla del esquema).
+create table if not exists bronze.solicitudes (
   id uuid primary key default gen_random_uuid(),
-  nombre_comercial text not null,
-  slug text not null unique,
-  created_at timestamptz not null default now()
-);
-
-create index if not exists idx_proveedores_slug on public.proveedores (slug);
-
--- 5) Directorio central de cómicos
-create table if not exists public.comicos_master (
-  id uuid primary key default gen_random_uuid(),
-  instagram_user text not null unique,
-  categoria public.tipo_categoria_comico not null default 'general',
-  updated_at timestamptz not null default now(),
-  -- Garantiza formato normalizado sin @ y en minúsculas
-  constraint chk_comicos_master_instagram_normalizado
-    check (
-      instagram_user = lower(instagram_user)
-      and left(instagram_user, 1) <> '@'
-    )
-);
-
-create index if not exists idx_comicos_master_instagram_user on public.comicos_master (instagram_user);
-
-create trigger trg_comicos_master_set_updated_at
-before update on public.comicos_master
-for each row
-execute function public.set_updated_at();
-
--- 6) Capa de ingesta híbrida (Bronze)
-create table if not exists public.solicitudes_bronze (
-  id uuid primary key default gen_random_uuid(),
-  proveedor_id uuid not null references public.proveedores(id) on delete restrict,
-  sheet_row_id int4 not null,
+  proveedor_id uuid,
+  sheet_row_id int4,
   created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
 
-  -- Campos espejo del formulario
   nombre_raw text,
   instagram_raw text,
-  whatsapp_raw text,
+  telefono_raw text,
   experiencia_raw text,
   fechas_seleccionadas_raw text,
   disponibilidad_ultimo_minuto text,
   info_show_cercano text,
   origen_conocimiento text,
 
-  -- Payload completo proveniente de n8n
   raw_data_extra jsonb,
-
-  procesado boolean not null default false,
-
-  -- Unicidad por proveedor + fila de hoja
-  constraint uq_solicitudes_bronze_proveedor_sheet
-    unique (proveedor_id, sheet_row_id)
+  procesado boolean not null default false
 );
 
-create index if not exists idx_solicitudes_bronze_proveedor_id
-  on public.solicitudes_bronze (proveedor_id);
+-- Endurecer tabla existente sin romper instalaciones previas.
+alter table bronze.solicitudes
+  add column if not exists proveedor_id uuid,
+  add column if not exists sheet_row_id int4,
+  add column if not exists created_at timestamptz not null default now(),
+  add column if not exists updated_at timestamptz not null default now(),
+  add column if not exists nombre_raw text,
+  add column if not exists instagram_raw text,
+  add column if not exists telefono_raw text,
+  add column if not exists experiencia_raw text,
+  add column if not exists fechas_seleccionadas_raw text,
+  add column if not exists disponibilidad_ultimo_minuto text,
+  add column if not exists info_show_cercano text,
+  add column if not exists origen_conocimiento text,
+  add column if not exists raw_data_extra jsonb,
+  add column if not exists procesado boolean not null default false;
 
-create index if not exists idx_solicitudes_bronze_sheet_row_id
-  on public.solicitudes_bronze (sheet_row_id);
+-- Compatibilidad: whatsapp_raw legacy -> telefono_raw.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'bronze'
+      AND table_name = 'solicitudes'
+      AND column_name = 'whatsapp_raw'
+  ) AND NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'bronze'
+      AND table_name = 'solicitudes'
+      AND column_name = 'telefono_raw'
+  ) THEN
+    ALTER TABLE bronze.solicitudes RENAME COLUMN whatsapp_raw TO telefono_raw;
+  ELSIF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'bronze'
+      AND table_name = 'solicitudes'
+      AND column_name = 'whatsapp_raw'
+  ) THEN
+    UPDATE bronze.solicitudes
+    SET telefono_raw = COALESCE(telefono_raw, whatsapp_raw)
+    WHERE whatsapp_raw IS NOT NULL;
+    ALTER TABLE bronze.solicitudes DROP COLUMN whatsapp_raw;
+  END IF;
+END
+$$;
 
-create index if not exists idx_solicitudes_bronze_raw_data_extra_gin
-  on public.solicitudes_bronze
+-- Unicidad por proveedor + fila (solo cuando ambos existen).
+create unique index if not exists uq_bronze_solicitudes_proveedor_sheet
+  on bronze.solicitudes (proveedor_id, sheet_row_id)
+  where proveedor_id is not null and sheet_row_id is not null;
+
+-- Bronze no debe depender por FK de otras capas: elimina FKs previas.
+DO $$
+DECLARE
+  fk_record record;
+BEGIN
+  FOR fk_record IN
+    SELECT conname
+    FROM pg_constraint
+    WHERE conrelid = 'bronze.solicitudes'::regclass
+      AND contype = 'f'
+  LOOP
+    EXECUTE format(
+      'ALTER TABLE bronze.solicitudes DROP CONSTRAINT %I',
+      fk_record.conname
+    );
+  END LOOP;
+END
+$$;
+
+create index if not exists idx_bronze_solicitudes_proveedor_id
+  on bronze.solicitudes (proveedor_id);
+
+create index if not exists idx_bronze_solicitudes_sheet_row_id
+  on bronze.solicitudes (sheet_row_id);
+
+create index if not exists idx_bronze_solicitudes_procesado
+  on bronze.solicitudes (procesado);
+
+create index if not exists idx_bronze_solicitudes_raw_data_extra_gin
+  on bronze.solicitudes
   using gin (raw_data_extra);
 
--- 7) Seguridad: RLS habilitado en todas las tablas
-alter table public.proveedores enable row level security;
-alter table public.comicos_master enable row level security;
-alter table public.solicitudes_bronze enable row level security;
+drop trigger if exists trg_bronze_solicitudes_set_updated_at on bronze.solicitudes;
+create trigger trg_bronze_solicitudes_set_updated_at
+before update on bronze.solicitudes
+for each row
+execute function public.set_updated_at();
 
--- 8) Políticas: solo service_role puede leer y escribir
--- (n8n y scripts backend autenticados con service key)
-drop policy if exists p_service_role_all_proveedores on public.proveedores;
-create policy p_service_role_all_proveedores
-on public.proveedores
+-- 6) Seguridad Bronze.
+alter table bronze.solicitudes enable row level security;
+
+drop policy if exists p_service_role_all_bronze_solicitudes on bronze.solicitudes;
+create policy p_service_role_all_bronze_solicitudes
+on bronze.solicitudes
 for all
 to service_role
 using (true)
 with check (true);
 
-drop policy if exists p_service_role_all_comicos_master on public.comicos_master;
-create policy p_service_role_all_comicos_master
-on public.comicos_master
-for all
-to service_role
-using (true)
-with check (true);
-
-drop policy if exists p_service_role_all_solicitudes_bronze on public.solicitudes_bronze;
-create policy p_service_role_all_solicitudes_bronze
-on public.solicitudes_bronze
-for all
-to service_role
-using (true)
-with check (true);
+revoke all on schema bronze from public;
+revoke usage on schema bronze from anon, authenticated;
+grant usage on schema bronze to service_role;
+grant select, insert, update, delete on all tables in schema bronze to service_role;
+alter default privileges in schema bronze
+  grant select, insert, update, delete on tables to service_role;

@@ -9,22 +9,32 @@ import os
 from pathlib import Path
 
 import psycopg2
+from psycopg2 import sql
 from dotenv import load_dotenv
 
 ROOT_DIR = Path(__file__).resolve().parent
 BACKUP_DIR = ROOT_DIR / "backups"
 SQL_SEQUENCE = [
     ROOT_DIR / "specs/sql/bronze_multi_proveedor_master.sql",
-    ROOT_DIR / "specs/sql/migrations/20260212_alter_tipo_solicitud_status.sql",
     ROOT_DIR / "specs/sql/silver_relacional.sql",
+    ROOT_DIR / "specs/sql/migrations/20260212_alter_tipo_solicitud_status.sql",
 ]
 SEED_SQL_PATH = ROOT_DIR / "specs/sql/seed_data.sql"
-ENUM_TYPES = ("tipo_categoria_comico", "tipo_solicitud_status")
-BACKUP_TABLES = ("comicos_master", "solicitudes_silver", "proveedores")
+ENUM_TYPES = (
+    ("silver", "tipo_categoria"),
+    ("silver", "tipo_status"),
+)
+BACKUP_TABLES = (
+    "bronze.solicitudes",
+    "silver.comicos",
+    "silver.solicitudes",
+    "silver.proveedores",
+)
 
 RESET_SQL = """
-DROP TABLE IF EXISTS solicitudes_silver, solicitudes_bronze, comicos_master, proveedores CASCADE;
-DROP TYPE IF EXISTS tipo_categoria_comico, tipo_solicitud_status CASCADE;
+DROP SCHEMA IF EXISTS silver CASCADE;
+DROP SCHEMA IF EXISTS bronze CASCADE;
+DROP FUNCTION IF EXISTS public.set_updated_at() CASCADE;
 """
 
 
@@ -58,13 +68,24 @@ def ensure_backup_dir() -> Path:
     return BACKUP_DIR
 
 
-def table_exists(cursor: psycopg2.extensions.cursor, table_name: str) -> bool:
-    cursor.execute("SELECT to_regclass(%s);", (f"public.{table_name}",))
+def split_table_ref(table_ref: str) -> tuple[str, str]:
+    schema_name, table_name = table_ref.split(".", maxsplit=1)
+    return schema_name, table_name
+
+
+def table_exists(cursor: psycopg2.extensions.cursor, table_ref: str) -> bool:
+    cursor.execute("SELECT to_regclass(%s);", (table_ref,))
     return cursor.fetchone()[0] is not None
 
 
-def table_has_data(cursor: psycopg2.extensions.cursor, table_name: str) -> bool:
-    cursor.execute(f"SELECT EXISTS (SELECT 1 FROM public.{table_name} LIMIT 1);")
+def table_has_data(cursor: psycopg2.extensions.cursor, table_ref: str) -> bool:
+    schema_name, table_name = split_table_ref(table_ref)
+    cursor.execute(
+        sql.SQL("SELECT EXISTS (SELECT 1 FROM {}.{} LIMIT 1);").format(
+            sql.Identifier(schema_name),
+            sql.Identifier(table_name),
+        )
+    )
     return bool(cursor.fetchone()[0])
 
 
@@ -74,20 +95,26 @@ def export_current_data(cursor: psycopg2.extensions.cursor, backup_dir: Path) ->
 
     print("\nPreparando respaldo local preventivo antes del reset...")
 
-    for table_name in BACKUP_TABLES:
-        if not table_exists(cursor, table_name):
-            print(f"- Tabla public.{table_name} no existe. Se omite backup.")
+    for table_ref in BACKUP_TABLES:
+        if not table_exists(cursor, table_ref):
+            print(f"- Tabla {table_ref} no existe. Se omite backup.")
             continue
 
-        if not table_has_data(cursor, table_name):
-            print(f"- Tabla public.{table_name} sin datos. Se omite backup.")
+        if not table_has_data(cursor, table_ref):
+            print(f"- Tabla {table_ref} sin datos. Se omite backup.")
             continue
 
-        cursor.execute(f"SELECT * FROM public.{table_name};")
+        schema_name, table_name = split_table_ref(table_ref)
+        cursor.execute(
+            sql.SQL("SELECT * FROM {}.{};").format(
+                sql.Identifier(schema_name),
+                sql.Identifier(table_name),
+            )
+        )
         rows = cursor.fetchall()
         headers = [column.name for column in cursor.description]
 
-        output_file = backup_dir / f"{table_name}_{timestamp}.csv"
+        output_file = backup_dir / f"{schema_name}_{table_name}_{timestamp}.csv"
         with output_file.open("w", encoding="utf-8", newline="") as csv_file:
             writer = csv.writer(csv_file)
             writer.writerow(headers)
@@ -102,7 +129,9 @@ def export_current_data(cursor: psycopg2.extensions.cursor, backup_dir: Path) ->
         )
 
 
-def enum_exists(cursor: psycopg2.extensions.cursor, enum_name: str) -> bool:
+def enum_exists(
+    cursor: psycopg2.extensions.cursor, enum_schema: str, enum_name: str
+) -> bool:
     cursor.execute(
         """
         SELECT EXISTS (
@@ -110,18 +139,21 @@ def enum_exists(cursor: psycopg2.extensions.cursor, enum_name: str) -> bool:
             FROM pg_type t
             JOIN pg_namespace n ON n.oid = t.typnamespace
             WHERE t.typname = %s
-              AND n.nspname = 'public'
+              AND n.nspname = %s
         );
         """,
-        (enum_name,),
+        (enum_name, enum_schema),
     )
     return bool(cursor.fetchone()[0])
 
 
 def verify_enums(cursor: psycopg2.extensions.cursor) -> dict[str, bool]:
-    status = {enum_name: enum_exists(cursor, enum_name) for enum_name in ENUM_TYPES}
-    for enum_name, exists in status.items():
-        print(f"Enum public.{enum_name}: {'EXISTE' if exists else 'NO EXISTE'}")
+    status = {
+        f"{schema_name}.{enum_name}": enum_exists(cursor, schema_name, enum_name)
+        for schema_name, enum_name in ENUM_TYPES
+    }
+    for enum_ref, exists in status.items():
+        print(f"Enum {enum_ref}: {'EXISTE' if exists else 'NO EXISTE'}")
     return status
 
 

@@ -1,19 +1,20 @@
 -- =========================================================
 -- AI LineUp Architect - Seed Data con casos de borde
--- Genera proveedores, comicos_master y solicitudes_silver
+-- Genera silver.proveedores, silver.comicos, bronze.solicitudes
+-- y silver.solicitudes con linaje bronze_id
 -- =========================================================
 
 BEGIN;
 
--- 1) Proveedores
-INSERT INTO public.proveedores (id, nombre_comercial, slug)
+-- 1) Proveedores (Silver)
+INSERT INTO silver.proveedores (id, nombre_comercial, slug)
 VALUES
   ('10000000-0000-0000-0000-000000000001', 'La Recova Open Mic', 'recova-open'),
   ('10000000-0000-0000-0000-000000000002', 'Comedy Lab', 'comedy-lab')
 ON CONFLICT (id) DO NOTHING;
 
--- 2) Cómicos maestro (2 gold, 3 priority, 5 general, 1 restricted)
-INSERT INTO public.comicos_master (
+-- 2) Cómicos Silver (2 gold, 3 priority, 5 general, 1 restricted)
+INSERT INTO silver.comicos (
   id,
   instagram_user,
   nombre_artistico,
@@ -51,14 +52,14 @@ VALUES
   )
 ON CONFLICT (instagram_user) DO NOTHING;
 
--- 3) Solicitudes Bronze asociadas (base para FK de Silver)
-INSERT INTO public.solicitudes_bronze (
+-- 3) Solicitudes Bronze asociadas (origen de linaje)
+INSERT INTO bronze.solicitudes (
   id,
   proveedor_id,
   sheet_row_id,
   nombre_raw,
   instagram_raw,
-  whatsapp_raw,
+  telefono_raw,
   experiencia_raw,
   fechas_seleccionadas_raw,
   disponibilidad_ultimo_minuto,
@@ -74,7 +75,7 @@ VALUES
   ('30000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000002', 1004, 'Mati General', '@general_mati', '+5491111111106', 'intermedio', to_char(current_date + 10, 'YYYY-MM-DD'), 'si', 'Open mic', 'whatsapp', '{"seed": true}'::jsonb, true),
 
   ('30000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000001', 1005, 'Nora Priority', '@prioridad_nora', '+5491111111103', 'avanzado', to_char(current_date + 5, 'YYYY-MM-DD'), 'si', 'Teatro', 'instagram', '{"seed": true, "caso": "doblete"}'::jsonb, true),
-  ('30000000-0000-0000-0000-000000000006', '10000000-0000-0000-0000-000000000002', 1006, 'Nora Priority', '@prioridad_nora', '+5491111111103', 'avanzado', to_char(current_date + 5, 'YYYY-MM-DD'), 'si', 'Teatro', 'instagram', '{"seed": true, "caso": "doblete"}'::jsonb, true),
+  ('30000000-0000-0000-0000-000000000006', '10000000-0000-0000-0000-000000000002', 1006, 'Nora Priority', '@prioridad_nora', '+5491111111103', 'avanzado', to_char(current_date + 6, 'YYYY-MM-DD'), 'si', 'Teatro', 'instagram', '{"seed": true, "caso": "doblete"}'::jsonb, true),
 
   ('30000000-0000-0000-0000-000000000007', '10000000-0000-0000-0000-000000000001', 1007, 'El Cancelado', '@el_cancelado', '+5491111111111', 'intermedio', to_char(current_date + 2, 'YYYY-MM-DD'), 'si', 'N/A', 'instagram', '{"seed": true, "caso": "restringido"}'::jsonb, true),
 
@@ -92,7 +93,7 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- 4) Solicitudes Silver (18 registros)
-INSERT INTO public.solicitudes_silver (
+INSERT INTO silver.solicitudes (
   id,
   bronze_id,
   proveedor_id,
@@ -111,7 +112,7 @@ VALUES
   ('40000000-0000-0000-0000-000000000004', '30000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000006', current_date + 10,2, true,  69.00, 'normalizado', '{"caso": "spammer"}'::jsonb),
 
   ('40000000-0000-0000-0000-000000000005', '30000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000003', current_date + 5, 3, true,  84.00, 'normalizado', '{"caso": "doblete"}'::jsonb),
-  ('40000000-0000-0000-0000-000000000006', '30000000-0000-0000-0000-000000000006', '10000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000003', current_date + 5, 3, true,  85.00, 'normalizado', '{"caso": "doblete"}'::jsonb),
+  ('40000000-0000-0000-0000-000000000006', '30000000-0000-0000-0000-000000000006', '10000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000003', current_date + 6, 3, true,  85.00, 'normalizado', '{"caso": "doblete"}'::jsonb),
 
   ('40000000-0000-0000-0000-000000000007', '30000000-0000-0000-0000-000000000007', '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000011', current_date + 2, 2, true,  78.00, 'normalizado', '{"caso": "restringido_activo"}'::jsonb),
 

@@ -33,7 +33,7 @@ class BronzeRecord:
     proveedor_id: UUID
     nombre_raw: str | None
     instagram_raw: str | None
-    whatsapp_raw: str | None
+    telefono_raw: str | None
     experiencia_raw: str | None
     fechas_seleccionadas_raw: str | None
     disponibilidad_ultimo_minuto: str | None
@@ -131,11 +131,11 @@ def fetch_pending_bronze_rows(conn) -> Sequence[BronzeRecord]:
                 proveedor_id,
                 nombre_raw,
                 instagram_raw,
-                whatsapp_raw,
+                telefono_raw,
                 experiencia_raw,
                 fechas_seleccionadas_raw,
                 disponibilidad_ultimo_minuto
-            FROM public.solicitudes_bronze
+            FROM bronze.solicitudes
             WHERE procesado = false
             ORDER BY created_at ASC
             """
@@ -145,7 +145,7 @@ def fetch_pending_bronze_rows(conn) -> Sequence[BronzeRecord]:
     return [BronzeRecord(**record) for record in records]
 
 
-def upsert_comico_identity(
+def upsert_comico_silver(
     conn,
     instagram_user: str,
     nombre_artistico: str | None,
@@ -154,17 +154,17 @@ def upsert_comico_identity(
     with conn.cursor() as cursor:
         cursor.execute(
             """
-            INSERT INTO public.comicos_master (
+            INSERT INTO silver.comicos (
                 instagram_user,
                 nombre_artistico,
                 telefono
             )
             VALUES (%s, %s, %s)
             ON CONFLICT (instagram_user) DO UPDATE
-            SET nombre_artistico = COALESCE(EXCLUDED.nombre_artistico, public.comicos_master.nombre_artistico),
+            SET nombre_artistico = COALESCE(EXCLUDED.nombre_artistico, silver.comicos.nombre_artistico),
                 telefono = CASE
                     WHEN EXCLUDED.telefono IS NOT NULL THEN EXCLUDED.telefono
-                    ELSE public.comicos_master.telefono
+                    ELSE silver.comicos.telefono
                 END,
                 updated_at = NOW()
             RETURNING id
@@ -181,7 +181,7 @@ def expire_old_reserves(conn, today: date) -> int:
     with conn.cursor() as cursor:
         cursor.execute(
             """
-            UPDATE public.solicitudes_silver
+            UPDATE silver.solicitudes
             SET status = 'expirado',
                 updated_at = NOW()
             WHERE status = 'no_seleccionado'
@@ -206,7 +206,7 @@ def insert_silver_rows(
             # Estado previo al motor de scoring.
             cursor.execute(
                 """
-                INSERT INTO public.solicitudes_silver (
+                INSERT INTO silver.solicitudes (
                     bronze_id,
                     proveedor_id,
                     comico_id,
@@ -230,7 +230,7 @@ def insert_silver_rows(
             inserted_count += cursor.rowcount
 
         cursor.execute(
-            "UPDATE public.solicitudes_bronze SET procesado = true WHERE id = %s",
+            "UPDATE bronze.solicitudes SET procesado = true WHERE id = %s",
             (str(bronze.id),),
         )
 
@@ -254,7 +254,7 @@ def process_pending_bronze(conn, today: date) -> tuple[int, int]:
             if not instagram_user:
                 raise ValueError("instagram_raw inválido")
 
-            telefono = normalize_phone(bronze.whatsapp_raw)
+            telefono = normalize_phone(bronze.telefono_raw)
             phase = "parsing_fechas"
             event_dates = parse_event_dates(bronze.fechas_seleccionadas_raw, today)
             phase = "mapeo_experiencia"
@@ -267,14 +267,14 @@ def process_pending_bronze(conn, today: date) -> tuple[int, int]:
                 LOGGER.info("Bronze %s omitido: sin fechas futuras", bronze.id)
                 with conn.cursor() as cursor:
                     cursor.execute(
-                        "UPDATE public.solicitudes_bronze SET procesado = true WHERE id = %s",
+                        "UPDATE bronze.solicitudes SET procesado = true WHERE id = %s",
                         (str(bronze.id),),
                     )
                 processed += 1
                 continue
 
-            phase = "upsert_comico"
-            comico_id = upsert_comico_identity(
+            phase = "upsert_comico_silver"
+            comico_id = upsert_comico_silver(
                 conn,
                 instagram_user=instagram_user,
                 nombre_artistico=bronze.nombre_raw,
@@ -309,7 +309,7 @@ def process_pending_bronze(conn, today: date) -> tuple[int, int]:
                 cursor.execute(f"ROLLBACK TO SAVEPOINT {savepoint_name}")
                 cursor.execute(
                     """
-                    UPDATE public.solicitudes_bronze
+                    UPDATE bronze.solicitudes
                     SET procesado = true,
                         raw_data_extra = COALESCE(raw_data_extra, '{}'::jsonb)
                           || jsonb_build_object(
