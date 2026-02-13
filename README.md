@@ -1,7 +1,7 @@
 # AI LineUp Architect (MVP) 🎭
 
-**Estado del Proyecto:** 🛠️ En Desarrollo (Fase de Cimentación)  
-**Versión:** 0.1.0-alpha  
+**Estado del Proyecto:** 🛠️ En Desarrollo (MVP)  
+**Versión:** 0.3.0  
 **Metodología:** Spec-Driven Development (SDD)
 
 Sistema automatizado para la gestión y generación de lineups y cartelería para Open Mics de comedia.
@@ -90,7 +90,7 @@ graph LR
 - **Diseño:** Canva API
 
 ## 🚀 Objetivos del MVP
-- Centralizar las solicitudes en una capa de datos limpia ("Silver Layer").
+- Mantener ingesta cruda en `bronze.solicitudes` y curación transaccional en `silver`.
 - Automatizar el cálculo de puntos (tiempo desde la última actuación, paridad, prioridad).
 - Generar el póster final sin intervención manual en el diseño.
 - Mantener un registro histórico fiable de quién actúa en cada show.
@@ -99,20 +99,51 @@ graph LR
 Para mantener la integridad de la base de datos en Supabase, el proyecto incluye:
 - **`setup_db.py`**: Script de automatización que gestiona:
     - **Backup Preventivo:** Exportación a CSV en `/backups` antes de cualquier cambio destructivo.
-    - **Evolución de Esquema:** Ejecución secuencial de SQL (Tablas -> Enums -> Migraciones).
-    - **Seeding:** Inyección de datos de prueba (incluyendo perfiles restringidos) para testing.
+    - **Evolución de Esquema:** Ejecución secuencial de SQL por capas (`bronze` -> `silver` -> migraciones).
+    - **Seeding:** Inyección de datos de prueba alineados al linaje `bronze -> silver`.
+
+## 🗃️ Modelo de Datos (Bronze/Silver)
+- **`bronze.solicitudes`**:
+  - Única tabla en Bronze.
+  - Conserva campos crudos del formulario (`*_raw`) y `raw_data_extra` (`jsonb`).
+- **`silver.comicos`**:
+  - Maestro de identidad única por `instagram_user` normalizado (minúsculas y sin `@`).
+- **`silver.proveedores`**:
+  - Maestro de Open Mics / organizadores.
+- **`silver.solicitudes`**:
+  - Tabla transaccional con FKs a `silver.comicos` y `silver.proveedores`.
+  - Trazabilidad obligatoria mediante `bronze_id` (`FK -> bronze.solicitudes(id)`).
+- **Tipos y seguridad**:
+  - Enums en `silver`: `silver.tipo_categoria`, `silver.tipo_status`.
+  - RLS habilitado en Bronze y Silver para `service_role`.
+
+## ⚙️ Operación Local (DB)
+1. Configura `DATABASE_URL` en `.env`.
+2. Aplica esquema:
+   - `python setup_db.py`
+3. Aplica esquema + datos de prueba:
+   - `python setup_db.py --seed`
+4. Reset controlado + backup + seed:
+   - `python setup_db.py --reset --seed`
+
+## 🔁 Flujo de Ingesta Bronze -> Silver
+El ingestion engine (`backend/src/bronze_to_silver_ingestion.py`) prepara el linaje operativo:
+1. Lee registros pendientes en `bronze.solicitudes`.
+2. Normaliza `instagram_raw`.
+3. Hace upsert en `silver.comicos`.
+4. Inserta en `silver.solicitudes` con `bronze_id`, `comico_id` y `proveedor_id`.
 
 ## 🏗️ Estructura del Proyecto (Refactorizada)
 ```text
 /
 ├── backend/              # Lógica de negocio en Python
-│   ├── src/              # Ingestion, Scoring y Canva Builder
-│   └── setup_db.py       # Herramienta de despliegue y backups
+│   └── src/              # Ingestion, Scoring y Canva Builder
 ├── backups/              # Volcados temporales de seguridad (Local CSV) [GIT IGNORED]
 ├── specs/                # Fuente de verdad (Source of Truth)
 │   └── sql/              # Esquemas, Migraciones y Seed Data
 ├── workflows/            # Planos de automatización (n8n)
 ├── .env                  # Variables críticas (DB_URL, Drive_ID, etc.)
+├── setup_db.py           # Herramienta de despliegue, reset y backups de BD
 ├── package.json          # Versión del proyecto (SemVer)
 └── README.md             # Esta documentación
 ```
