@@ -95,20 +95,26 @@ graph LR
 - Generar el póster final sin intervención manual en el diseño.
 - Mantener un registro histórico fiable de quién actúa en cada show.
 
-## 🏗️ Estructura del Proyecto
-El repositorio está organizado de forma modular para facilitar la escalabilidad y el mantenimiento:
+## 🛠️ Herramientas de Infraestructura (Novedad)
+Para mantener la integridad de la base de datos en Supabase, el proyecto incluye:
+- **`setup_db.py`**: Script de automatización que gestiona:
+    - **Backup Preventivo:** Exportación a CSV en `/backups` antes de cualquier cambio destructivo.
+    - **Evolución de Esquema:** Ejecución secuencial de SQL (Tablas -> Enums -> Migraciones).
+    - **Seeding:** Inyección de datos de prueba (incluyendo perfiles restringidos) para testing.
 
+## 🏗️ Estructura del Proyecto (Refactorizada)
 ```text
 /
 ├── backend/              # Lógica de negocio en Python
-│   ├── src/              # Scripts de Ingesta, Scoring y Canva Builder
-│   └── tests/            # Red de seguridad (Pytest + Mocks)
-├── specs/                # Fuente de verdad: Esquemas SQL y Contratos JSON
-├── workflows/            # Exportaciones de n8n para orquestación
-├── package.json          # Gestión de versiones (SemVer) y Scripts de automatización
-├── pyproject.toml        # Dependencias de Python y configuración del proyecto
-├── CHANGELOG.md          # Historial de cambios detallado siguiendo Keep a Changelog
-└── README.md             # Documentación principal
+│   ├── src/              # Ingestion, Scoring y Canva Builder
+│   └── setup_db.py       # Herramienta de despliegue y backups
+├── backups/              # Volcados temporales de seguridad (Local CSV) [GIT IGNORED]
+├── specs/                # Fuente de verdad (Source of Truth)
+│   └── sql/              # Esquemas, Migraciones y Seed Data
+├── workflows/            # Planos de automatización (n8n)
+├── .env                  # Variables críticas (DB_URL, Drive_ID, etc.)
+├── package.json          # Versión del proyecto (SemVer)
+└── README.md             # Esta documentación
 ```
 
 ---
