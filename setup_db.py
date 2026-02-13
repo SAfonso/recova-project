@@ -18,6 +18,7 @@ SQL_SEQUENCE = [
     ROOT_DIR / "specs/sql/migrations/20260212_alter_tipo_solicitud_status.sql",
     ROOT_DIR / "specs/sql/silver_relacional.sql",
 ]
+SEED_SQL_PATH = ROOT_DIR / "specs/sql/seed_data.sql"
 ENUM_TYPES = ("tipo_categoria_comico", "tipo_solicitud_status")
 BACKUP_TABLES = ("comicos_master", "solicitudes_silver", "proveedores")
 
@@ -35,6 +36,11 @@ def parse_args() -> argparse.Namespace:
         "--reset",
         action="store_true",
         help="Limpia tablas y enums críticos antes del despliegue.",
+    )
+    parser.add_argument(
+        "--seed",
+        action="store_true",
+        help="Ejecuta specs/sql/seed_data.sql después de aplicar el esquema.",
     )
     return parser.parse_args()
 
@@ -88,7 +94,7 @@ def export_current_data(cursor: psycopg2.extensions.cursor, backup_dir: Path) ->
             writer.writerows(rows)
 
         exported_files.append(output_file)
-        print(f"- Backup generado: {output_file.relative_to(ROOT_DIR)}")
+        print(f"📦 Backup generado: {output_file.relative_to(ROOT_DIR)}")
 
     if not exported_files:
         print(
@@ -124,7 +130,7 @@ def execute_sql_file(cursor: psycopg2.extensions.cursor, sql_path: Path) -> None
         raise FileNotFoundError(f"Archivo SQL no encontrado: {sql_path}")
 
     sql = sql_path.read_text(encoding="utf-8")
-    print(f"Ejecutando {sql_path.relative_to(ROOT_DIR)}")
+    print(f"🏗️ Esquema aplicado: {sql_path.relative_to(ROOT_DIR)}")
     cursor.execute(sql)
 
 
@@ -132,7 +138,9 @@ def main() -> None:
     args = parse_args()
     database_url = get_database_url()
 
-    with psycopg2.connect(database_url) as conn:
+    conn = psycopg2.connect(database_url)
+
+    try:
         with conn.cursor() as cur:
             print("Verificando enums antes del despliegue...")
             verify_enums(cur)
@@ -142,14 +150,26 @@ def main() -> None:
                 export_current_data(cur, backup_dir)
                 print("\n--reset detectado: limpiando tablas y enums...")
                 cur.execute(RESET_SQL)
-                print("Limpieza completada. Estado de enums luego del reset:")
+                print("🗑️ Reset completado (Tablas y Enums eliminados)")
+                print("Estado de enums luego del reset:")
                 verify_enums(cur)
 
             print("\nEjecutando scripts de esquema en orden obligatorio...")
             for sql_file in SQL_SEQUENCE:
                 execute_sql_file(cur, sql_file)
 
+            if args.seed:
+                execute_sql_file(cur, SEED_SQL_PATH)
+                print("🌱 Datos de prueba inyectados correctamente.")
+
         conn.commit()
+    except Exception as exc:
+        conn.rollback()
+        raise RuntimeError(
+            "Error durante setup de BD. Se ejecutó rollback para mantener consistencia."
+        ) from exc
+    finally:
+        conn.close()
 
     print("\n✅ Setup de base de datos completado correctamente.")
     print(
