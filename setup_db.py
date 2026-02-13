@@ -3,19 +3,23 @@
 from __future__ import annotations
 
 import argparse
+import csv
+from datetime import datetime
+import os
 from pathlib import Path
 
 import psycopg2
 from dotenv import load_dotenv
-import os
 
 ROOT_DIR = Path(__file__).resolve().parent
+BACKUP_DIR = ROOT_DIR / "backups"
 SQL_SEQUENCE = [
     ROOT_DIR / "specs/sql/bronze_multi_proveedor_master.sql",
     ROOT_DIR / "specs/sql/migrations/20260212_alter_tipo_solicitud_status.sql",
     ROOT_DIR / "specs/sql/silver_relacional.sql",
 ]
 ENUM_TYPES = ("tipo_categoria_comico", "tipo_solicitud_status")
+BACKUP_TABLES = ("comicos_master", "solicitudes_silver", "proveedores")
 
 RESET_SQL = """
 DROP TABLE IF EXISTS solicitudes_silver, solicitudes_bronze, comicos_master, proveedores CASCADE;
@@ -41,6 +45,55 @@ def get_database_url() -> str:
     if not database_url:
         raise RuntimeError("No se encontró DATABASE_URL en .env")
     return database_url
+
+
+def ensure_backup_dir() -> Path:
+    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+    return BACKUP_DIR
+
+
+def table_exists(cursor: psycopg2.extensions.cursor, table_name: str) -> bool:
+    cursor.execute("SELECT to_regclass(%s);", (f"public.{table_name}",))
+    return cursor.fetchone()[0] is not None
+
+
+def table_has_data(cursor: psycopg2.extensions.cursor, table_name: str) -> bool:
+    cursor.execute(f"SELECT EXISTS (SELECT 1 FROM public.{table_name} LIMIT 1);")
+    return bool(cursor.fetchone()[0])
+
+
+def export_current_data(cursor: psycopg2.extensions.cursor, backup_dir: Path) -> None:
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    exported_files: list[Path] = []
+
+    print("\nPreparando respaldo local preventivo antes del reset...")
+
+    for table_name in BACKUP_TABLES:
+        if not table_exists(cursor, table_name):
+            print(f"- Tabla public.{table_name} no existe. Se omite backup.")
+            continue
+
+        if not table_has_data(cursor, table_name):
+            print(f"- Tabla public.{table_name} sin datos. Se omite backup.")
+            continue
+
+        cursor.execute(f"SELECT * FROM public.{table_name};")
+        rows = cursor.fetchall()
+        headers = [column.name for column in cursor.description]
+
+        output_file = backup_dir / f"{table_name}_{timestamp}.csv"
+        with output_file.open("w", encoding="utf-8", newline="") as csv_file:
+            writer = csv.writer(csv_file)
+            writer.writerow(headers)
+            writer.writerows(rows)
+
+        exported_files.append(output_file)
+        print(f"- Backup generado: {output_file.relative_to(ROOT_DIR)}")
+
+    if not exported_files:
+        print(
+            "No se generaron archivos de backup: no hay tablas objetivo o no contienen datos."
+        )
 
 
 def enum_exists(cursor: psycopg2.extensions.cursor, enum_name: str) -> bool:
@@ -85,6 +138,8 @@ def main() -> None:
             verify_enums(cur)
 
             if args.reset:
+                backup_dir = ensure_backup_dir()
+                export_current_data(cur, backup_dir)
                 print("\n--reset detectado: limpiando tablas y enums...")
                 cur.execute(RESET_SQL)
                 print("Limpieza completada. Estado de enums luego del reset:")
@@ -97,6 +152,9 @@ def main() -> None:
         conn.commit()
 
     print("\n✅ Setup de base de datos completado correctamente.")
+    print(
+        "Recuerda añadir la carpeta backups/ a tu .gitignore para no subir datos sensibles al repositorio"
+    )
 
 
 if __name__ == "__main__":
