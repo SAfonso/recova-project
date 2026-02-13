@@ -5,6 +5,15 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.5] - 2026-02-13
+
+### Added
+- Script de seed data `specs/sql/seed_data.sql` con 2 proveedores, 11 cómicos y 18 solicitudes Silver con casos de borde (spammer, doblete y restringido activo).
+- Documento técnico `docs/seed-data-casos-borde.md` con instrucciones de ejecución y validación rápida.
+
+### Changed
+- Incremento de versión a `0.1.5` en `package.json` y `pyproject.toml`.
+
 ## [0.1.4] - 2026-02-12
 
 ### Added
