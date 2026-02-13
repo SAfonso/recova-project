@@ -9,12 +9,12 @@ Este cambio introduce `setup_db.py` para automatizar el despliegue del esquema d
    - `tipo_categoria_comico`
    - `tipo_solicitud_status`
 3. Si se ejecuta con `--reset`, realiza:
-   - `DROP TABLE IF EXISTS solicitudes_silver, solicitudes_bronze, comicos_master, proveedores CASCADE;`
+   - `DROP TABLE IF EXISTS solicitudes_silver, solicitudes_bronze, comicos_master, comicos_master_bronze, proveedores CASCADE;`
    - `DROP TYPE IF EXISTS tipo_categoria_comico, tipo_solicitud_status CASCADE;`
 4. Ejecuta SQL en orden estricto:
    - `specs/sql/bronze_multi_proveedor_master.sql`
-   - `specs/sql/migrations/20260212_alter_tipo_solicitud_status.sql`
    - `specs/sql/silver_relacional.sql`
+   - `specs/sql/migrations/20260212_alter_tipo_solicitud_status.sql`
 
 ## Archivo de migración agregado
 Se agrega `specs/sql/migrations/20260212_alter_tipo_solicitud_status.sql` para asegurar que `tipo_solicitud_status` exista y contenga todos los valores requeridos mediante `ADD VALUE IF NOT EXISTS`.

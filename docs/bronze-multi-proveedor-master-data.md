@@ -7,7 +7,7 @@ Este documento describe la base de datos inicial para el MVP de **AI LineUp Arch
 Se implementan tres componentes:
 
 1. Infraestructura de escalado por proveedor (`proveedores`).
-2. Directorio central de cómicos (`comicos_master`).
+2. Directorio de identidad en Bronze (`comicos_master_bronze`).
 3. Capa de ingesta híbrida (`solicitudes_bronze`).
 
 ## Script SQL
@@ -19,6 +19,6 @@ El script ejecutable se encuentra en:
 ## Decisiones clave
 
 - Se usa `pgcrypto` para `gen_random_uuid()`.
-- `instagram_user` en `comicos_master` está protegido por una restricción de formato para garantizar minúsculas y ausencia de `@`.
-- Se define una función genérica `set_updated_at()` y trigger sobre `comicos_master` para mantener `updated_at` automáticamente.
+- `instagram_user` en `comicos_master_bronze` está protegido por una restricción de formato para garantizar minúsculas y ausencia de `@`.
+- Se define una función genérica `set_updated_at()` y trigger sobre `comicos_master_bronze` para mantener `updated_at` automáticamente.
 - Se habilita RLS en todas las tablas y se restringe acceso de lectura/escritura al rol `service_role`.

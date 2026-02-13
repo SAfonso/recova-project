@@ -28,7 +28,7 @@ Flujo implementado:
 
 1. **Expiración de reservas**
    - Antes de procesar Bronze, actualiza `solicitudes_silver` con:
-     - `status = 'no_seleccionado'`
+     - `status = 'expirado'`
      - `fecha_evento <= today() - 60 días`
    - Nuevo estado: `expirado`.
 
@@ -39,21 +39,25 @@ Flujo implementado:
    - Instagram: trim + lowercase + remover `@`.
    - Teléfono: validación E.164 (`+` y prefijo internacional).
 
-4. **Upsert en `comicos_master`**
-   - Inserta si no existe.
+4. **Upsert de identidad en Bronze**
+   - Inserta/actualiza en `comicos_master_bronze`.
    - Si existe, actualiza teléfono cuando llega uno válido.
 
-5. **Explosión de fechas**
+5. **Sincronización Bronze -> Silver**
+   - Upsert de `comicos_master` (Silver) desde `comicos_master_bronze`.
+   - Mantiene `categoria` e identidad alineadas por `instagram_user`.
+
+6. **Explosión de fechas**
    - Split por coma en `fechas_seleccionadas_raw`.
    - Parse `DD-MM-YY`.
    - Filtra fechas pasadas.
 
-6. **Inserción en Silver (idempotente)**
+7. **Inserción en Silver (idempotente)**
    - Inserta una fila por fecha válida.
    - `ON CONFLICT (comico_id, fecha_evento) DO NOTHING`.
    - Marca Bronze como `procesado = true`.
 
-7. **Transaccionalidad y reintentos**
+8. **Transaccionalidad y reintentos**
    - Transacción global (`autocommit = false`).
    - `SAVEPOINT` por fila Bronze.
    - Ante error de una fila: rollback a savepoint, marcar Bronze procesado y registrar error en `raw_data_extra.error_log` con `message`, `timestamp` y `phase`.

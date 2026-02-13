@@ -10,7 +10,7 @@ Agregar una capa de seguridad en `setup_db.py` para exportar datos actuales a CS
    - Se agrega `ensure_backup_dir()` para crear la carpeta automáticamente si no existe.
 
 2. **Respaldo por tabla objetivo**
-   - Se define `BACKUP_TABLES = ("comicos_master", "solicitudes_silver", "proveedores")`.
+   - Se define `BACKUP_TABLES = ("comicos_master_bronze", "comicos_master", "solicitudes_silver", "proveedores")`.
    - Se agrega `export_current_data(cursor, backup_dir)` con este flujo:
      - Verifica si la tabla existe (`table_exists`).
      - Verifica si la tabla tiene datos (`table_has_data`).
@@ -18,7 +18,7 @@ Agregar una capa de seguridad en `setup_db.py` para exportar datos actuales a CS
 
 3. **Nomenclatura de archivos**
    - Formato: `tabla_YYYYMMDD_HHMMSS.csv`.
-   - Ejemplo: `backups/comicos_master_20260213_153245.csv`.
+   - Ejemplo: `backups/comicos_master_bronze_20260213_153245.csv`.
 
 4. **Orden de ejecución en `--reset`**
    - Al detectar `--reset`, primero ejecuta respaldo local.

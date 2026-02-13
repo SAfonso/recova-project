@@ -19,7 +19,7 @@ Se añadió el argumento opcional `--seed` para ejecutar `specs/sql/seed_data.sq
 Antes de borrar tablas/enums:
 
 - Se crea la carpeta `backups/` si no existe.
-- Se evalúan tablas objetivo (`comicos_master`, `solicitudes_silver`, `proveedores`).
+- Se evalúan tablas objetivo (`comicos_master_bronze`, `comicos_master`, `solicitudes_silver`, `proveedores`).
 - Solo se exportan CSV de tablas existentes con datos.
 - Se usa timestamp en formato `YYYYMMDD_HHMMSS`.
 
