@@ -8,6 +8,7 @@ import logging
 import os
 import re
 import sys
+import unicodedata
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
@@ -40,6 +41,8 @@ class BronzeRecord:
     experiencia_raw: str | None
     fechas_seleccionadas_raw: str | None
     disponibilidad_ultimo_minuto: str | None
+    info_show_cercano: str | None
+    origen_conocimiento: str | None
 
 
 @contextmanager
@@ -74,9 +77,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--nombre_raw")
     parser.add_argument("--instagram_raw")
     parser.add_argument("--telefono_raw")
+    parser.add_argument("--whatsapp", dest="telefono_raw")
+    parser.add_argument("--Whatsapp", dest="telefono_raw")
     parser.add_argument("--experiencia_raw")
     parser.add_argument("--fechas_raw")
     parser.add_argument("--disponibilidad_uv")
+    parser.add_argument("--show_cercano_raw")
+    parser.add_argument("--conociste_raw")
     return parser.parse_args()
 
 
@@ -134,10 +141,12 @@ def parse_event_dates(raw_dates: str | None, today: date) -> list[date]:
 def parse_last_minute_availability(value: str | None) -> bool:
     if not value:
         return False
-    normalized = value.strip().lower()
-    return normalized in {"sí", "si", "true", "1", "yes"}
 
-
+    normalized = unicodedata.normalize("NFD", value.strip().lower())
+    normalized = "".join(
+        char for char in normalized if unicodedata.category(char) != "Mn"
+    )
+    return "si" in normalized
 
 
 def validate_default_proveedor_id() -> None:
@@ -152,6 +161,7 @@ def validate_default_proveedor_id() -> None:
             "DEFAULT_PROVEEDOR_ID parece UUID pero no es válido. "
             "Si silver.proveedores.id es UUID, usa un UUID correcto."
         ) from exc
+
 
 def resolve_proveedor_id(conn, proveedor_ref: str) -> UUID:
     with conn.cursor() as cursor:
@@ -187,10 +197,12 @@ def insert_bronze_row(conn, args: argparse.Namespace, proveedor_id: UUID) -> Bro
                 experiencia_raw,
                 fechas_seleccionadas_raw,
                 disponibilidad_ultimo_minuto,
+                info_show_cercano,
+                origen_conocimiento,
                 procesado,
                 raw_data_extra
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, false, '{}'::jsonb)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, false, '{}'::jsonb)
             RETURNING
                 id,
                 proveedor_id,
@@ -199,7 +211,9 @@ def insert_bronze_row(conn, args: argparse.Namespace, proveedor_id: UUID) -> Bro
                 telefono_raw,
                 experiencia_raw,
                 fechas_seleccionadas_raw,
-                disponibilidad_ultimo_minuto
+                disponibilidad_ultimo_minuto,
+                info_show_cercano,
+                origen_conocimiento
             """,
             (
                 str(proveedor_id),
@@ -209,6 +223,8 @@ def insert_bronze_row(conn, args: argparse.Namespace, proveedor_id: UUID) -> Bro
                 args.experiencia_raw,
                 args.fechas_raw,
                 args.disponibilidad_uv,
+                args.show_cercano_raw,
+                args.conociste_raw,
             ),
         )
         row = cursor.fetchone()
@@ -283,9 +299,11 @@ def insert_silver_rows(
                     fecha_evento,
                     nivel_experiencia,
                     disponibilidad_ultimo_minuto,
+                    show_cercano,
+                    origen_conocimiento,
                     status
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, 'normalizado')
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'normalizado')
                 ON CONFLICT (comico_id, fecha_evento) DO NOTHING
                 """,
                 (
@@ -295,6 +313,8 @@ def insert_silver_rows(
                     event_date,
                     level,
                     available_last_minute,
+                    bronze.info_show_cercano,
+                    bronze.origen_conocimiento,
                 ),
             )
             inserted_count += cursor.rowcount
