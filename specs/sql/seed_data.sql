@@ -9,7 +9,7 @@ BEGIN;
 -- 1) Proveedores (Silver)
 INSERT INTO silver.proveedores (id, nombre_comercial, slug)
 VALUES
-  ('10000000-0000-0000-0000-000000000001', 'La Recova Open Mic', 'recova-open'),
+  ('10000000-0000-0000-0000-000000000001', 'La Recova Open Mic', 'recova-om'),
   ('10000000-0000-0000-0000-000000000002', 'Comedy Lab', 'comedy-lab')
 ON CONFLICT (id) DO NOTHING;
 
