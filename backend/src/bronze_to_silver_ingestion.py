@@ -27,7 +27,7 @@ EXPERIENCE_MAP = {
     "Llevo tiempo": 2,
     "No me conoces? ....¿Tu tampoco?": 3,
 }
-DEFAULT_PROVEEDOR_REF = "recova-om"
+DEFAULT_PROVEEDOR_ID = "recova-om"
 
 
 @dataclass(frozen=True)
@@ -77,7 +77,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--experiencia_raw")
     parser.add_argument("--fechas_raw")
     parser.add_argument("--disponibilidad_uv")
-    parser.add_argument("--proveedor_id", default=DEFAULT_PROVEEDOR_REF)
     return parser.parse_args()
 
 
@@ -138,6 +137,21 @@ def parse_last_minute_availability(value: str | None) -> bool:
     normalized = value.strip().lower()
     return normalized in {"sí", "si", "true", "1", "yes"}
 
+
+
+
+def validate_default_proveedor_id() -> None:
+    """Valida formato UUID solo cuando la referencia tenga forma de UUID."""
+    if DEFAULT_PROVEEDOR_ID.count("-") != 4:
+        return
+
+    try:
+        UUID(DEFAULT_PROVEEDOR_ID)
+    except ValueError as exc:
+        raise ValueError(
+            "DEFAULT_PROVEEDOR_ID parece UUID pero no es válido. "
+            "Si silver.proveedores.id es UUID, usa un UUID correcto."
+        ) from exc
 
 def resolve_proveedor_id(conn, proveedor_ref: str) -> UUID:
     with conn.cursor() as cursor:
@@ -386,8 +400,10 @@ def run_pipeline() -> None:
     today = date.today()
 
     try:
+        validate_default_proveedor_id()
         with db_connection() as conn:
-            proveedor_id = resolve_proveedor_id(conn, args.proveedor_id)
+            # Si `silver.proveedores.id` es UUID, configura DEFAULT_PROVEEDOR_ID con un UUID válido.
+            proveedor_id = resolve_proveedor_id(conn, DEFAULT_PROVEEDOR_ID)
             bronze = insert_bronze_row(conn, args, proveedor_id)
             expire_old_reserves(conn, today)
             inserted = process_single_solicitud(conn, bronze, today)
