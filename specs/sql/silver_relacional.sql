@@ -182,7 +182,10 @@ create table if not exists silver.solicitudes (
   updated_at timestamptz not null default now(),
 
   constraint chk_silver_solicitudes_nivel_experiencia
-    check (nivel_experiencia between 0 and 3)
+    check (nivel_experiencia between 0 and 3),
+
+  constraint uq_silver_solicitudes_comico_fecha
+    unique (comico_id, fecha_evento)
 );
 
 alter table silver.solicitudes
@@ -241,8 +244,31 @@ create index if not exists idx_silver_solicitudes_bronze_id
 create unique index if not exists uq_silver_solicitudes_bronze_fecha
   on silver.solicitudes (bronze_id, fecha_evento);
 
-create unique index if not exists uq_silver_solicitudes_comico_fecha
-  on silver.solicitudes (comico_id, fecha_evento);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'uq_silver_solicitudes_comico_fecha'
+      AND conrelid = 'silver.solicitudes'::regclass
+  ) THEN
+    IF EXISTS (
+      SELECT 1
+      FROM pg_class
+      WHERE relname = 'uq_silver_solicitudes_comico_fecha'
+        AND relkind = 'i'
+    ) THEN
+      ALTER TABLE silver.solicitudes
+        ADD CONSTRAINT uq_silver_solicitudes_comico_fecha
+        UNIQUE USING INDEX uq_silver_solicitudes_comico_fecha;
+    ELSE
+      ALTER TABLE silver.solicitudes
+        ADD CONSTRAINT uq_silver_solicitudes_comico_fecha
+        UNIQUE (comico_id, fecha_evento);
+    END IF;
+  END IF;
+END
+$$;
 
 create index if not exists idx_silver_solicitudes_proveedor_fecha
   on silver.solicitudes (proveedor_id, fecha_evento);
