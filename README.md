@@ -1,7 +1,7 @@
 # AI LineUp Architect (MVP) 🎭
 
 **Estado del Proyecto:** 🛠️ En Desarrollo (MVP)  
-**Versión:** 0.3.0  
+**Versión:** 0.4.2  
 **Metodología:** Spec-Driven Development (SDD)
 
 Sistema automatizado para la gestión y generación de lineups y cartelería para Open Mics de comedia.
@@ -82,12 +82,39 @@ graph LR
     style H fill:#25D366,color:#fff
 ```
 
-## 🛠️ Stack Tecnológico Inicial
-- **Orquestación:** n8n
-- **Backend:** Python (Lógica de scoring y procesamiento)
-- **Base de Datos:** Supabase (PostgreSQL)
-- **IA:** OpenAI API / Gemini (Validación y curación)
-- **Diseño:** Canva API
+## 🧱 Stack Tecnológico e Infraestructura (MVP Actual)
+
+### 🖥️ Servidor y Despliegue (Self-Hosted)
+
+| Componente | Implementación | Rol en el sistema |
+|---|---|---|
+| 🌐 VPS | Servidor propio vinculado al dominio **machango.org** | Punto central de ejecución y exposición de servicios del MVP. |
+| 🧊 Coolify | Gestor de aplicaciones y contenedores | Estandariza despliegues, reinicios, variables de entorno y operación continua. |
+| 🔄 n8n | Instalado en el VPS (nativo/contenedor) | Orquestación event-driven de flujos, webhooks y automatizaciones en tiempo real. |
+
+### 🗄️ Base de Datos (Cloud)
+
+| Capa | Tecnología | Propósito |
+|---|---|---|
+| 🥉 Bronze | Supabase PostgreSQL (`bronze.solicitudes`) | Almacenamiento RAW e inmutable de ingesta (trazabilidad total). |
+| 🥈 Silver | Supabase PostgreSQL (`silver.*`) | Datos normalizados y relacionales para operación, scoring y reporting. |
+
+> Supabase se mantiene como motor principal PostgreSQL en la nube, mientras la lógica operativa del MVP vive en infraestructura self-hosted.
+
+### 🔌 Herramientas Externas e Integraciones
+
+- ☁️ **Google Cloud Platform (OAuth2):** autenticación y permisos para integración con **Google Sheets** y **Google Drive**.
+- 🐍 **Python 3.10+:** ejecución de los motores de **ingesta, limpieza y scoring** de negocio.
+- 🧠 **OpenAI API (Preparado):** capa lista para curación y validación de lenguaje natural en comentarios/contexto.
+- 🎨 **Canva API:** generación automatizada del cartel final cuando el estado del lineup queda aprobado.
+
+### 🔁 Flujo de Datos (Resumen Operativo)
+
+1. 📥 Una nueva fila o evento en **Google Sheets** dispara un trigger en **n8n**.
+2. ⚙️ **n8n**, ejecutándose en el VPS bajo la operación de **Coolify**, activa el script local de **Python**.
+3. 🥉 El script persiste la entrada RAW en **Bronze** y aplica normalización/reglas de negocio.
+4. 🥈 Los datos curados se escriben en **Silver** para scoring, decisiones y trazabilidad transaccional.
+5. 📤 El flujo continúa con notificaciones/acciones posteriores (aprobación host, generación de cartel y distribución).
 
 ## 🚀 Objetivos del MVP
 - Mantener ingesta cruda en `bronze.solicitudes` y curación transaccional en `silver`.
