@@ -1,19 +1,21 @@
-"""Pipeline de ingesta Bronze -> Silver con gestión de reserva (60 días)."""
+"""Pipeline atómico de ingesta Bronze -> Silver para ejecuciones por evento."""
 
 from __future__ import annotations
 
+import argparse
+import json
 import logging
 import os
 import re
+import sys
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
-from typing import Iterable, Sequence
+from typing import Iterable
 from uuid import UUID
 
 import psycopg2
 from dotenv import load_dotenv
-from psycopg2.extras import RealDictCursor
 
 LOGGER = logging.getLogger("bronze_to_silver_ingestion")
 
@@ -25,6 +27,7 @@ EXPERIENCE_MAP = {
     "Llevo tiempo": 2,
     "No me conoces? ....¿Tu tampoco?": 3,
 }
+DEFAULT_PROVEEDOR_REF = "recova-om"
 
 
 @dataclass(frozen=True)
@@ -62,6 +65,20 @@ def configure_logging() -> None:
         level=os.getenv("LOG_LEVEL", "INFO").upper(),
         format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
     )
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Ingesta atómica Bronze -> Silver para una solicitud raw"
+    )
+    parser.add_argument("--nombre_raw")
+    parser.add_argument("--instagram_raw")
+    parser.add_argument("--telefono_raw")
+    parser.add_argument("--experiencia_raw")
+    parser.add_argument("--fechas_raw")
+    parser.add_argument("--disponibilidad_uv")
+    parser.add_argument("--proveedor_id", default=DEFAULT_PROVEEDOR_REF)
+    return parser.parse_args()
 
 
 def normalize_instagram_user(instagram_raw: str | None) -> str:
@@ -122,11 +139,45 @@ def parse_last_minute_availability(value: str | None) -> bool:
     return normalized in {"sí", "si", "true", "1", "yes"}
 
 
-def fetch_pending_bronze_rows(conn) -> Sequence[BronzeRecord]:
-    with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+def resolve_proveedor_id(conn, proveedor_ref: str) -> UUID:
+    with conn.cursor() as cursor:
+        try:
+            proveedor_uuid = UUID(proveedor_ref)
+            cursor.execute(
+                "SELECT id FROM silver.proveedores WHERE id = %s",
+                (str(proveedor_uuid),),
+            )
+        except ValueError:
+            cursor.execute(
+                "SELECT id FROM silver.proveedores WHERE slug = %s",
+                (proveedor_ref,),
+            )
+
+        row = cursor.fetchone()
+
+    if not row:
+        raise ValueError(f"proveedor_id inválido o no encontrado: {proveedor_ref}")
+
+    return row[0]
+
+
+def insert_bronze_row(conn, args: argparse.Namespace, proveedor_id: UUID) -> BronzeRecord:
+    with conn.cursor() as cursor:
         cursor.execute(
             """
-            SELECT
+            INSERT INTO bronze.solicitudes (
+                proveedor_id,
+                nombre_raw,
+                instagram_raw,
+                telefono_raw,
+                experiencia_raw,
+                fechas_seleccionadas_raw,
+                disponibilidad_ultimo_minuto,
+                procesado,
+                raw_data_extra
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, false, '{}'::jsonb)
+            RETURNING
                 id,
                 proveedor_id,
                 nombre_raw,
@@ -135,14 +186,20 @@ def fetch_pending_bronze_rows(conn) -> Sequence[BronzeRecord]:
                 experiencia_raw,
                 fechas_seleccionadas_raw,
                 disponibilidad_ultimo_minuto
-            FROM bronze.solicitudes
-            WHERE procesado = false
-            ORDER BY created_at ASC
-            """
+            """,
+            (
+                str(proveedor_id),
+                args.nombre_raw,
+                args.instagram_raw,
+                args.telefono_raw,
+                args.experiencia_raw,
+                args.fechas_raw,
+                args.disponibilidad_uv,
+            ),
         )
-        records = cursor.fetchall()
+        row = cursor.fetchone()
 
-    return [BronzeRecord(**record) for record in records]
+    return BronzeRecord(*row)
 
 
 def upsert_comico_silver(
@@ -203,7 +260,6 @@ def insert_silver_rows(
     inserted_count = 0
     with conn.cursor() as cursor:
         for event_date in event_dates:
-            # Estado previo al motor de scoring.
             cursor.execute(
                 """
                 INSERT INTO silver.solicitudes (
@@ -237,113 +293,117 @@ def insert_silver_rows(
     return inserted_count
 
 
-def process_pending_bronze(conn, today: date) -> tuple[int, int]:
-    pending_rows = fetch_pending_bronze_rows(conn)
-    processed = 0
-    inserted = 0
+def process_single_solicitud(conn, bronze: BronzeRecord, today: date) -> int:
+    savepoint_name = f"bronze_{str(bronze.id).replace('-', '_')}"
+    phase = "inicio"
 
-    for bronze in pending_rows:
-        savepoint_name = f"bronze_{str(bronze.id).replace('-', '_')}"
-        phase = "inicio"
-        try:
+    with conn.cursor() as cursor:
+        cursor.execute(f"SAVEPOINT {savepoint_name}")
+
+    try:
+        phase = "normalizacion"
+        instagram_user = normalize_instagram_user(bronze.instagram_raw)
+        if not instagram_user:
+            raise ValueError("instagram_raw inválido")
+
+        telefono = normalize_phone(bronze.telefono_raw)
+        phase = "parsing_fechas"
+        event_dates = parse_event_dates(bronze.fechas_seleccionadas_raw, today)
+        phase = "mapeo_experiencia"
+        level = map_experience_level(bronze.experiencia_raw)
+        available_last_minute = parse_last_minute_availability(
+            bronze.disponibilidad_ultimo_minuto
+        )
+
+        if not event_dates:
+            LOGGER.info("Bronze %s omitido: sin fechas futuras", bronze.id)
             with conn.cursor() as cursor:
-                cursor.execute(f"SAVEPOINT {savepoint_name}")
-
-            phase = "normalizacion"
-            instagram_user = normalize_instagram_user(bronze.instagram_raw)
-            if not instagram_user:
-                raise ValueError("instagram_raw inválido")
-
-            telefono = normalize_phone(bronze.telefono_raw)
-            phase = "parsing_fechas"
-            event_dates = parse_event_dates(bronze.fechas_seleccionadas_raw, today)
-            phase = "mapeo_experiencia"
-            level = map_experience_level(bronze.experiencia_raw)
-            available_last_minute = parse_last_minute_availability(
-                bronze.disponibilidad_ultimo_minuto
-            )
-
-            if not event_dates:
-                LOGGER.info("Bronze %s omitido: sin fechas futuras", bronze.id)
-                with conn.cursor() as cursor:
-                    cursor.execute(
-                        "UPDATE bronze.solicitudes SET procesado = true WHERE id = %s",
-                        (str(bronze.id),),
-                    )
-                processed += 1
-                continue
-
-            phase = "upsert_comico_silver"
-            comico_id = upsert_comico_silver(
-                conn,
-                instagram_user=instagram_user,
-                nombre_artistico=bronze.nombre_raw,
-                telefono=telefono,
-            )
-
-            phase = "insert_silver"
-            inserted += insert_silver_rows(
-                conn,
-                bronze=bronze,
-                comico_id=comico_id,
-                event_dates=event_dates,
-                level=level,
-                available_last_minute=available_last_minute,
-            )
-            processed += 1
-            LOGGER.info(
-                "Bronze %s procesado | comico_id=%s | fechas_insertadas=%s",
-                bronze.id,
-                comico_id,
-                len(event_dates),
-            )
-        except Exception as exc:  # noqa: BLE001
-            error_timestamp = datetime.utcnow().isoformat(timespec="seconds") + "Z"
-            LOGGER.exception(
-                "Error procesando Bronze %s en fase=%s: %s",
-                bronze.id,
-                phase,
-                exc,
-            )
-            with conn.cursor() as cursor:
-                cursor.execute(f"ROLLBACK TO SAVEPOINT {savepoint_name}")
                 cursor.execute(
-                    """
-                    UPDATE bronze.solicitudes
-                    SET procesado = true,
-                        raw_data_extra = COALESCE(raw_data_extra, '{}'::jsonb)
-                          || jsonb_build_object(
-                                'error_log',
-                                jsonb_build_object(
-                                    'message', %s,
-                                    'timestamp', %s,
-                                    'phase', %s
-                                )
-                            )
-                    WHERE id = %s
-                    """,
-                    (str(exc), error_timestamp, phase, str(bronze.id)),
+                    "UPDATE bronze.solicitudes SET procesado = true WHERE id = %s",
+                    (str(bronze.id),),
                 )
-            processed += 1
+            return 0
 
-    return processed, inserted
+        phase = "upsert_comico_silver"
+        comico_id = upsert_comico_silver(
+            conn,
+            instagram_user=instagram_user,
+            nombre_artistico=bronze.nombre_raw,
+            telefono=telefono,
+        )
+
+        phase = "insert_silver"
+        inserted = insert_silver_rows(
+            conn,
+            bronze=bronze,
+            comico_id=comico_id,
+            event_dates=event_dates,
+            level=level,
+            available_last_minute=available_last_minute,
+        )
+        LOGGER.info(
+            "Bronze %s procesado | comico_id=%s | fechas_insertadas=%s",
+            bronze.id,
+            comico_id,
+            len(event_dates),
+        )
+        return inserted
+    except Exception as exc:  # noqa: BLE001
+        error_timestamp = datetime.utcnow().isoformat(timespec="seconds") + "Z"
+        LOGGER.exception(
+            "Error procesando Bronze %s en fase=%s: %s",
+            bronze.id,
+            phase,
+            exc,
+        )
+        with conn.cursor() as cursor:
+            cursor.execute(f"ROLLBACK TO SAVEPOINT {savepoint_name}")
+            cursor.execute(
+                """
+                UPDATE bronze.solicitudes
+                SET procesado = true,
+                    raw_data_extra = COALESCE(raw_data_extra, '{}'::jsonb)
+                      || jsonb_build_object(
+                            'estado', 'error_ingesta',
+                            'error_log',
+                            jsonb_build_object(
+                                'message', %s,
+                                'timestamp', %s,
+                                'phase', %s
+                            )
+                        )
+                WHERE id = %s
+                """,
+                (str(exc), error_timestamp, phase, str(bronze.id)),
+            )
+        raise
 
 
 def run_pipeline() -> None:
     load_dotenv()
     configure_logging()
+    args = parse_args()
     today = date.today()
 
-    with db_connection() as conn:
-        expired = expire_old_reserves(conn, today)
-        processed, inserted = process_pending_bronze(conn, today)
+    try:
+        with db_connection() as conn:
+            proveedor_id = resolve_proveedor_id(conn, args.proveedor_id)
+            bronze = insert_bronze_row(conn, args, proveedor_id)
+            expire_old_reserves(conn, today)
+            inserted = process_single_solicitud(conn, bronze, today)
 
-    LOGGER.info(
-        "Ingesta finalizada | reservas_expiradas=%s | bronze_procesados=%s | silver_insertadas=%s",
-        expired,
-        processed,
-        inserted,
-    )
+        print(
+            json.dumps(
+                {
+                    "status": "success",
+                    "bronze_id": str(bronze.id),
+                    "fechas_creadas": inserted,
+                }
+            )
+        )
+    except Exception as exc:  # noqa: BLE001
+        print(json.dumps({"status": "error", "message": str(exc)}))
+        sys.exit(1)
 
 
 if __name__ == "__main__":
