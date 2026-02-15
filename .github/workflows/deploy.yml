@@ -17,11 +17,9 @@ jobs:
           username: root
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
+            export PATH=$PATH:/usr/bin:/usr/local/bin
             cd /root/RECOVA
             git pull origin dev
             ./venv/bin/pip install -r requirements.txt
-            if pm2 describe webhook-ingesta > /dev/null 2>&1; then
-              pm2 restart webhook-ingesta
-            else
-              pm2 start /root/RECOVA/backend/src/triggers/webhook_listener.py --name webhook-ingesta --interpreter /root/RECOVA/venv/bin/python3
-            fi
+            # Usamos la ruta completa por si acaso
+            $(which pm2) restart webhook-ingesta || $(which pm2) start /root/RECOVA/backend/src/triggers/webhook_listener.py --name "webhook-ingesta" --interpreter /root/RECOVA/venv/bin/python3
