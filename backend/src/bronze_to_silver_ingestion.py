@@ -23,6 +23,11 @@ LOG_FILE_PATH = "/root/RECOVA/backend/logs/ingestion.log"
 
 INSTAGRAM_SANITIZER = re.compile(r"^@+")
 PHONE_E164_PATTERN = re.compile(r"^\+[1-9][0-9]{7,14}$")
+PHONE_INPUT_PATTERN = re.compile(r"^(\+?|00)?[\d\s-]{9,}$")
+INSTAGRAM_URL_PATTERN = re.compile(
+    r"(?:https?://)?(?:www\.)?instagram\.com/([A-Za-z0-9._]+)",
+    flags=re.IGNORECASE,
+)
 EXPERIENCE_MAP = {
     "Es mi primera vez": 0,
     "He probado alguna vez": 1,
@@ -84,16 +89,87 @@ def configure_logging() -> None:
 
 def normalize_instagram_user(instagram_raw: str | None) -> str:
     cleaned = (instagram_raw or "").strip().lower()
+    if not cleaned:
+        return ""
+
+    url_match = INSTAGRAM_URL_PATTERN.search(cleaned)
+    if url_match:
+        cleaned = url_match.group(1)
+    elif "instagram.com/" in cleaned:
+        cleaned = cleaned.split("instagram.com/")[-1]
+
+    cleaned = cleaned.split("?")[0].split("#")[0].strip("/")
     cleaned = INSTAGRAM_SANITIZER.sub("", cleaned)
     return cleaned
 
 
-def normalize_phone(phone_raw: str | None) -> str | None:
-    if not phone_raw:
+def clean_phone(phone_str: str | None) -> str | None:
+    if not phone_str:
         return None
 
-    compact = re.sub(r"\s+", "", phone_raw.strip())
-    return compact if PHONE_E164_PATTERN.match(compact) else None
+    candidate = phone_str.strip()
+    if not PHONE_INPUT_PATTERN.match(candidate):
+        return None
+
+    compact = re.sub(r"[\s-]+", "", candidate)
+    if compact.startswith("00"):
+        compact = "+" + compact[2:]
+
+    if compact.startswith("+"):
+        normalized = compact
+    else:
+        digits = re.sub(r"\D", "", compact)
+        if len(digits) == 9:
+            normalized = f"+34{digits}"
+        elif len(digits) >= 10:
+            normalized = f"+{digits}"
+        else:
+            return None
+
+    return normalized if PHONE_E164_PATTERN.match(normalized) else None
+
+
+def normalize_phone(phone_raw: str | None) -> str | None:
+    return clean_phone(phone_raw)
+
+
+def normalize_row(row: dict[str, str | None]) -> dict[str, object]:
+    errors: list[str] = []
+
+    nombre = (row.get("¿Nombre?") or "").strip().title()
+    instagram_user = normalize_instagram_user(row.get("¿Instagram?"))
+    telefono = clean_phone(row.get("Whatsapp"))
+
+    if not nombre:
+        errors.append("Campo obligatorio inválido/vacío: ¿Nombre?")
+    if not instagram_user:
+        errors.append("Campo obligatorio inválido/vacío: ¿Instagram?")
+    if not telefono:
+        errors.append("Campo obligatorio inválido/vacío: Whatsapp")
+
+    fechas_raw = (row.get("Fecha") or "").strip()
+    fechas_lista = [token.strip() for token in fechas_raw.split(",") if token.strip()]
+
+    normalized = {
+        "nombre": nombre,
+        "instagram_user": instagram_user,
+        "telefono": telefono,
+        "experiencia_raw": (row.get("¿Has actuado alguna vez?") or "").strip(),
+        "fechas_raw": fechas_raw,
+        "fechas_lista": fechas_lista,
+        "disponibilidad_ultimo_minuto": (
+            row.get("Si nos falla alguien en ultimo momento ¿Te podemos llamar?")
+            or ""
+        ).strip(),
+        "info_show_cercano": (row.get("¿Tienes algun Show cercano o algo?") or "").strip(),
+        "origen_conocimiento": (row.get("¿Por donde nos conociste?") or "").strip(),
+    }
+
+    return {
+        "is_valid": len(errors) == 0,
+        "errors": errors,
+        "normalized": normalized,
+    }
 
 
 def map_experience_level(experience_raw: str | None) -> int:
@@ -351,21 +427,35 @@ def process_single_solicitud(
 
     try:
         phase = "normalizacion"
-        instagram_user = normalize_instagram_user(bronze.instagram_raw)
-        if not instagram_user:
-            raise ValueError("Instagram inválido o vacío")
+        form_row = {
+            "¿Nombre?": bronze.nombre_raw,
+            "¿Instagram?": bronze.instagram_raw,
+            "Whatsapp": bronze.telefono_raw,
+            "¿Has actuado alguna vez?": bronze.experiencia_raw,
+            "Fecha": bronze.fechas_seleccionadas_raw,
+            "Si nos falla alguien en ultimo momento ¿Te podemos llamar?": bronze.disponibilidad_ultimo_minuto,
+            "¿Tienes algun Show cercano o algo?": bronze.info_show_cercano,
+            "¿Por donde nos conociste?": bronze.origen_conocimiento,
+        }
+        normalized_result = normalize_row(form_row)
+        if not normalized_result["is_valid"]:
+            joined_errors = "; ".join(normalized_result["errors"])
+            raise ValueError(joined_errors)
 
-        telefono = normalize_phone(bronze.telefono_raw)
+        normalized = normalized_result["normalized"]
+        instagram_user = str(normalized["instagram_user"])
+        telefono = str(normalized["telefono"])
+        nombre_artistico = str(normalized["nombre"])
 
         phase = "parsing_fechas"
-        event_dates = parse_event_dates(bronze.fechas_seleccionadas_raw, today)
+        event_dates = parse_event_dates(str(normalized["fechas_raw"]), today)
 
         phase = "mapeo_experiencia"
-        level = map_experience_level(bronze.experiencia_raw)
+        level = map_experience_level(str(normalized["experiencia_raw"]))
 
         phase = "mapeo_disponibilidad_ultimo_minuto"
         available_last_minute = parse_last_minute_availability(
-            bronze.disponibilidad_ultimo_minuto
+            str(normalized["disponibilidad_ultimo_minuto"])
         )
 
         if not event_dates:
@@ -379,7 +469,7 @@ def process_single_solicitud(
         comico_id = upsert_comico_silver(
             conn,
             instagram_user=instagram_user,
-            nombre_artistico=bronze.nombre_raw,
+            nombre_artistico=nombre_artistico,
             telefono=telefono,
         )
 
@@ -476,6 +566,24 @@ def run_pipeline() -> dict[str, object]:
 
     print(json.dumps(result))
     return result
+
+
+def _unit_tests_clean_phone() -> None:
+    test_cases = {
+        "666555888": "+34666555888",
+        "666-555-888": "+34666555888",
+        "66-65-55-88-8": "+34666555888",
+        "666 555 888": "+34666555888",
+        "+34666555888": "+34666555888",
+        "0034666555888": "+34666555888",
+    }
+
+    for raw_phone, expected in test_cases.items():
+        cleaned = clean_phone(raw_phone)
+        assert cleaned == expected, (
+            f"clean_phone falló para '{raw_phone}'. "
+            f"Esperado={expected} | obtenido={cleaned}"
+        )
 
 
 if __name__ == "__main__":

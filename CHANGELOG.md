@@ -5,6 +5,18 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.9] - 2026-02-15
+
+### Added
+- Documento técnico `docs/refactor-validacion-bronze-silver.md` con el detalle de la nueva normalización de campos obligatorios y reglas de limpieza para WhatsApp/Instagram en la ingesta Bronze -> Silver.
+
+### Changed
+- `backend/src/bronze_to_silver_ingestion.py` incorpora `clean_phone(phone_str)` con validación por regex `^(\+?|00)?[\d\s-]{9,}$`, limpieza de separadores, conversión de prefijo `00` a `+` y prefijo por defecto `+34` para números locales de 9 dígitos.
+- `backend/src/bronze_to_silver_ingestion.py` refuerza la limpieza de Instagram para soportar `@usuario` y URLs (`instagram.com/usuario`), extrayendo únicamente el username final.
+- `backend/src/bronze_to_silver_ingestion.py` añade `normalize_row(row)` para procesar las claves exactas del formulario, validar campos obligatorios y acumular errores por fila en la fase de normalización.
+- `backend/src/bronze_to_silver_ingestion.py` agrega un bloque de tests unitarios locales `_unit_tests_clean_phone()` para verificar los formatos de teléfono definidos para el formulario.
+- Incremento de versión a `0.4.9` en `package.json` y `pyproject.toml`.
+
 ## [0.4.8] - 2026-02-15
 
 ### Added
