@@ -1,11 +1,13 @@
-"""Proceso batch de ingesta Bronze -> Silver leyendo solicitudes pendientes."""
+"""Pipeline atómico de ingesta Bronze -> Silver para ejecuciones por evento."""
 
 from __future__ import annotations
 
+import argparse
 import json
 import logging
 import os
 import re
+import sys
 import unicodedata
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -26,6 +28,7 @@ EXPERIENCE_MAP = {
     "Llevo tiempo": 2,
     "No me conoces? ....¿Tu tampoco?": 3,
 }
+DEFAULT_PROVEEDOR_ID = "recova-om"
 
 
 @dataclass(frozen=True)
@@ -65,6 +68,23 @@ def configure_logging() -> None:
         level=os.getenv("LOG_LEVEL", "INFO").upper(),
         format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
     )
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Ingesta atómica Bronze -> Silver para una solicitud raw"
+    )
+    parser.add_argument("--nombre_raw")
+    parser.add_argument("--instagram_raw")
+    parser.add_argument("--telefono_raw")
+    parser.add_argument("--whatsapp", dest="telefono_raw")
+    parser.add_argument("--Whatsapp", dest="telefono_raw")
+    parser.add_argument("--experiencia_raw")
+    parser.add_argument("--fechas_raw")
+    parser.add_argument("--disponibilidad_uv")
+    parser.add_argument("--show_cercano_raw")
+    parser.add_argument("--conociste_raw")
+    return parser.parse_args()
 
 
 def normalize_instagram_user(instagram_raw: str | None) -> str:
@@ -129,11 +149,61 @@ def parse_last_minute_availability(value: str | None) -> bool:
     return "si" in normalized
 
 
-def fetch_pending_bronze_rows(conn) -> list[BronzeRecord]:
+def validate_default_proveedor_id() -> None:
+    """Valida formato UUID solo cuando la referencia tenga forma de UUID."""
+    if DEFAULT_PROVEEDOR_ID.count("-") != 4:
+        return
+
+    try:
+        UUID(DEFAULT_PROVEEDOR_ID)
+    except ValueError as exc:
+        raise ValueError(
+            "DEFAULT_PROVEEDOR_ID parece UUID pero no es válido. "
+            "Si silver.proveedores.id es UUID, usa un UUID correcto."
+        ) from exc
+
+
+def resolve_proveedor_id(conn, proveedor_ref: str) -> UUID:
+    with conn.cursor() as cursor:
+        try:
+            proveedor_uuid = UUID(proveedor_ref)
+            cursor.execute(
+                "SELECT id FROM silver.proveedores WHERE id = %s",
+                (str(proveedor_uuid),),
+            )
+        except ValueError:
+            cursor.execute(
+                "SELECT id FROM silver.proveedores WHERE slug = %s",
+                (proveedor_ref,),
+            )
+
+        row = cursor.fetchone()
+
+    if not row:
+        raise ValueError(f"proveedor_id inválido o no encontrado: {proveedor_ref}")
+
+    return row[0]
+
+
+def insert_bronze_row(conn, args: argparse.Namespace, proveedor_id: UUID) -> BronzeRecord:
     with conn.cursor() as cursor:
         cursor.execute(
             """
-            SELECT
+            INSERT INTO bronze.solicitudes (
+                proveedor_id,
+                nombre_raw,
+                instagram_raw,
+                telefono_raw,
+                experiencia_raw,
+                fechas_seleccionadas_raw,
+                disponibilidad_ultimo_minuto,
+                info_show_cercano,
+                origen_conocimiento,
+                procesado,
+                raw_data_extra
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, false, '{}'::jsonb)
+            RETURNING
                 id,
                 proveedor_id,
                 nombre_raw,
@@ -144,36 +214,22 @@ def fetch_pending_bronze_rows(conn) -> list[BronzeRecord]:
                 disponibilidad_ultimo_minuto,
                 info_show_cercano,
                 origen_conocimiento
-            FROM bronze.solicitudes
-            WHERE procesado = false
-            ORDER BY created_at ASC NULLS LAST, id ASC
-            """
-        )
-        rows = cursor.fetchall()
-
-    return [BronzeRecord(*row) for row in rows]
-
-
-def resolve_error_metadata_column(conn) -> str | None:
-    with conn.cursor() as cursor:
-        cursor.execute(
-            """
-            SELECT column_name
-            FROM information_schema.columns
-            WHERE table_schema = 'bronze'
-              AND table_name = 'solicitudes'
-              AND column_name IN ('metadata', 'raw_data_extra')
-            ORDER BY CASE column_name
-                WHEN 'metadata' THEN 1
-                WHEN 'raw_data_extra' THEN 2
-                ELSE 3
-            END
-            LIMIT 1
-            """
+            """,
+            (
+                str(proveedor_id),
+                args.nombre_raw,
+                args.instagram_raw,
+                args.telefono_raw,
+                args.experiencia_raw,
+                args.fechas_raw,
+                args.disponibilidad_uv,
+                args.show_cercano_raw,
+                args.conociste_raw,
+            ),
         )
         row = cursor.fetchone()
 
-    return row[0] if row else None
+    return BronzeRecord(*row)
 
 
 def upsert_comico_silver(
@@ -191,29 +247,20 @@ def upsert_comico_silver(
                 telefono
             )
             VALUES (%s, %s, %s)
-            ON CONFLICT (instagram_user) DO NOTHING
+            ON CONFLICT (instagram_user) DO UPDATE
+            SET nombre_artistico = COALESCE(EXCLUDED.nombre_artistico, silver.comicos.nombre_artistico),
+                telefono = CASE
+                    WHEN EXCLUDED.telefono IS NOT NULL THEN EXCLUDED.telefono
+                    ELSE silver.comicos.telefono
+                END,
+                updated_at = NOW()
             RETURNING id
             """,
             (instagram_user, nombre_artistico, telefono),
         )
-        row = cursor.fetchone()
+        comico_id = cursor.fetchone()[0]
 
-        if row:
-            return row[0]
-
-        cursor.execute(
-            "SELECT id FROM silver.comicos WHERE instagram_user = %s",
-            (instagram_user,),
-        )
-        existing = cursor.fetchone()
-
-    if not existing:
-        raise RuntimeError(
-            "No se pudo obtener/crear comico en silver.comicos para instagram_user=%s"
-            % instagram_user
-        )
-
-    return existing[0]
+    return comico_id
 
 
 def expire_old_reserves(conn, today: date) -> int:
@@ -272,61 +319,15 @@ def insert_silver_rows(
             )
             inserted_count += cursor.rowcount
 
+        cursor.execute(
+            "UPDATE bronze.solicitudes SET procesado = true WHERE id = %s",
+            (str(bronze.id),),
+        )
+
     return inserted_count
 
 
-def mark_bronze_processed(conn, bronze_id: UUID) -> None:
-    with conn.cursor() as cursor:
-        cursor.execute(
-            "UPDATE bronze.solicitudes SET procesado = true WHERE id = %s",
-            (str(bronze_id),),
-        )
-
-
-def register_ingestion_error(
-    conn,
-    bronze_id: UUID,
-    error_metadata_column: str | None,
-    message: str,
-    phase: str,
-) -> None:
-    error_timestamp = datetime.utcnow().isoformat(timespec="seconds") + "Z"
-
-    if error_metadata_column:
-        with conn.cursor() as cursor:
-            cursor.execute(
-                f"""
-                UPDATE bronze.solicitudes
-                SET {error_metadata_column} = COALESCE({error_metadata_column}, '{{}}'::jsonb)
-                  || jsonb_build_object(
-                        'estado', 'error_ingesta',
-                        'error_log',
-                        jsonb_build_object(
-                            'message', %s,
-                            'timestamp', %s,
-                            'phase', %s
-                        )
-                     )
-                WHERE id = %s
-                """,
-                (message, error_timestamp, phase, str(bronze_id)),
-            )
-        return
-
-    LOGGER.error(
-        "Error de ingesta bronze_id=%s | phase=%s | message=%s",
-        bronze_id,
-        phase,
-        message,
-    )
-
-
-def process_single_solicitud(
-    conn,
-    bronze: BronzeRecord,
-    today: date,
-    error_metadata_column: str | None,
-) -> int:
+def process_single_solicitud(conn, bronze: BronzeRecord, today: date) -> int:
     savepoint_name = f"bronze_{str(bronze.id).replace('-', '_')}"
     phase = "inicio"
 
@@ -340,21 +341,21 @@ def process_single_solicitud(
             raise ValueError("instagram_raw inválido")
 
         telefono = normalize_phone(bronze.telefono_raw)
-
         phase = "parsing_fechas"
         event_dates = parse_event_dates(bronze.fechas_seleccionadas_raw, today)
-
         phase = "mapeo_experiencia"
         level = map_experience_level(bronze.experiencia_raw)
-
-        phase = "mapeo_disponibilidad_ultimo_minuto"
         available_last_minute = parse_last_minute_availability(
             bronze.disponibilidad_ultimo_minuto
         )
 
         if not event_dates:
             LOGGER.info("Bronze %s omitido: sin fechas futuras", bronze.id)
-            mark_bronze_processed(conn, bronze.id)
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    "UPDATE bronze.solicitudes SET procesado = true WHERE id = %s",
+                    (str(bronze.id),),
+                )
             return 0
 
         phase = "upsert_comico_silver"
@@ -374,8 +375,6 @@ def process_single_solicitud(
             level=level,
             available_last_minute=available_last_minute,
         )
-        mark_bronze_processed(conn, bronze.id)
-
         LOGGER.info(
             "Bronze %s procesado | comico_id=%s | fechas_insertadas=%s",
             bronze.id,
@@ -384,6 +383,7 @@ def process_single_solicitud(
         )
         return inserted
     except Exception as exc:  # noqa: BLE001
+        error_timestamp = datetime.utcnow().isoformat(timespec="seconds") + "Z"
         LOGGER.exception(
             "Error procesando Bronze %s en fase=%s: %s",
             bronze.id,
@@ -392,50 +392,54 @@ def process_single_solicitud(
         )
         with conn.cursor() as cursor:
             cursor.execute(f"ROLLBACK TO SAVEPOINT {savepoint_name}")
-
-        register_ingestion_error(
-            conn,
-            bronze_id=bronze.id,
-            error_metadata_column=error_metadata_column,
-            message=str(exc),
-            phase=phase,
-        )
-        return 0
+            cursor.execute(
+                """
+                UPDATE bronze.solicitudes
+                SET procesado = true,
+                    raw_data_extra = COALESCE(raw_data_extra, '{}'::jsonb)
+                      || jsonb_build_object(
+                            'estado', 'error_ingesta',
+                            'error_log',
+                            jsonb_build_object(
+                                'message', %s,
+                                'timestamp', %s,
+                                'phase', %s
+                            )
+                        )
+                WHERE id = %s
+                """,
+                (str(exc), error_timestamp, phase, str(bronze.id)),
+            )
+        raise
 
 
 def run_pipeline() -> None:
     load_dotenv()
     configure_logging()
+    args = parse_args()
     today = date.today()
 
-    with db_connection() as conn:
-        expired = expire_old_reserves(conn, today)
-        pending_rows = fetch_pending_bronze_rows(conn)
-        error_metadata_column = resolve_error_metadata_column(conn)
+    try:
+        validate_default_proveedor_id()
+        with db_connection() as conn:
+            # Si `silver.proveedores.id` es UUID, configura DEFAULT_PROVEEDOR_ID con un UUID válido.
+            proveedor_id = resolve_proveedor_id(conn, DEFAULT_PROVEEDOR_ID)
+            bronze = insert_bronze_row(conn, args, proveedor_id)
+            expire_old_reserves(conn, today)
+            inserted = process_single_solicitud(conn, bronze, today)
 
-        inserted_total = 0
-        processed_total = 0
-
-        for bronze in pending_rows:
-            inserted_total += process_single_solicitud(
-                conn,
-                bronze,
-                today,
-                error_metadata_column,
+        print(
+            json.dumps(
+                {
+                    "status": "success",
+                    "bronze_id": str(bronze.id),
+                    "fechas_creadas": inserted,
+                }
             )
-            processed_total += 1
-
-    print(
-        json.dumps(
-            {
-                "status": "success",
-                "pendientes_leidos": len(pending_rows),
-                "filas_procesadas": processed_total,
-                "filas_silver_insertadas": inserted_total,
-                "reservas_expiradas": expired,
-            }
         )
-    )
+    except Exception as exc:  # noqa: BLE001
+        print(json.dumps({"status": "error", "message": str(exc)}))
+        sys.exit(1)
 
 
 if __name__ == "__main__":
