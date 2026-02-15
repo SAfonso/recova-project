@@ -10,6 +10,7 @@ import unicodedata
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
+from logging.handlers import TimedRotatingFileHandler
 from typing import Iterable
 from uuid import UUID
 
@@ -17,6 +18,8 @@ import psycopg2
 from dotenv import load_dotenv
 
 LOGGER = logging.getLogger("bronze_to_silver_ingestion")
+LOG_DIRECTORY = "/root/RECOVA/backend/logs"
+LOG_FILE_PATH = "/root/RECOVA/backend/logs/ingestion.log"
 
 INSTAGRAM_SANITIZER = re.compile(r"^@+")
 PHONE_E164_PATTERN = re.compile(r"^\+[1-9][0-9]{7,14}$")
@@ -61,10 +64,22 @@ def db_connection():
 
 
 def configure_logging() -> None:
-    logging.basicConfig(
-        level=os.getenv("LOG_LEVEL", "INFO").upper(),
-        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+    os.makedirs(LOG_DIRECTORY, exist_ok=True)
+
+    logger = logging.getLogger()
+    logger.handlers.clear()
+    logger.setLevel(os.getenv("LOG_LEVEL", "INFO").upper())
+
+    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+    rotating_handler = TimedRotatingFileHandler(
+        LOG_FILE_PATH,
+        when="midnight",
+        interval=1,
+        backupCount=7,
+        encoding="utf-8",
     )
+    rotating_handler.setFormatter(formatter)
+    logger.addHandler(rotating_handler)
 
 
 def normalize_instagram_user(instagram_raw: str | None) -> str:
@@ -326,6 +341,7 @@ def process_single_solicitud(
     bronze: BronzeRecord,
     today: date,
     error_metadata_column: str | None,
+    detalles_descarte: list[dict[str, str]],
 ) -> int:
     savepoint_name = f"bronze_{str(bronze.id).replace('-', '_')}"
     phase = "inicio"
@@ -337,7 +353,7 @@ def process_single_solicitud(
         phase = "normalizacion"
         instagram_user = normalize_instagram_user(bronze.instagram_raw)
         if not instagram_user:
-            raise ValueError("instagram_raw inválido")
+            raise ValueError("Instagram inválido o vacío")
 
         telefono = normalize_phone(bronze.telefono_raw)
 
@@ -353,7 +369,9 @@ def process_single_solicitud(
         )
 
         if not event_dates:
-            LOGGER.info("Bronze %s omitido: sin fechas futuras", bronze.id)
+            motivo = "Sin fechas futuras válidas"
+            detalles_descarte.append({"id": str(bronze.id), "motivo": motivo})
+            LOGGER.info("Bronze %s descartado: %s", bronze.id, motivo)
             mark_bronze_processed(conn, bronze.id)
             return 0
 
@@ -376,6 +394,11 @@ def process_single_solicitud(
         )
         mark_bronze_processed(conn, bronze.id)
 
+        if inserted == 0:
+            motivo = "Duplicado en Silver (sin nuevas filas para insertar)"
+            detalles_descarte.append({"id": str(bronze.id), "motivo": motivo})
+            LOGGER.warning("Bronze %s descartado: %s", bronze.id, motivo)
+
         LOGGER.info(
             "Bronze %s procesado | comico_id=%s | fechas_insertadas=%s",
             bronze.id,
@@ -384,6 +407,8 @@ def process_single_solicitud(
         )
         return inserted
     except Exception as exc:  # noqa: BLE001
+        motivo = f"Error de validación/procesamiento en fase '{phase}': {exc}"
+        detalles_descarte.append({"id": str(bronze.id), "motivo": motivo})
         LOGGER.exception(
             "Error procesando Bronze %s en fase=%s: %s",
             bronze.id,
@@ -403,39 +428,54 @@ def process_single_solicitud(
         return 0
 
 
-def run_pipeline() -> None:
+def run_pipeline() -> dict[str, object]:
     load_dotenv()
     configure_logging()
     today = date.today()
+    detalles_descarte: list[dict[str, str]] = []
 
-    with db_connection() as conn:
-        expired = expire_old_reserves(conn, today)
-        pending_rows = fetch_pending_bronze_rows(conn)
-        error_metadata_column = resolve_error_metadata_column(conn)
+    try:
+        with db_connection() as conn:
+            expired = expire_old_reserves(conn, today)
+            pending_rows = fetch_pending_bronze_rows(conn)
+            error_metadata_column = resolve_error_metadata_column(conn)
 
-        inserted_total = 0
-        processed_total = 0
+            inserted_total = 0
+            processed_total = 0
 
-        for bronze in pending_rows:
-            inserted_total += process_single_solicitud(
-                conn,
-                bronze,
-                today,
-                error_metadata_column,
-            )
-            processed_total += 1
+            for bronze in pending_rows:
+                inserted_total += process_single_solicitud(
+                    conn,
+                    bronze,
+                    today,
+                    error_metadata_column,
+                    detalles_descarte,
+                )
+                processed_total += 1
 
-    print(
-        json.dumps(
-            {
-                "status": "success",
-                "pendientes_leidos": len(pending_rows),
-                "filas_procesadas": processed_total,
-                "filas_silver_insertadas": inserted_total,
-                "reservas_expiradas": expired,
-            }
-        )
-    )
+        result = {
+            "status": "success",
+            "pendientes_leidos": len(pending_rows),
+            "filas_procesadas": processed_total,
+            "filas_silver_insertadas": inserted_total,
+            "reservas_expiradas": expired,
+            "errores": [
+                f"ID {item['id']}: {item['motivo']}" for item in detalles_descarte
+            ],
+        }
+    except Exception as exc:  # noqa: BLE001
+        LOGGER.exception("Error fatal durante la ejecución de la ingesta: %s", exc)
+        result = {
+            "status": "error",
+            "pendientes_leidos": 0,
+            "filas_procesadas": 0,
+            "filas_silver_insertadas": 0,
+            "reservas_expiradas": 0,
+            "errores": [f"Error fatal: {exc}"],
+        }
+
+    print(json.dumps(result))
+    return result
 
 
 if __name__ == "__main__":

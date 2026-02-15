@@ -5,6 +5,17 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.8] - 2026-02-15
+
+### Added
+- Documento técnico `docs/ingesta-logs-auditoria.md` con el detalle de la nueva trazabilidad de descartes y la configuración de logs rotativos para la ingesta Bronze -> Silver.
+
+### Changed
+- `backend/src/bronze_to_silver_ingestion.py` incorpora logging a archivo absoluto `/root/RECOVA/backend/logs/ingestion.log` con `TimedRotatingFileHandler` diario y retención de 7 días, usando formato `%(asctime)s - %(levelname)s - %(message)s`.
+- `backend/src/bronze_to_silver_ingestion.py` añade auditoría de descartes por fila con `detalles_descarte` y la expone en la salida JSON bajo la clave `errores` (incluyendo duplicados, faltas de datos y errores por validación/fase).
+- `backend/src/bronze_to_silver_ingestion.py` endurece robustez del pipeline con captura de fallo fatal y `LOGGER.exception(...)` para traza completa en logs.
+- Incremento de versión a `0.4.8` en `package.json` y `pyproject.toml`.
+
 ## [0.4.7] - 2026-02-15
 
 ### Added
