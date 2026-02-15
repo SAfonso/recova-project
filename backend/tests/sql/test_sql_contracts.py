@@ -1,0 +1,78 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+BRONZE_SQL = PROJECT_ROOT / "specs/sql/bronze_multi_proveedor_master.sql"
+SILVER_SQL = PROJECT_ROOT / "specs/sql/silver_relacional.sql"
+SEED_SQL = PROJECT_ROOT / "specs/sql/seed_data.sql"
+MIGRATION_SQL = PROJECT_ROOT / "specs/sql/migrations/20260212_alter_tipo_solicitud_status.sql"
+
+
+def read_lower(path: Path) -> str:
+    return path.read_text(encoding="utf-8").lower()
+
+
+def test_sql_files_exist():
+    assert BRONZE_SQL.exists()
+    assert SILVER_SQL.exists()
+    assert SEED_SQL.exists()
+    assert MIGRATION_SQL.exists()
+
+
+def test_bronze_defines_only_solicitudes_table():
+    content = read_lower(BRONZE_SQL)
+    assert "create table if not exists bronze.solicitudes" in content
+    assert "create table if not exists bronze.comicos" not in content
+    assert "drop table bronze.comicos" in content
+
+
+def test_bronze_solicitudes_contains_raw_fields_and_jsonb():
+    content = read_lower(BRONZE_SQL)
+    assert "instagram_raw text" in content
+    assert "nombre_raw text" in content
+    assert "telefono_raw text" in content
+    assert "raw_data_extra jsonb" in content
+
+
+def test_silver_contains_master_and_transactional_tables():
+    content = read_lower(SILVER_SQL)
+    assert "create table if not exists silver.comicos" in content
+    assert "create table if not exists silver.proveedores" in content
+    assert "create table if not exists silver.solicitudes" in content
+
+
+def test_silver_enum_types_live_in_silver_schema():
+    content = read_lower(SILVER_SQL)
+    assert "create type silver.tipo_categoria" in content
+    assert "create type silver.tipo_status" in content
+
+
+def test_silver_solicitudes_has_lineage_fk_to_bronze():
+    content = read_lower(SILVER_SQL)
+    assert "foreign key (bronze_id)" in content
+    assert "references bronze.solicitudes(id)" in content
+
+
+def test_silver_comicos_enforces_instagram_normalization():
+    content = read_lower(SILVER_SQL)
+    assert "chk_silver_comicos_instagram_normalizado" in content
+    assert "instagram_user = lower(instagram_user)" in content
+
+
+def test_seed_uses_bronze_and_silver_with_lineage_column():
+    content = read_lower(SEED_SQL)
+    assert "insert into bronze.solicitudes" in content
+    assert "insert into silver.solicitudes" in content
+    assert "bronze_id" in content
+
+
+def test_seed_avoids_public_schema_inserts():
+    content = read_lower(SEED_SQL)
+    assert "insert into public." not in content
+
+
+def test_migration_targets_silver_tipo_status():
+    content = read_lower(MIGRATION_SQL)
+    assert "create type silver.tipo_status" in content
+    assert "alter type silver.tipo_status add value if not exists 'error_ingesta'" in content
