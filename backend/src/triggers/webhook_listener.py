@@ -2,11 +2,13 @@
 
 import os
 import subprocess
+from dotenv import load_dotenv
 
 from flask import Flask, jsonify, request
 
 app = Flask(__name__)
 
+load_dotenv()
 SCRIPT_PATH = "/root/AI_LineUp_Architect/backend/src/bronze_to_silver_ingestion.py"
 API_KEY_HEADER = "X-API-KEY"
 EXPECTED_API_KEY = os.getenv("WEBHOOK_API_KEY", "")
