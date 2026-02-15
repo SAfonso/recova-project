@@ -1,6 +1,7 @@
 """Flask webhook listener for n8n ingestion trigger."""
 
 import os
+import sys
 import subprocess
 from dotenv import load_dotenv
 
@@ -23,7 +24,7 @@ def ingest() -> tuple:
         return jsonify({"status": "error", "message": "unauthorized"}), 401
 
     result = subprocess.run(
-        ["python3", SCRIPT_PATH],
+        [sys.executable, SCRIPT_PATH],
         capture_output=True,
         text=True,
         check=False,
