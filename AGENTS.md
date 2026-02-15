@@ -1,38 +1,47 @@
-# 🤖 Definición de Agentes y Roles (MVP)
+# 🤖 Agents.md: AI LineUp Architect (v2.0)
 
-Este documento establece las responsabilidades, estándares de nomenclatura y el flujo de decisión del sistema.
+Este documento define las responsabilidades, reglas de negocio y estado de implementación de los agentes que componen el sistema.
 
-## 1. El Orquestador (n8n)
-**Rol:** Sistema Nervioso Central (Event-Driven).
-- **Responsabilidades:** Gestión de Webhooks, control de estados de la base de datos y orquestación de servicios externos.
-- **Nomenclatura:** camelCase para nodos y variables internas (ej: `solicitudId`, `isAprobado`).
+## 1. Agente Ingestor (Estado: OPERATIVO 🟢)
+**Responsabilidad:** Procesar las solicitudes desde `solicitudes_bronze` (datos crudos de Google Forms) hacia `solicitudes_silver` (datos normalizados).
 
-## 2. El Analista de Datos (Python: Ingestion Engine)
-**Rol:** Limpieza y Normalización.
-- **Estándar:** PEP 8 (snake_case).
-- **Toma de Decisiones:**
-    - **Determinística:** Uso de Regex para normalizar Instagram (ej: `@usuario` -> `usuario`) y validar teléfonos con prefijo internacional.
-    - **Control de Errores:** Datos inválidos se marcan con `estado: error_ingesta` en Supabase.
+### Reglas de Normalización Aplicadas
+**Whatsapp:**
+- **Entrada:** Acepta formatos con espacios, guiones, prefijos `+` o `00`.
+- **Procesamiento:** Regex `^(\\+?|00)?[\\d\\s-]{9,}$`.
+- **Salida:** Formato internacional limpio (ej: `+34666555888`). Si tiene 9 dígitos sin prefijo, se añade `+34` por defecto.
 
-## 3. El Estratega (Python + Gemini: Scoring Engine)
-**Rol:** Inteligencia de Negocio y Curación.
-- **Lógica de Decisión (Híbrida):**
-    - **Capa 1 (Python):** Cálculo de `base_score` numérico (paridad, días desde última actuación, prioridad).
-    - **Capa 2 (Gemini):** Análisis de lenguaje natural en comentarios. Gemini sugiere un `ai_modifier` (±10 puntos) con una razón obligatoria.
-- **Decisión Final:** `final_score = base_score + ai_modifier`.
+**Instagram:**
+- **Limpieza:** Eliminación de espacios, símbolo `@` y extracción del usuario si se recibe una URL completa.
 
-## 4. El Diseñador (Python: Canva Builder)
-**Rol:** Automatización Visual.
-- **Responsabilidad:** Mapear el LineUp aprobado en la API de Canva.
-- **Restricción:** Solo se ejecuta con `estado: aprobado`.
+**Campos Críticos:**
+- `¿Nombre?`, `¿Instagram?` y `Whatsapp` son obligatorios. Si fallan, el registro se marca como inválido.
 
-## 5. La Interfaz (WhatsApp Bot)
-**Rol:** Canal de Comunicación y Validación Humana.
-- **Responsabilidades:** Notificación de sugerencias al Host y distribución del cartel final a los cómicos.
+### Infraestructura Técnica
+- **Script:** `data_ingestion.py`.
+- **Trazabilidad:** Logs diarios en `/root/RECOVA/backend/logs/ingestion.log`.
+- **Validación:** Batería de tests unitarios operativa en `test_ingestion.py` (`pytest`).
 
----
+## 2. Agente Scorer (Estado: EN DEFINICIÓN 🟡)
+**Responsabilidad:** Analizar la tabla `solicitudes_silver` y el historial de actuaciones para proponer el LineUp semanal (6-8 cómicos).
 
-## 🛠️ Estándares de Trabajo
-- **Documentación:** Cada cambio significativo genera un `.md` en `/docs`.
-- **Versiones:** Incremento obligatorio en `package.json` y `pyproject.toml` según SemVer.
-- **Changelog:** Registro estricto en `CHANGELOG.md` siguiendo *Keep a Changelog*.
+### Lógica de Scoring (Próximos Pasos)
+- **Antigüedad:** Prioridad para quienes llevan más tiempo sin actuar.
+- **Balance de Género:** Algoritmo de equilibrio para garantizar diversidad en el cartel.
+- **Prioridad:** Gestión de solicitudes con flag de "emergencia" o prioridad interna.
+- **Evolutivo 1:** Integración de contexto histórico mediante MCP (Model Context Protocol).
+
+## 3. Agente Designer (Estado: PENDIENTE 🔴)
+**Responsabilidad:** Transformar el LineUp seleccionado en una pieza gráfica profesional.
+
+### Especificaciones
+- **Entrada:** Lista final de cómicos validada por el host.
+- **Herramienta:** Canva API.
+- **Mapeo:** Vinculación de los nombres y usuarios de Instagram (limpios) con los campos de texto de la plantilla predefinida.
+- **Salida:** Generación automática del póster y envío de confirmación.
+
+## 🛠️ Notas de Infraestructura General
+- **Entorno:** Python 3.12 bajo `venv` en `/root/RECOVA`.
+- **Orquestación:** n8n (`main_pipeline.json`).
+- **Persistencia:** Gestionada por PM2 (`webhook-ingesta`).
+- **Base de Datos:** Supabase PostgreSQL (conexión vía URI).
