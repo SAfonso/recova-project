@@ -1,7 +1,7 @@
 # AI LineUp Architect (MVP) 🎭
 
 **Estado del Proyecto:** 🛠️ En Desarrollo (MVP)  
-**Versión:** 0.4.2  
+**Versión:** 0.4.9  
 **Metodología:** Spec-Driven Development (SDD)
 
 Sistema automatizado para la gestión y generación de lineups y cartelería para Open Mics de comedia.
@@ -146,12 +146,38 @@ Para mantener la integridad de la base de datos en Supabase, el proyecto incluye
 
 ## ⚙️ Operación Local (DB)
 1. Configura `DATABASE_URL` en `.env`.
-2. Aplica esquema:
-   - `python setup_db.py`
-3. Aplica esquema + datos de prueba:
-   - `python setup_db.py --seed`
-4. Reset controlado + backup + seed:
-   - `python setup_db.py --reset --seed`
+2. Ejecuta por consola (recomendado con entorno virtual del proyecto):
+   - `./.venv/bin/python setup_db.py`
+3. Opciones disponibles:
+   - Solo esquema: `./.venv/bin/python setup_db.py`
+   - Esquema + seed: `./.venv/bin/python setup_db.py --seed`
+   - Reset + esquema: `./.venv/bin/python setup_db.py --reset`
+   - Reset + esquema + seed: `./.venv/bin/python setup_db.py --reset --seed`
+4. Alternativa si no usas `.venv`:
+   - `python3 setup_db.py [--reset] [--seed]`
+
+Comportamiento actual de flags:
+- `--reset`: genera backup CSV de tablas objetivo en `backups/`, elimina esquemas `silver`/`bronze` y reaplica SQL.
+- `--seed`: ejecuta `specs/sql/seed_data.sql` después de aplicar el esquema.
+- `--reset --seed`: combinación completa (backup + reset + esquema + seed).
+
+## 🧪 Ejecución de Tests
+Los tests del backend viven en `backend/tests` y se ejecutan con `pytest`.
+
+1. Suite completa:
+   - `./.venv/bin/python -m pytest -q`
+2. Con detalle:
+   - `./.venv/bin/python -m pytest -v`
+3. Solo unit tests:
+   - `./.venv/bin/python -m pytest -q backend/tests/unit`
+4. Solo contratos SQL:
+   - `./.venv/bin/python -m pytest -q backend/tests/sql`
+5. Archivo específico:
+   - `./.venv/bin/python -m pytest -q backend/tests/unit/test_setup_db.py`
+6. Caso puntual:
+   - `./.venv/bin/python -m pytest -q backend/tests/unit/test_setup_db.py::test_verify_enums_uses_expected_refs`
+
+Referencia extendida: `docs/tests-backend.md`
 
 ## 🔁 Flujo de Ingesta Bronze -> Silver
 El ingestion engine (`backend/src/bronze_to_silver_ingestion.py`) prepara el linaje operativo:
@@ -160,11 +186,33 @@ El ingestion engine (`backend/src/bronze_to_silver_ingestion.py`) prepara el lin
 3. Hace upsert en `silver.comicos`.
 4. Inserta en `silver.solicitudes` con `bronze_id`, `comico_id` y `proveedor_id`.
 
+## 🌐 Webhook Listener (n8n -> Ingesta)
+Se añadió un listener HTTP en Flask para que n8n dispare la ingesta Bronze -> Silver.
+
+- Archivo: `backend/src/triggers/webhook_listener.py`
+- Endpoint: `POST /ingest`
+- Seguridad: header `X-API-KEY` validado contra `WEBHOOK_API_KEY`
+- Acción: ejecuta `backend/src/bronze_to_silver_ingestion.py` vía `subprocess.run`
+
+Ejecución local:
+- `./.venv/bin/python backend/src/triggers/webhook_listener.py`
+- alternativa: `python3 backend/src/triggers/webhook_listener.py`
+
+Ejemplo de llamada:
+```bash
+curl -X POST http://localhost:5000/ingest \
+  -H "X-API-KEY: TU_WEBHOOK_API_KEY"
+```
+
+Referencia extendida: `docs/webhook-listener-n8n-ingesta.md`
+
 ## 🏗️ Estructura del Proyecto (Refactorizada)
 ```text
 /
 ├── backend/              # Lógica de negocio en Python
-│   └── src/              # Ingestion, Scoring y Canva Builder
+│   ├── src/              # Ingestion, Scoring, Canva Builder y triggers
+│   │   └── triggers/     # Webhook listener para disparar ingesta
+│   └── tests/            # Suite pytest (unit + contratos SQL)
 ├── backups/              # Volcados temporales de seguridad (Local CSV) [GIT IGNORED]
 ├── specs/                # Fuente de verdad (Source of Truth)
 │   └── sql/              # Esquemas, Migraciones y Seed Data
