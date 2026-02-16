@@ -100,3 +100,12 @@ def test_gold_supports_lineage_bridge_with_silver():
     assert "create or replace view gold.vw_linaje_silver_a_gold" in content
     assert "from silver.solicitudes" in content
     assert "join silver.comicos" in content
+
+
+def test_gold_enforces_rls_and_service_role_permissions():
+    content = read_lower(GOLD_SQL)
+    assert "alter table gold.comicos enable row level security" in content
+    assert "alter table gold.solicitudes enable row level security" in content
+    assert "create policy p_service_role_all_gold_comicos" in content
+    assert "create policy p_service_role_all_gold_solicitudes" in content
+    assert "grant usage on schema gold to service_role" in content

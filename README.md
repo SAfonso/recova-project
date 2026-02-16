@@ -128,9 +128,9 @@ graph LR
 Para mantener la integridad de la base de datos en Supabase, el proyecto incluye:
 - **`setup_db.py`**: Script de automatización que gestiona:
     - **Backup Preventivo:** Exportación a CSV en `/backups` antes de cualquier cambio destructivo.
-    - **Evolución de Esquema:** Ejecución secuencial de SQL por capas (`bronze` -> `silver` -> migraciones).
+    - **Evolución de Esquema:** Ejecución secuencial de SQL por capas (`bronze` -> `silver` -> migraciones -> `gold`).
     - **Seeding:** Inyección de datos de prueba alineados al linaje `bronze -> silver`.
-- **`specs/sql/gold_relacional.sql`**: Define la capa Gold (perfiles + historial de scoring). Actualmente su aplicación es manual.
+- **`specs/sql/gold_relacional.sql`**: Define la capa Gold (perfiles + historial de scoring), incluyendo RLS/policies para `service_role`.
 
 ## 🗃️ Modelo de Datos (Bronze/Silver/Gold)
 - **`bronze.solicitudes`**:
@@ -154,7 +154,7 @@ Para mantener la integridad de la base de datos en Supabase, el proyecto incluye
 - **Tipos y seguridad**:
   - Enums en `silver`: `silver.tipo_categoria`, `silver.tipo_status`.
   - Enums en `gold`: `gold.genero_comico`, `gold.categoria_comico`, `gold.estado_solicitud`.
-  - RLS habilitado en Bronze y Silver para `service_role` (Gold pendiente de políticas RLS en fase actual).
+  - RLS habilitado en Bronze, Silver y Gold para `service_role`.
 
 ## ⚙️ Operación Local (DB)
 1. Configura `DATABASE_URL` en `.env`.
@@ -167,11 +167,9 @@ Para mantener la integridad de la base de datos en Supabase, el proyecto incluye
    - Reset + esquema + seed: `./.venv/bin/python setup_db.py --reset --seed`
 4. Alternativa si no usas `.venv`:
    - `python3 setup_db.py [--reset] [--seed]`
-5. Para aplicar la capa Gold (manual por ahora):
-   - `psql "$DATABASE_URL" -f specs/sql/gold_relacional.sql`
 
 Comportamiento actual de flags:
-- `--reset`: genera backup CSV de tablas objetivo en `backups/`, elimina esquemas `silver`/`bronze` y reaplica SQL.
+- `--reset`: genera backup CSV de tablas objetivo en `backups/`, elimina esquemas `gold`/`silver`/`bronze` y reaplica SQL.
 - `--seed`: ejecuta `specs/sql/seed_data.sql` después de aplicar el esquema.
 - `--reset --seed`: combinación completa (backup + reset + esquema + seed).
 

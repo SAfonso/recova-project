@@ -176,3 +176,32 @@ comment on table gold.solicitudes is
 
 comment on view gold.vw_linaje_silver_a_gold is
   'Cruce operacional entre Silver y Gold por whatsapp/instagram para resolver linaje de comico_id.';
+
+-- ---------------------------------------------------------
+-- Operación y Seguridad Gold (alineado con Bronze/Silver)
+-- ---------------------------------------------------------
+alter table gold.comicos enable row level security;
+alter table gold.solicitudes enable row level security;
+
+drop policy if exists p_service_role_all_gold_comicos on gold.comicos;
+create policy p_service_role_all_gold_comicos
+on gold.comicos
+for all
+to service_role
+using (true)
+with check (true);
+
+drop policy if exists p_service_role_all_gold_solicitudes on gold.solicitudes;
+create policy p_service_role_all_gold_solicitudes
+on gold.solicitudes
+for all
+to service_role
+using (true)
+with check (true);
+
+revoke all on schema gold from public;
+revoke usage on schema gold from anon, authenticated;
+grant usage on schema gold to service_role;
+grant select, insert, update, delete on all tables in schema gold to service_role;
+alter default privileges in schema gold
+  grant select, insert, update, delete on tables to service_role;
