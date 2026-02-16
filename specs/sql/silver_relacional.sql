@@ -461,10 +461,26 @@ to anon
 using (true)
 with check (true);
 
+drop policy if exists "Permitir lectura comicos anon" on silver.comicos;
+create policy "Permitir lectura comicos anon"
+on silver.comicos
+for select
+to anon
+using (true);
+
+drop policy if exists "Permitir update comicos anon" on silver.comicos;
+create policy "Permitir update comicos anon"
+on silver.comicos
+for update
+to anon
+using (true)
+with check (true);
+
 revoke all on schema silver from public;
 revoke usage on schema silver from anon, authenticated;
 grant usage on schema silver to anon;
 grant usage on schema silver to service_role;
+grant select, update on silver.comicos to anon;
 grant select, update on all tables in schema silver to anon;
 grant select, insert, update, delete on all tables in schema silver to service_role;
 alter default privileges in schema silver
