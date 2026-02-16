@@ -1,0 +1,118 @@
+from __future__ import annotations
+
+import importlib.util
+import json
+from pathlib import Path
+import subprocess
+import sys
+import types
+
+MODULE_PATH = Path(__file__).resolve().parents[2] / "src" / "triggers" / "webhook_listener.py"
+
+
+class DummyFlask:
+    def __init__(self, _name: str):
+        self.routes: dict[tuple[str, tuple[str, ...]], object] = {}
+
+    def route(self, path: str, methods: list[str] | None = None):
+        methods_tuple = tuple(methods or ["GET"])
+
+        def decorator(func):
+            self.routes[(path, methods_tuple)] = func
+            return func
+
+        return decorator
+
+
+def load_webhook_module(monkeypatch, api_key: str = "test-key"):
+    monkeypatch.setenv("WEBHOOK_API_KEY", api_key)
+
+    fake_flask = types.ModuleType("flask")
+    fake_flask.Flask = DummyFlask
+    fake_flask.jsonify = lambda payload: payload
+    fake_flask.request = types.SimpleNamespace(headers={})
+    monkeypatch.setitem(sys.modules, "flask", fake_flask)
+
+    module_name = "test_webhook_listener_module"
+    spec = importlib.util.spec_from_file_location(module_name, MODULE_PATH)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_ingest_requires_api_key(monkeypatch):
+    module = load_webhook_module(monkeypatch)
+
+    module.request.headers = {}
+    response = module.ingest()
+
+    assert response == ({"status": "error", "message": "unauthorized"}, 401)
+
+
+def test_scoring_returns_script_json_stdout(monkeypatch):
+    module = load_webhook_module(monkeypatch)
+    expected_payload = {"status": "ok", "lineup": ["ana", "luis"]}
+
+    def fake_run(*_args, **_kwargs):
+        return subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout=json.dumps(expected_payload),
+            stderr="",
+        )
+
+    monkeypatch.setattr(module.subprocess, "run", fake_run)
+    module.request.headers = {module.API_KEY_HEADER: "test-key"}
+    response = module.scoring()
+
+    assert response == (expected_payload, 200)
+
+
+def test_scoring_returns_500_when_script_fails(monkeypatch):
+    module = load_webhook_module(monkeypatch)
+
+    def fake_run(*_args, **_kwargs):
+        return subprocess.CompletedProcess(
+            args=[],
+            returncode=1,
+            stdout="partial output",
+            stderr="boom",
+        )
+
+    monkeypatch.setattr(module.subprocess, "run", fake_run)
+    module.request.headers = {module.API_KEY_HEADER: "test-key"}
+    response = module.scoring()
+
+    assert response == (
+        {
+            "status": "error",
+            "message": "scoring script execution failed",
+            "stdout": "partial output",
+            "stderr": "boom",
+        },
+        500,
+    )
+
+
+def test_scoring_returns_500_when_stdout_is_not_json(monkeypatch):
+    module = load_webhook_module(monkeypatch)
+
+    def fake_run(*_args, **_kwargs):
+        return subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout="not-json",
+            stderr="",
+        )
+
+    monkeypatch.setattr(module.subprocess, "run", fake_run)
+    module.request.headers = {module.API_KEY_HEADER: "test-key"}
+    body, status = module.scoring()
+
+    assert status == 500
+    assert body["status"] == "error"
+    assert body["message"] == "invalid JSON output from scoring script"
+    assert body["stdout"] == "not-json"
+    assert "Expecting value" in body["details"]
