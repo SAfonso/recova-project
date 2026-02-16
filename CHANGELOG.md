@@ -5,6 +5,19 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-02-16
+
+### Added
+- Script SQL `specs/sql/gold_relacional.sql` para la nueva capa `gold`, con enums `gold.genero_comico` / `gold.categoria_comico` / `gold.estado_solicitud`, tablas `gold.comicos_gold` y `gold.solicitudes_gold`, e índices para consultas de recencia/estado.
+- Vista de linaje `gold.vw_linaje_silver_a_gold` para enlazar solicitudes de Silver con perfiles Gold por `whatsapp` o `instagram`.
+- Motor `backend/src/scoring_engine.py` para ranking Silver -> Gold con persistencia en historial de solicitudes, descarte de blacklist y salida JSON (`top_10_sugeridos` + métricas de proceso).
+- Suite `backend/tests/unit/test_scoring_engine.py` con cobertura de alias de categoría, cálculo de score, detección de disponibilidad única y desempate por `marca_temporal`.
+
+### Changed
+- `backend/tests/sql/test_sql_contracts.py` amplía contratos para validar existencia/estructura de la capa Gold y su vista de linaje con Silver.
+- `.github/workflows/deploy.yml` añade gate de pruebas previo al restart/start de PM2 en deploy (`push` a `dev`), para evitar publicar cambios si el test de ingesta falla.
+- Incremento de versión a `0.5.0` en `package.json`, `pyproject.toml` y `README.md`.
+
 ## [0.4.9] - 2026-02-15
 
 ### Added

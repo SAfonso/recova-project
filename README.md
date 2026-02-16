@@ -1,7 +1,7 @@
 # AI LineUp Architect (MVP) 🎭
 
 **Estado del Proyecto:** 🛠️ En Desarrollo (MVP)  
-**Versión:** 0.4.9  
+**Versión:** 0.5.0  
 **Metodología:** Spec-Driven Development (SDD)
 
 Sistema automatizado para la gestión y generación de lineups y cartelería para Open Mics de comedia.
@@ -98,6 +98,7 @@ graph LR
 |---|---|---|
 | 🥉 Bronze | Supabase PostgreSQL (`bronze.solicitudes`) | Almacenamiento RAW e inmutable de ingesta (trazabilidad total). |
 | 🥈 Silver | Supabase PostgreSQL (`silver.*`) | Datos normalizados y relacionales para operación, scoring y reporting. |
+| 🥇 Gold | Supabase PostgreSQL (`gold.*`) | Perfiles enriquecidos e histórico de solicitudes con score aplicado para decisiones de lineup. |
 
 > Supabase se mantiene como motor principal PostgreSQL en la nube, mientras la lógica operativa del MVP vive en infraestructura self-hosted.
 
@@ -113,12 +114,13 @@ graph LR
 1. 📥 Una nueva fila o evento en **Google Sheets** dispara un trigger en **n8n**.
 2. ⚙️ **n8n**, ejecutándose en el VPS bajo la operación de **Coolify**, activa el script local de **Python**.
 3. 🥉 El script persiste la entrada RAW en **Bronze** y aplica normalización/reglas de negocio.
-4. 🥈 Los datos curados se escriben en **Silver** para scoring, decisiones y trazabilidad transaccional.
-5. 📤 El flujo continúa con notificaciones/acciones posteriores (aprobación host, generación de cartel y distribución).
+4. 🥈 Los datos curados se escriben en **Silver** para trazabilidad transaccional y preparación de scoring.
+5. 🥇 El scoring engine consume Silver, calcula prioridad y persiste resultados en **Gold**.
+6. 📤 El flujo continúa con notificaciones/acciones posteriores (aprobación host, generación de cartel y distribución).
 
 ## 🚀 Objetivos del MVP
 - Mantener ingesta cruda en `bronze.solicitudes` y curación transaccional en `silver`.
-- Automatizar el cálculo de puntos (tiempo desde la última actuación, paridad, prioridad).
+- Automatizar el cálculo de puntos (categoría, recencia y disponibilidad) desde Silver hacia Gold.
 - Generar el póster final sin intervención manual en el diseño.
 - Mantener un registro histórico fiable de quién actúa en cada show.
 
@@ -128,8 +130,9 @@ Para mantener la integridad de la base de datos en Supabase, el proyecto incluye
     - **Backup Preventivo:** Exportación a CSV en `/backups` antes de cualquier cambio destructivo.
     - **Evolución de Esquema:** Ejecución secuencial de SQL por capas (`bronze` -> `silver` -> migraciones).
     - **Seeding:** Inyección de datos de prueba alineados al linaje `bronze -> silver`.
+- **`specs/sql/gold_relacional.sql`**: Define la capa Gold (perfiles + historial de scoring). Actualmente su aplicación es manual.
 
-## 🗃️ Modelo de Datos (Bronze/Silver)
+## 🗃️ Modelo de Datos (Bronze/Silver/Gold)
 - **`bronze.solicitudes`**:
   - Única tabla en Bronze.
   - Conserva campos crudos del formulario (`*_raw`) y `raw_data_extra` (`jsonb`).
@@ -140,9 +143,18 @@ Para mantener la integridad de la base de datos en Supabase, el proyecto incluye
 - **`silver.solicitudes`**:
   - Tabla transaccional con FKs a `silver.comicos` y `silver.proveedores`.
   - Trazabilidad obligatoria mediante `bronze_id` (`FK -> bronze.solicitudes(id)`).
+- **`gold.comicos_gold`**:
+  - Maestro enriquecido para scoring (género, categoría, fecha de última actuación).
+  - Conserva identificadores normalizados (`whatsapp`, `instagram`) y linaje por `id`.
+- **`gold.solicitudes_gold`**:
+  - Histórico operativo de solicitudes con `estado`, `score_aplicado` y `marca_temporal`.
+  - FK a `gold.comicos_gold(id)` para reglas de recencia y selección.
+- **`gold.vw_linaje_silver_a_gold`**:
+  - Vista de cruce Silver -> Gold por whatsapp/instagram para resolver linaje.
 - **Tipos y seguridad**:
   - Enums en `silver`: `silver.tipo_categoria`, `silver.tipo_status`.
-  - RLS habilitado en Bronze y Silver para `service_role`.
+  - Enums en `gold`: `gold.genero_comico`, `gold.categoria_comico`, `gold.estado_solicitud`.
+  - RLS habilitado en Bronze y Silver para `service_role` (Gold pendiente de políticas RLS en fase actual).
 
 ## ⚙️ Operación Local (DB)
 1. Configura `DATABASE_URL` en `.env`.
@@ -155,6 +167,8 @@ Para mantener la integridad de la base de datos en Supabase, el proyecto incluye
    - Reset + esquema + seed: `./.venv/bin/python setup_db.py --reset --seed`
 4. Alternativa si no usas `.venv`:
    - `python3 setup_db.py [--reset] [--seed]`
+5. Para aplicar la capa Gold (manual por ahora):
+   - `psql "$DATABASE_URL" -f specs/sql/gold_relacional.sql`
 
 Comportamiento actual de flags:
 - `--reset`: genera backup CSV de tablas objetivo en `backups/`, elimina esquemas `silver`/`bronze` y reaplica SQL.
@@ -173,9 +187,9 @@ Los tests del backend viven en `backend/tests` y se ejecutan con `pytest`.
 4. Solo contratos SQL:
    - `./.venv/bin/python -m pytest -q backend/tests/sql`
 5. Archivo específico:
-   - `./.venv/bin/python -m pytest -q backend/tests/unit/test_setup_db.py`
+   - `./.venv/bin/python -m pytest -q backend/tests/unit/test_scoring_engine.py`
 6. Caso puntual:
-   - `./.venv/bin/python -m pytest -q backend/tests/unit/test_setup_db.py::test_verify_enums_uses_expected_refs`
+   - `./.venv/bin/python -m pytest -q backend/tests/sql/test_sql_contracts.py::test_gold_supports_lineage_bridge_with_silver`
 
 Referencia extendida: `docs/tests-backend.md`
 
@@ -185,6 +199,23 @@ El ingestion engine (`backend/src/bronze_to_silver_ingestion.py`) prepara el lin
 2. Normaliza `instagram_raw`.
 3. Hace upsert en `silver.comicos`.
 4. Inserta en `silver.solicitudes` con `bronze_id`, `comico_id` y `proveedor_id`.
+
+## 🧮 Motor de Scoring (Silver -> Gold)
+El scoring engine (`backend/src/scoring_engine.py`) transforma solicitudes curadas en ranking operativo.
+
+- Entrada: solicitudes ordenadas por `marca_temporal` (cola Silver).
+- Reglas base:
+  - Bono por categoría (`gold`: +12, `preferred`: +10, `standard`: +0).
+  - Penalización por recencia de aceptación en los dos últimos shows (`-100`).
+  - Bono por "bala única" cuando el cómico solo reporta una fecha (`+20`).
+- Salida:
+  - Inserción de registros `pendiente` con `score_aplicado` en historial Gold.
+  - Resumen JSON con `filas_procesadas`, `filas_insertadas_gold`, `filas_descartadas_blacklist` y `top_10_sugeridos`.
+- Logging: archivo rotativo diario en `/root/RECOVA/backend/logs/scoring_engine.log` (retención 14 días).
+
+Ejecución local:
+- `./.venv/bin/python backend/src/scoring_engine.py`
+- dummy test integrado: `SCORING_ENGINE_DUMMY_TEST=true ./.venv/bin/python backend/src/scoring_engine.py`
 
 ## 🌐 Webhook Listener (n8n -> Ingesta)
 Se añadió un listener HTTP en Flask para que n8n dispare la ingesta Bronze -> Silver.
@@ -206,16 +237,29 @@ curl -X POST http://localhost:5000/ingest \
 
 Referencia extendida: `docs/webhook-listener-n8n-ingesta.md`
 
+## 🚚 Deploy Automatizado (Rama `dev`)
+El workflow `.github/workflows/deploy.yml` despliega al VPS por SSH en cada push a `dev`:
+1. `git pull origin dev`
+2. `pip install -r requirements.txt`
+3. ejecución de test de ingesta en servidor (gate previo)
+4. reinicio/start de PM2 para `webhook-ingesta` solo si el test es exitoso
+
 ## 🏗️ Estructura del Proyecto (Refactorizada)
 ```text
 /
 ├── backend/              # Lógica de negocio en Python
 │   ├── src/              # Ingestion, Scoring, Canva Builder y triggers
+│   │   ├── scoring_engine.py
 │   │   └── triggers/     # Webhook listener para disparar ingesta
 │   └── tests/            # Suite pytest (unit + contratos SQL)
+│       ├── unit/test_scoring_engine.py
+│       └── sql/test_sql_contracts.py
+├── .github/workflows/    # CI/CD
+│   └── deploy.yml
 ├── backups/              # Volcados temporales de seguridad (Local CSV) [GIT IGNORED]
 ├── specs/                # Fuente de verdad (Source of Truth)
 │   └── sql/              # Esquemas, Migraciones y Seed Data
+│       └── gold_relacional.sql
 ├── workflows/            # Planos de automatización (n8n)
 ├── .env                  # Variables críticas (DB_URL, Drive_ID, etc.)
 ├── setup_db.py           # Herramienta de despliegue, reset y backups de BD
