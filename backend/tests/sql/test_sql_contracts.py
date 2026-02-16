@@ -43,6 +43,10 @@ def test_silver_contains_master_and_transactional_tables():
     assert "create table if not exists silver.proveedores" in content
     assert "create table if not exists silver.solicitudes" in content
     assert "genero text not null default 'unknown'" in content
+    assert "instagram text not null unique" in content
+    assert "nombre text" in content
+    assert "instagram_user text not null unique" not in content
+    assert "nombre_artistico text" not in content
     assert "is_gold boolean" not in content
     assert "is_priority boolean" not in content
     assert "is_restricted boolean" not in content
@@ -63,7 +67,7 @@ def test_silver_solicitudes_has_lineage_fk_to_bronze():
 def test_silver_comicos_enforces_instagram_normalization():
     content = read_lower(SILVER_SQL)
     assert "chk_silver_comicos_instagram_normalizado" in content
-    assert "instagram_user = lower(instagram_user)" in content
+    assert "instagram = lower(instagram)" in content
 
 
 def test_seed_uses_bronze_and_silver_with_lineage_column():
@@ -108,6 +112,7 @@ def test_gold_supports_lineage_bridge_with_silver():
     assert "from silver.solicitudes" in content
     assert "join silver.comicos" in content
     assert "sc.telefono = c.telefono" in content
+    assert "sc.instagram = c.instagram" in content
 
 
 def test_gold_enforces_rls_and_service_role_permissions():

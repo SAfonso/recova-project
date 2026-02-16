@@ -117,9 +117,9 @@ def fetch_silver_requests(conn) -> list[SilverRequest]:
             """
             SELECT
                 s.comico_id::text AS comico_id,
-                COALESCE(c.nombre_artistico, b.nombre_raw, '') AS nombre,
+                COALESCE(c.nombre, b.nombre_raw, '') AS nombre,
                 c.telefono AS telefono,
-                COALESCE(c.instagram_user, '') AS instagram,
+                COALESCE(c.instagram, '') AS instagram,
                 c.categoria::text AS categoria_silver,
                 to_char(s.fecha_evento, 'YYYY-MM-DD') AS fechas_disponibles,
                 s.created_at AS marca_temporal

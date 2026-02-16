@@ -206,7 +206,7 @@ join silver.comicos sc
 join gold.comicos c
   on (
     (sc.telefono is not null and sc.telefono = c.telefono)
-    or sc.instagram_user = c.instagram
+    or sc.instagram = c.instagram
   );
 
 comment on table gold.comicos is

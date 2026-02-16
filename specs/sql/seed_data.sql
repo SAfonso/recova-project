@@ -16,8 +16,8 @@ ON CONFLICT (id) DO NOTHING;
 -- 2) Cómicos Silver (2 gold, 3 priority, 5 general, 1 restricted)
 INSERT INTO silver.comicos (
   id,
-  instagram_user,
-  nombre_artistico,
+  instagram,
+  nombre,
   telefono,
   categoria,
   metadata_comico
@@ -44,7 +44,7 @@ VALUES
     'restricted',
     '{"motivo": "Falta de respeto al público", "fecha_veto": "2026-01-01"}'::jsonb
   )
-ON CONFLICT (instagram_user) DO NOTHING;
+ON CONFLICT (instagram) DO NOTHING;
 
 -- 3) Solicitudes Bronze asociadas (origen de linaje)
 INSERT INTO bronze.solicitudes (
