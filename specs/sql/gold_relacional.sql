@@ -1,0 +1,161 @@
+-- =========================================================
+-- AI LineUp Architect - Capa Gold (PostgreSQL / Supabase)
+-- =========================================================
+-- Objetivo:
+--   1) Mantener una maestra de perfiles enriquecidos (comicos_gold).
+--   2) Persistir historial de solicitudes + scoring (solicitudes_gold).
+--   3) Conservar linaje desde Silver reutilizando IDs de origen.
+
+create extension if not exists pgcrypto;
+
+create schema if not exists gold;
+
+-- ---------------------------------------------------------
+-- ENUMs Gold
+-- ---------------------------------------------------------
+-- Género normalizado del cómico para reglas de balance de cartel.
+DO $$
+BEGIN
+  IF to_regtype('gold.genero_comico') IS NULL THEN
+    CREATE TYPE gold.genero_comico AS ENUM ('m', 'f', 'nb', 'unknown');
+  END IF;
+END
+$$;
+
+-- Categoría de negocio para priorización (default: standard).
+DO $$
+BEGIN
+  IF to_regtype('gold.categoria_comico') IS NULL THEN
+    CREATE TYPE gold.categoria_comico AS ENUM (
+      'standard',
+      'priority',
+      'gold',
+      'restricted'
+    );
+  END IF;
+END
+$$;
+
+-- Estado final/operativo de la solicitud para decisiones de lineup.
+DO $$
+BEGIN
+  IF to_regtype('gold.estado_solicitud') IS NULL THEN
+    CREATE TYPE gold.estado_solicitud AS ENUM (
+      'pendiente',
+      'aceptado',
+      'rechazado',
+      'cancelado',
+      'expirado'
+    );
+  END IF;
+END
+$$;
+
+-- ---------------------------------------------------------
+-- Tabla maestra de perfiles (nutrida de silver.comicos)
+-- ---------------------------------------------------------
+create table if not exists gold.comicos_gold (
+  -- Linaje: este ID debe venir de silver.comicos.id para mantener trazabilidad.
+  id uuid primary key,
+
+  -- Identificadores normalizados de contacto.
+  whatsapp text not null unique,
+  instagram text not null unique,
+
+  nombre text,
+  genero gold.genero_comico not null default 'unknown',
+  categoria gold.categoria_comico not null default 'standard',
+  fecha_ultima_actuacion date,
+
+  created_at timestamptz not null default now(),
+  modified_at timestamptz not null default now(),
+
+  constraint chk_gold_comicos_instagram_normalizado
+    check (
+      instagram = lower(instagram)
+      and left(instagram, 1) <> '@'
+    ),
+
+  constraint chk_gold_comicos_whatsapp_internacional
+    check (whatsapp ~ '^\+[1-9][0-9]{7,14}$')
+);
+
+-- Índices de lookup para cruce rápido desde Silver por whatsapp/instagram.
+create index if not exists idx_gold_comicos_whatsapp
+  on gold.comicos_gold (whatsapp);
+
+create index if not exists idx_gold_comicos_instagram
+  on gold.comicos_gold (instagram);
+
+create index if not exists idx_gold_comicos_fecha_ultima_actuacion
+  on gold.comicos_gold (fecha_ultima_actuacion);
+
+-- ---------------------------------------------------------
+-- Historial de solicitudes y scoring (nutrida de silver.solicitudes)
+-- ---------------------------------------------------------
+create table if not exists gold.solicitudes_gold (
+  -- Linaje: este ID debe venir de silver.solicitudes.id.
+  id uuid primary key,
+
+  comico_id uuid not null,
+  fecha_evento date not null,
+  estado gold.estado_solicitud not null default 'pendiente',
+
+  -- Score calculado por el motor de selección.
+  score_aplicado double precision,
+
+  -- Orden de llegada original del formulario (Google Forms).
+  marca_temporal timestamptz,
+  created_at timestamptz not null default now(),
+
+  constraint fk_gold_solicitudes_comico
+    foreign key (comico_id)
+    references gold.comicos_gold(id)
+    on delete cascade
+);
+
+create index if not exists idx_gold_solicitudes_comico_fecha
+  on gold.solicitudes_gold (comico_id, fecha_evento desc);
+
+create index if not exists idx_gold_solicitudes_estado_fecha
+  on gold.solicitudes_gold (estado, fecha_evento desc);
+
+create index if not exists idx_gold_solicitudes_marca_temporal
+  on gold.solicitudes_gold (marca_temporal);
+
+-- Índice parcial clave para reglas de “ha actuado recientemente”.
+create index if not exists idx_gold_solicitudes_aceptadas_por_comico
+  on gold.solicitudes_gold (comico_id, fecha_evento desc)
+  where estado = 'aceptado';
+
+-- ---------------------------------------------------------
+-- Vista de ayuda de linaje Silver -> Gold
+-- ---------------------------------------------------------
+-- Esta vista permite cruzar solicitudes_silver con comicos_gold usando
+-- whatsapp o instagram como llave de negocio, para resolver comico_id Gold
+-- aun cuando el proceso de carga llegue por distintas rutas.
+create or replace view gold.vw_linaje_silver_a_gold as
+select
+  s.id as solicitud_silver_id,
+  s.fecha_evento,
+  s.created_at as silver_created_at,
+  c.id as comico_gold_id,
+  c.whatsapp,
+  c.instagram
+from silver.solicitudes s
+join silver.comicos sc
+  on sc.id = s.comico_id
+join gold.comicos_gold c
+  on (
+    (sc.telefono is not null and sc.telefono = c.whatsapp)
+    or sc.instagram_user = c.instagram
+  );
+
+comment on table gold.comicos_gold is
+  'Maestra Gold de perfiles. ID heredado de silver.comicos para trazabilidad end-to-end.';
+
+comment on table gold.solicitudes_gold is
+  'Histórico Gold de solicitudes + scoring. ID heredado de silver.solicitudes.';
+
+comment on view gold.vw_linaje_silver_a_gold is
+  'Cruce operacional entre Silver y Gold por whatsapp/instagram para resolver linaje de comico_id.';
