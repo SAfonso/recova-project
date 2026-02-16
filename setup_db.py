@@ -24,7 +24,6 @@ SEED_SQL_PATH = ROOT_DIR / "specs/sql/seed_data.sql"
 ENUM_TYPES = (
     ("silver", "tipo_categoria"),
     ("silver", "tipo_status"),
-    ("gold", "genero_comico"),
     ("gold", "categoria_comico"),
     ("gold", "estado_solicitud"),
 )

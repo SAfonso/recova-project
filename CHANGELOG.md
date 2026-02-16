@@ -5,7 +5,7 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.5.2] - 2026-02-16
+## [0.5.3] - 2026-02-16
 
 ### Changed
 - `setup_db.py` ahora gestiona la capa Gold como parte del ciclo estándar (`SQL_SEQUENCE`, backup de `gold.comicos`/`gold.solicitudes`, reset de esquema `gold` y verificación de enums Gold).
@@ -16,7 +16,10 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - `specs/sql/silver_relacional.sql` elimina los flags booleanos legacy de Silver (`is_gold`, `is_priority`, `is_restricted`) y su lógica de mantenimiento en esquema.
 - `specs/sql/seed_data.sql` se ajusta al nuevo contrato de `silver.comicos` sin flags booleanos.
 - `backend/src/scoring_engine.py` ahora respeta la categoría proveniente de `silver.comicos.categoria` al poblar/actualizar `gold.comicos.categoria` (mapeo `general -> standard`).
-- Incremento de versión a `0.5.2` en `package.json`, `pyproject.toml` y `README.md`.
+- `silver.comicos` y `gold.comicos` incorporan/estandarizan el campo `genero` como `text` con default `unknown`.
+- `gold.comicos.genero` migra de enum a `text` para alinear el modelo entre capas Silver y Gold.
+- `setup_db.py` deja de verificar el enum `gold.genero_comico` (el enum de género ya no forma parte del contrato de Gold).
+- Incremento de versión a `0.5.3` en `package.json`, `pyproject.toml` y `README.md`.
 
 ## [0.5.1] - 2026-02-16
 

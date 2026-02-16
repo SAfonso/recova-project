@@ -50,15 +50,6 @@ $$;
 -- ---------------------------------------------------------
 -- ENUMs Gold
 -- ---------------------------------------------------------
--- Género normalizado del cómico para reglas de balance de cartel.
-DO $$
-BEGIN
-  IF to_regtype('gold.genero_comico') IS NULL THEN
-    CREATE TYPE gold.genero_comico AS ENUM ('m', 'f', 'nb', 'unknown');
-  END IF;
-END
-$$;
-
 -- Categoría de negocio para priorización (default: standard).
 DO $$
 BEGIN
@@ -100,7 +91,7 @@ create table if not exists gold.comicos (
   instagram text not null unique,
 
   nombre text,
-  genero gold.genero_comico not null default 'unknown',
+  genero text not null default 'unknown',
   categoria gold.categoria_comico not null default 'standard',
   fecha_ultima_actuacion date,
 
@@ -116,6 +107,36 @@ create table if not exists gold.comicos (
   constraint chk_gold_comicos_telefono_internacional
     check (telefono ~ '^\+[1-9][0-9]{7,14}$')
 );
+
+alter table gold.comicos
+  add column if not exists genero text;
+
+DO $$
+DECLARE
+  genero_data_type text;
+BEGIN
+  SELECT data_type
+  INTO genero_data_type
+  FROM information_schema.columns
+  WHERE table_schema = 'gold'
+    AND table_name = 'comicos'
+    AND column_name = 'genero';
+
+  IF genero_data_type = 'USER-DEFINED' THEN
+    ALTER TABLE gold.comicos
+      ALTER COLUMN genero TYPE text
+      USING genero::text;
+  END IF;
+END
+$$;
+
+update gold.comicos
+set genero = 'unknown'
+where genero is null;
+
+alter table gold.comicos
+  alter column genero set default 'unknown',
+  alter column genero set not null;
 
 -- Índices de lookup para cruce rápido desde Silver por telefono/instagram.
 create index if not exists idx_gold_comicos_telefono

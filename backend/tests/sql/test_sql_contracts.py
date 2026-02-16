@@ -42,6 +42,7 @@ def test_silver_contains_master_and_transactional_tables():
     assert "create table if not exists silver.comicos" in content
     assert "create table if not exists silver.proveedores" in content
     assert "create table if not exists silver.solicitudes" in content
+    assert "genero text not null default 'unknown'" in content
     assert "is_gold boolean" not in content
     assert "is_priority boolean" not in content
     assert "is_restricted boolean" not in content
@@ -90,12 +91,13 @@ def test_gold_contains_master_and_history_tables():
     assert "create table if not exists gold.comicos_gold" not in content
     assert "create table if not exists gold.solicitudes_gold" not in content
     assert "telefono text not null unique" in content
+    assert "genero text not null default 'unknown'" in content
     assert "whatsapp text not null unique" not in content
 
 
 def test_gold_defines_expected_enum_types():
     content = read_lower(GOLD_SQL)
-    assert "create type gold.genero_comico" in content
+    assert "create type gold.genero_comico" not in content
     assert "create type gold.categoria_comico" in content
     assert "create type gold.estado_solicitud" in content
 
