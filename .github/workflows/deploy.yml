@@ -20,6 +20,10 @@ jobs:
               set -euo pipefail
               export PATH=$PATH:/usr/bin:/usr/local/bin
               cd /root/RECOVA
+
+              # Forzamos la URL de origen a HTTPS usando el Token para no depender de SSH ni de contraseñas
+              git remote set-url origin https://${{ secrets.GH_TOKEN }}@github.com/SAfonso/recova-project.git
+              
               git pull origin dev
               ./venv/bin/pip install -r requirements.txt
               
