@@ -5,6 +5,13 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- `setup_db.py` ahora gestiona la capa Gold como parte del ciclo estándar (`SQL_SEQUENCE`, backup de `gold.comicos`/`gold.solicitudes`, reset de esquema `gold` y verificación de enums Gold).
+- `specs/sql/gold_relacional.sql` incorpora bloque de seguridad y operación equivalente a Bronze/Silver (RLS, policies `service_role` y grants del esquema).
+- Tests actualizados para validar la nueva gestión de Gold en setup y contratos SQL.
+
 ## [0.5.1] - 2026-02-16
 
 ### Changed

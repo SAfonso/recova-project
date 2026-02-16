@@ -18,20 +18,27 @@ SQL_SEQUENCE = [
     ROOT_DIR / "specs/sql/bronze_multi_proveedor_master.sql",
     ROOT_DIR / "specs/sql/silver_relacional.sql",
     ROOT_DIR / "specs/sql/migrations/20260212_alter_tipo_solicitud_status.sql",
+    ROOT_DIR / "specs/sql/gold_relacional.sql",
 ]
 SEED_SQL_PATH = ROOT_DIR / "specs/sql/seed_data.sql"
 ENUM_TYPES = (
     ("silver", "tipo_categoria"),
     ("silver", "tipo_status"),
+    ("gold", "genero_comico"),
+    ("gold", "categoria_comico"),
+    ("gold", "estado_solicitud"),
 )
 BACKUP_TABLES = (
     "bronze.solicitudes",
     "silver.comicos",
     "silver.solicitudes",
     "silver.proveedores",
+    "gold.comicos",
+    "gold.solicitudes",
 )
 
 RESET_SQL = """
+DROP SCHEMA IF EXISTS gold CASCADE;
 DROP SCHEMA IF EXISTS silver CASCADE;
 DROP SCHEMA IF EXISTS bronze CASCADE;
 DROP FUNCTION IF EXISTS public.set_updated_at() CASCADE;

@@ -75,6 +75,9 @@ def test_verify_enums_uses_expected_refs(monkeypatch):
     expected = {
         "silver.tipo_categoria": True,
         "silver.tipo_status": False,
+        "gold.genero_comico": True,
+        "gold.categoria_comico": False,
+        "gold.estado_solicitud": True,
     }
 
     def fake_enum_exists(_cursor, schema_name, enum_name):
@@ -134,4 +137,10 @@ def test_sql_sequence_files_exist():
         assert isinstance(path, Path)
         assert path.exists(), f"No existe archivo SQL en secuencia: {path}"
 
+    assert any(path.name == "gold_relacional.sql" for path in setup_db.SQL_SEQUENCE)
     assert setup_db.SEED_SQL_PATH.exists(), "No existe archivo seed_data.sql"
+
+
+def test_backup_tables_include_gold_layer():
+    assert "gold.comicos" in setup_db.BACKUP_TABLES
+    assert "gold.solicitudes" in setup_db.BACKUP_TABLES
