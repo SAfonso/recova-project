@@ -111,7 +111,7 @@ def test_process_single_solicitud_discards_when_no_future_dates(monkeypatch):
             "errors": [],
             "normalized": {
                 "nombre": "Mati",
-                "instagram_user": "mati.show",
+                "instagram": "mati.show",
                 "telefono": "+34666555888",
                 "experiencia_raw": "He probado alguna vez",
                 "fechas_raw": "14-02-26",
@@ -156,7 +156,7 @@ def test_process_single_solicitud_happy_path(monkeypatch):
             "errors": [],
             "normalized": {
                 "nombre": "Mati",
-                "instagram_user": "mati.show",
+                "instagram": "mati.show",
                 "telefono": "+34666555888",
                 "experiencia_raw": "He probado alguna vez",
                 "fechas_raw": "20-02-26, 21-02-26",
@@ -223,7 +223,7 @@ def test_process_single_solicitud_rolls_back_and_registers_error(monkeypatch):
             "errors": [],
             "normalized": {
                 "nombre": "Mati",
-                "instagram_user": "mati.show",
+                "instagram": "mati.show",
                 "telefono": "+34666555888",
                 "experiencia_raw": "He probado alguna vez",
                 "fechas_raw": "20-02-26",

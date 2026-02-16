@@ -5,6 +5,16 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.4] - 2026-02-16
+
+### Changed
+- `silver.comicos` alinea nomenclatura con Gold: `nombre_artistico` pasa a `nombre` e `instagram_user` pasa a `instagram`, incluyendo migración compatible para instalaciones existentes.
+- `backend/src/bronze_to_silver_ingestion.py` actualiza el upsert/lookup de cómicos Silver para operar con `instagram` y `nombre`.
+- `backend/src/scoring_engine.py` y `specs/sql/gold_relacional.sql` actualizan cruces Silver -> Gold para leer `silver.comicos.instagram` y `silver.comicos.nombre`.
+- `specs/sql/seed_data.sql` y `backend/tests/sql/test_sql_contracts.py` se ajustan al nuevo contrato de columnas en `silver.comicos`.
+- `specs/sql/silver_relacional.sql` renombra índice legacy `idx_silver_comicos_instagram_user` a `idx_silver_comicos_instagram` cuando aplica.
+- Incremento de versión a `0.5.4` en `package.json`, `pyproject.toml` y `README.md`.
+
 ## [0.5.3] - 2026-02-16
 
 ### Changed

@@ -137,12 +137,12 @@ def normalize_row(row: dict[str, str | None]) -> dict[str, object]:
     errors: list[str] = []
 
     nombre = (row.get("¿Nombre?") or "").strip().title()
-    instagram_user = normalize_instagram_user(row.get("¿Instagram?"))
+    instagram = normalize_instagram_user(row.get("¿Instagram?"))
     telefono = clean_phone(row.get("Whatsapp"))
 
     if not nombre:
         errors.append("Campo obligatorio inválido/vacío: ¿Nombre?")
-    if not instagram_user:
+    if not instagram:
         errors.append("Campo obligatorio inválido/vacío: ¿Instagram?")
     if not telefono:
         errors.append("Campo obligatorio inválido/vacío: Whatsapp")
@@ -152,7 +152,7 @@ def normalize_row(row: dict[str, str | None]) -> dict[str, object]:
 
     normalized = {
         "nombre": nombre,
-        "instagram_user": instagram_user,
+        "instagram": instagram,
         "telefono": telefono,
         "experiencia_raw": (row.get("¿Has actuado alguna vez?") or "").strip(),
         "fechas_raw": fechas_raw,
@@ -269,23 +269,23 @@ def resolve_error_metadata_column(conn) -> str | None:
 
 def upsert_comico_silver(
     conn,
-    instagram_user: str,
-    nombre_artistico: str | None,
+    instagram: str,
+    nombre: str | None,
     telefono: str | None,
 ) -> UUID:
     with conn.cursor() as cursor:
         cursor.execute(
             """
             INSERT INTO silver.comicos (
-                instagram_user,
-                nombre_artistico,
+                instagram,
+                nombre,
                 telefono
             )
             VALUES (%s, %s, %s)
-            ON CONFLICT (instagram_user) DO NOTHING
+            ON CONFLICT (instagram) DO NOTHING
             RETURNING id
             """,
-            (instagram_user, nombre_artistico, telefono),
+            (instagram, nombre, telefono),
         )
         row = cursor.fetchone()
 
@@ -293,15 +293,15 @@ def upsert_comico_silver(
             return row[0]
 
         cursor.execute(
-            "SELECT id FROM silver.comicos WHERE instagram_user = %s",
-            (instagram_user,),
+            "SELECT id FROM silver.comicos WHERE instagram = %s",
+            (instagram,),
         )
         existing = cursor.fetchone()
 
     if not existing:
         raise RuntimeError(
-            "No se pudo obtener/crear comico en silver.comicos para instagram_user=%s"
-            % instagram_user
+            "No se pudo obtener/crear comico en silver.comicos para instagram=%s"
+            % instagram
         )
 
     return existing[0]
@@ -443,9 +443,9 @@ def process_single_solicitud(
             raise ValueError(joined_errors)
 
         normalized = normalized_result["normalized"]
-        instagram_user = str(normalized["instagram_user"])
+        instagram = str(normalized["instagram"])
         telefono = str(normalized["telefono"])
-        nombre_artistico = str(normalized["nombre"])
+        nombre = str(normalized["nombre"])
 
         phase = "parsing_fechas"
         event_dates = parse_event_dates(str(normalized["fechas_raw"]), today)
@@ -468,8 +468,8 @@ def process_single_solicitud(
         phase = "upsert_comico_silver"
         comico_id = upsert_comico_silver(
             conn,
-            instagram_user=instagram_user,
-            nombre_artistico=nombre_artistico,
+            instagram=instagram,
+            nombre=nombre,
             telefono=telefono,
         )
 

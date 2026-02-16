@@ -106,8 +106,8 @@ create unique index if not exists uq_silver_proveedores_slug
 -- 6) Maestra de cómicos (identidad única normalizada).
 create table if not exists silver.comicos (
   id uuid primary key default gen_random_uuid(),
-  instagram_user text not null unique,
-  nombre_artistico text,
+  instagram text not null unique,
+  nombre text,
   telefono text,
   genero text not null default 'unknown',
   categoria silver.tipo_categoria not null default 'general',
@@ -117,8 +117,8 @@ create table if not exists silver.comicos (
 
   constraint chk_silver_comicos_instagram_normalizado
     check (
-      instagram_user = lower(instagram_user)
-      and left(instagram_user, 1) <> '@'
+      instagram = lower(instagram)
+      and left(instagram, 1) <> '@'
     ),
 
   constraint chk_silver_comicos_telefono_e164
@@ -128,8 +128,67 @@ create table if not exists silver.comicos (
     )
 );
 
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'silver'
+      AND table_name = 'comicos'
+      AND column_name = 'instagram_user'
+  ) AND NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'silver'
+      AND table_name = 'comicos'
+      AND column_name = 'instagram'
+  ) THEN
+    ALTER TABLE silver.comicos RENAME COLUMN instagram_user TO instagram;
+  ELSIF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'silver'
+      AND table_name = 'comicos'
+      AND column_name = 'instagram_user'
+  ) THEN
+    UPDATE silver.comicos
+    SET instagram = COALESCE(instagram, instagram_user)
+    WHERE instagram_user IS NOT NULL;
+    ALTER TABLE silver.comicos DROP COLUMN instagram_user;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'silver'
+      AND table_name = 'comicos'
+      AND column_name = 'nombre_artistico'
+  ) AND NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'silver'
+      AND table_name = 'comicos'
+      AND column_name = 'nombre'
+  ) THEN
+    ALTER TABLE silver.comicos RENAME COLUMN nombre_artistico TO nombre;
+  ELSIF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'silver'
+      AND table_name = 'comicos'
+      AND column_name = 'nombre_artistico'
+  ) THEN
+    UPDATE silver.comicos
+    SET nombre = COALESCE(nombre, nombre_artistico)
+    WHERE nombre_artistico IS NOT NULL;
+    ALTER TABLE silver.comicos DROP COLUMN nombre_artistico;
+  END IF;
+END
+$$;
+
 alter table silver.comicos
-  add column if not exists nombre_artistico text,
+  add column if not exists nombre text,
+  add column if not exists instagram text,
   add column if not exists telefono text,
   add column if not exists genero text not null default 'unknown',
   add column if not exists categoria silver.tipo_categoria not null default 'general',
@@ -141,6 +200,31 @@ alter table silver.comicos
   drop column if exists is_gold,
   drop column if exists is_priority,
   drop column if exists is_restricted;
+
+update silver.comicos
+set instagram = lower(trim(instagram))
+where instagram is not null;
+
+alter table silver.comicos
+  alter column instagram set not null;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'chk_silver_comicos_instagram_normalizado'
+      AND conrelid = 'silver.comicos'::regclass
+  ) THEN
+    ALTER TABLE silver.comicos
+      ADD CONSTRAINT chk_silver_comicos_instagram_normalizado
+      CHECK (
+        instagram = lower(instagram)
+        and left(instagram, 1) <> '@'
+      );
+  END IF;
+END
+$$;
 
 update silver.comicos
 set genero = 'unknown'
@@ -168,8 +252,18 @@ BEGIN
 END
 $$;
 
-create index if not exists idx_silver_comicos_instagram_user
-  on silver.comicos (instagram_user);
+DO $$
+BEGIN
+  IF to_regclass('silver.idx_silver_comicos_instagram_user') IS NOT NULL
+     AND to_regclass('silver.idx_silver_comicos_instagram') IS NULL THEN
+    ALTER INDEX silver.idx_silver_comicos_instagram_user
+      RENAME TO idx_silver_comicos_instagram;
+  END IF;
+END
+$$;
+
+create index if not exists idx_silver_comicos_instagram
+  on silver.comicos (instagram);
 
 create index if not exists idx_silver_comicos_categoria
   on silver.comicos (categoria);

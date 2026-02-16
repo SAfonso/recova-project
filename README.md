@@ -1,7 +1,7 @@
 # AI LineUp Architect (MVP) 🎭
 
 **Estado del Proyecto:** 🛠️ En Desarrollo (MVP)  
-**Versión:** 0.5.3  
+**Versión:** 0.5.4  
 **Metodología:** Spec-Driven Development (SDD)
 
 Sistema automatizado para la gestión y generación de lineups y cartelería para Open Mics de comedia.
@@ -137,7 +137,7 @@ Para mantener la integridad de la base de datos en Supabase, el proyecto incluye
   - Única tabla en Bronze.
   - Conserva campos crudos del formulario (`*_raw`) y `raw_data_extra` (`jsonb`).
 - **`silver.comicos`**:
-  - Maestro de identidad única por `instagram_user` normalizado (minúsculas y sin `@`).
+  - Maestro de identidad única por `instagram` normalizado (minúsculas y sin `@`).
   - Incluye `genero` (`text`) con valor por defecto `unknown`.
 - **`silver.proveedores`**:
   - Maestro de Open Mics / organizadores.
