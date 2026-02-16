@@ -7,6 +7,7 @@ BRONZE_SQL = PROJECT_ROOT / "specs/sql/bronze_multi_proveedor_master.sql"
 SILVER_SQL = PROJECT_ROOT / "specs/sql/silver_relacional.sql"
 SEED_SQL = PROJECT_ROOT / "specs/sql/seed_data.sql"
 MIGRATION_SQL = PROJECT_ROOT / "specs/sql/migrations/20260212_alter_tipo_solicitud_status.sql"
+GOLD_SQL = PROJECT_ROOT / "specs/sql/gold_relacional.sql"
 
 
 def read_lower(path: Path) -> str:
@@ -18,6 +19,7 @@ def test_sql_files_exist():
     assert SILVER_SQL.exists()
     assert SEED_SQL.exists()
     assert MIGRATION_SQL.exists()
+    assert GOLD_SQL.exists()
 
 
 def test_bronze_defines_only_solicitudes_table():
@@ -76,3 +78,23 @@ def test_migration_targets_silver_tipo_status():
     content = read_lower(MIGRATION_SQL)
     assert "create type silver.tipo_status" in content
     assert "alter type silver.tipo_status add value if not exists 'error_ingesta'" in content
+
+
+def test_gold_contains_master_and_history_tables():
+    content = read_lower(GOLD_SQL)
+    assert "create table if not exists gold.comicos_gold" in content
+    assert "create table if not exists gold.solicitudes_gold" in content
+
+
+def test_gold_defines_expected_enum_types():
+    content = read_lower(GOLD_SQL)
+    assert "create type gold.genero_comico" in content
+    assert "create type gold.categoria_comico" in content
+    assert "create type gold.estado_solicitud" in content
+
+
+def test_gold_supports_lineage_bridge_with_silver():
+    content = read_lower(GOLD_SQL)
+    assert "create or replace view gold.vw_linaje_silver_a_gold" in content
+    assert "from silver.solicitudes" in content
+    assert "join silver.comicos" in content
