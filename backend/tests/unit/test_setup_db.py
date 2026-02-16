@@ -75,7 +75,6 @@ def test_verify_enums_uses_expected_refs(monkeypatch):
     expected = {
         "silver.tipo_categoria": True,
         "silver.tipo_status": False,
-        "gold.genero_comico": True,
         "gold.categoria_comico": False,
         "gold.estado_solicitud": True,
     }
