@@ -29,6 +29,13 @@ CATEGORY_ALIASES = {
     "restricted": "blacklist",
 }
 
+SILVER_TO_GOLD_CATEGORY = {
+    "general": "standard",
+    "priority": "priority",
+    "gold": "gold",
+    "restricted": "restricted",
+}
+
 
 @dataclass(frozen=True)
 class SilverRequest:
@@ -36,6 +43,7 @@ class SilverRequest:
     nombre: str
     telefono: str
     instagram: str
+    categoria_silver: str
     fechas_disponibles: str
     marca_temporal: datetime | None
 
@@ -78,6 +86,11 @@ def normalize_category(raw_category: str | None) -> str:
     return CATEGORY_ALIASES.get(category, category)
 
 
+def map_silver_category_to_gold(raw_category: str | None) -> str:
+    normalized = (raw_category or "general").strip().lower()
+    return SILVER_TO_GOLD_CATEGORY.get(normalized, "standard")
+
+
 @contextmanager
 def db_connection():
     database_url = os.getenv("DATABASE_URL")
@@ -107,6 +120,7 @@ def fetch_silver_requests(conn) -> list[SilverRequest]:
                 COALESCE(c.nombre_artistico, b.nombre_raw, '') AS nombre,
                 c.telefono AS telefono,
                 COALESCE(c.instagram_user, '') AS instagram,
+                c.categoria::text AS categoria_silver,
                 to_char(s.fecha_evento, 'YYYY-MM-DD') AS fechas_disponibles,
                 s.created_at AS marca_temporal
             FROM silver.solicitudes s
@@ -126,42 +140,41 @@ def fetch_silver_requests(conn) -> list[SilverRequest]:
                 nombre=row[1],
                 telefono=row[2],
                 instagram=row[3],
-                fechas_disponibles=row[4],
-                marca_temporal=row[5],
+                categoria_silver=row[4],
+                fechas_disponibles=row[5],
+                marca_temporal=row[6],
             )
         )
     return requests
 
 
 def upsert_comico(conn, request: SilverRequest) -> tuple[str, str]:
+    categoria_gold = map_silver_category_to_gold(request.categoria_silver)
     with conn.cursor() as cursor:
-        cursor.execute(
-            """
-            SELECT id::text, categoria::text
-            FROM gold.comicos
-            WHERE id = %s
-            """,
-            (request.comico_id,),
-        )
-        found = cursor.fetchone()
-
-        if found:
-            return found[0], normalize_category(found[1])
-
         cursor.execute(
             """
             INSERT INTO gold.comicos (id, telefono, instagram, nombre, categoria)
             VALUES (%s, %s, %s, %s, %s)
+            ON CONFLICT (id) DO UPDATE
+            SET telefono = EXCLUDED.telefono,
+                instagram = EXCLUDED.instagram,
+                nombre = COALESCE(EXCLUDED.nombre, gold.comicos.nombre),
+                categoria = EXCLUDED.categoria
+            RETURNING id::text, categoria::text
             """,
             (
                 request.comico_id,
                 request.telefono,
                 request.instagram,
                 request.nombre,
-                "standard",
+                categoria_gold,
             ),
         )
-        return request.comico_id, "standard"
+        upserted = cursor.fetchone()
+
+    if not upserted:
+        return request.comico_id, normalize_category(categoria_gold)
+    return upserted[0], normalize_category(upserted[1])
 
 
 def has_recent_acceptance_penalty(conn, comico_id: str) -> bool:
@@ -322,6 +335,7 @@ def run_dummy_scoring_test() -> None:
         nombre="Comica A",
         telefono="+34111111111",
         instagram="comica_a",
+        categoria_silver="priority",
         fechas_disponibles="2026-03-10",
         marca_temporal=datetime(2026, 2, 1, 10, 0, tzinfo=timezone.utc),
     )
@@ -330,6 +344,7 @@ def run_dummy_scoring_test() -> None:
         nombre="Comico B",
         telefono="+34222222222",
         instagram="comico_b",
+        categoria_silver="priority",
         fechas_disponibles="2026-03-10",
         marca_temporal=datetime(2026, 2, 2, 10, 0, tzinfo=timezone.utc),
     )

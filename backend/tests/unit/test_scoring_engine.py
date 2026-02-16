@@ -11,6 +11,14 @@ def test_normalize_category_aliases_to_expected_business_values():
     assert engine.normalize_category("gold") == "gold"
 
 
+def test_map_silver_category_to_gold_uses_expected_equivalences():
+    assert engine.map_silver_category_to_gold("general") == "standard"
+    assert engine.map_silver_category_to_gold("priority") == "priority"
+    assert engine.map_silver_category_to_gold("gold") == "gold"
+    assert engine.map_silver_category_to_gold("restricted") == "restricted"
+    assert engine.map_silver_category_to_gold("unknown") == "standard"
+
+
 def test_compute_score_applies_category_bonus_penalty_and_single_bullet_bonus():
     assert engine.compute_score("gold", penalty_recent_acceptance=False, single_date=False) == 12
     assert engine.compute_score("preferred", penalty_recent_acceptance=False, single_date=True) == 30
