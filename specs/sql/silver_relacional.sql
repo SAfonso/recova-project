@@ -465,7 +465,9 @@ revoke all on schema silver from public;
 revoke usage on schema silver from anon, authenticated;
 grant usage on schema silver to anon;
 grant usage on schema silver to service_role;
-grant select, update on silver.solicitudes to anon;
+grant select, update on all tables in schema silver to anon;
 grant select, insert, update, delete on all tables in schema silver to service_role;
+alter default privileges in schema silver
+  grant select, update on tables to anon;
 alter default privileges in schema silver
   grant select, insert, update, delete on tables to service_role;
