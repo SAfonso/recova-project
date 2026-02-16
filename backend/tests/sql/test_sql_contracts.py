@@ -82,8 +82,10 @@ def test_migration_targets_silver_tipo_status():
 
 def test_gold_contains_master_and_history_tables():
     content = read_lower(GOLD_SQL)
-    assert "create table if not exists gold.comicos_gold" in content
-    assert "create table if not exists gold.solicitudes_gold" in content
+    assert "create table if not exists gold.comicos" in content
+    assert "create table if not exists gold.solicitudes" in content
+    assert "create table if not exists gold.comicos_gold" not in content
+    assert "create table if not exists gold.solicitudes_gold" not in content
 
 
 def test_gold_defines_expected_enum_types():

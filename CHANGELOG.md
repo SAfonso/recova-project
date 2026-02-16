@@ -5,6 +5,14 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2026-02-16
+
+### Changed
+- Nomenclatura de tablas Gold alineada al esquema: `gold.comicos` y `gold.solicitudes` (sin sufijos `_gold`), manteniendo compatibilidad de migración desde `gold.comicos_gold` / `gold.solicitudes_gold`.
+- `backend/src/scoring_engine.py` actualizado para usar tablas schema-qualified (`silver.*`, `bronze.solicitudes`, `gold.comicos`, `gold.solicitudes`) y evitar referencias legacy (`*_silver`, `*_gold`).
+- `backend/tests/sql/test_sql_contracts.py` actualizado para validar los nuevos nombres de tablas en la capa Gold.
+- Incremento de versión a `0.5.1` en `package.json`, `pyproject.toml` y `README.md`.
+
 ## [0.5.0] - 2026-02-16
 
 ### Added
