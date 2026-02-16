@@ -5,6 +5,13 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.5] - 2026-02-16
+
+### Changed
+- `specs/sql/silver_relacional.sql` amplía permisos de `anon` en Silver con `GRANT SELECT, UPDATE ON ALL TABLES IN SCHEMA silver` y `ALTER DEFAULT PRIVILEGES ... GRANT SELECT, UPDATE ON TABLES TO anon`.
+- `specs/sql/silver_relacional.sql` incorpora políticas RLS explícitas para `anon` sobre `silver.comicos` (lectura y actualización) y grant específico `GRANT SELECT, UPDATE ON silver.comicos TO anon`.
+- Incremento de versión a `0.5.5` en `package.json`, `pyproject.toml` y `README.md`.
+
 ## [0.5.4] - 2026-02-16
 
 ### Changed
