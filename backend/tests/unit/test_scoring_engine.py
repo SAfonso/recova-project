@@ -29,7 +29,7 @@ def test_run_dummy_scoring_test_executes_without_assertion_error():
 def test_sorting_prioritizes_oldest_timestamp_when_score_ties():
     older = engine.CandidateScore(
         nombre="A",
-        whatsapp="+34111111111",
+        telefono="+34111111111",
         instagram="a",
         comico_id="id-a",
         categoria="preferred",
@@ -41,7 +41,7 @@ def test_sorting_prioritizes_oldest_timestamp_when_score_ties():
     )
     newer = engine.CandidateScore(
         nombre="B",
-        whatsapp="+34222222222",
+        telefono="+34222222222",
         instagram="b",
         comico_id="id-b",
         categoria="preferred",
@@ -60,4 +60,4 @@ def test_sorting_prioritizes_oldest_timestamp_when_score_ties():
         ),
     )
 
-    assert ranking[0].whatsapp == older.whatsapp
+    assert ranking[0].telefono == older.telefono
