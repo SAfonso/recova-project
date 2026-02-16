@@ -1,0 +1,372 @@
+"""Motor de scoring para proponer lineups semanales desde datos Silver/Gold."""
+
+from __future__ import annotations
+
+import json
+import logging
+import os
+from contextlib import contextmanager
+from dataclasses import dataclass
+from datetime import date, datetime, timezone
+from logging.handlers import TimedRotatingFileHandler
+from typing import Any
+from uuid import uuid4
+
+from dotenv import load_dotenv
+
+LOGGER = logging.getLogger("scoring_engine")
+LOG_DIRECTORY = "/root/RECOVA/backend/logs"
+LOG_FILE_PATH = "/root/RECOVA/backend/logs/scoring_engine.log"
+
+CATEGORY_BONUS = {
+    "gold": 12,
+    "preferred": 10,
+    "standard": 0,
+}
+
+CATEGORY_ALIASES = {
+    "priority": "preferred",
+    "restricted": "blacklist",
+}
+
+
+@dataclass(frozen=True)
+class SilverRequest:
+    nombre: str
+    whatsapp: str
+    instagram: str
+    fechas_disponibles: str
+    marca_temporal: datetime | None
+
+
+@dataclass(frozen=True)
+class CandidateScore:
+    nombre: str
+    whatsapp: str
+    instagram: str
+    comico_id: str
+    categoria: str
+    score_final: int
+    marca_temporal: datetime | None
+    fecha_evento: date
+    penalizado_por_recencia: bool
+    bono_bala_unica: bool
+
+
+def configure_logging() -> None:
+    os.makedirs(LOG_DIRECTORY, exist_ok=True)
+
+    logger = logging.getLogger()
+    logger.handlers.clear()
+    logger.setLevel(os.getenv("LOG_LEVEL", "INFO").upper())
+
+    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+    rotating_handler = TimedRotatingFileHandler(
+        LOG_FILE_PATH,
+        when="midnight",
+        interval=1,
+        backupCount=14,
+        encoding="utf-8",
+    )
+    rotating_handler.setFormatter(formatter)
+    logger.addHandler(rotating_handler)
+
+
+def normalize_category(raw_category: str | None) -> str:
+    category = (raw_category or "standard").strip().lower()
+    return CATEGORY_ALIASES.get(category, category)
+
+
+@contextmanager
+def db_connection():
+    database_url = os.getenv("DATABASE_URL")
+    if not database_url:
+        raise RuntimeError("DATABASE_URL no está configurada")
+
+    import psycopg2
+
+    conn = psycopg2.connect(database_url)
+    conn.autocommit = False
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def fetch_silver_requests(conn) -> list[SilverRequest]:
+    with conn.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT
+                COALESCE(nombre, '') AS nombre,
+                whatsapp,
+                COALESCE(instagram, '') AS instagram,
+                COALESCE(fechas_disponibles, '') AS fechas_disponibles,
+                marca_temporal
+            FROM solicitudes_silver
+            WHERE whatsapp IS NOT NULL
+            ORDER BY marca_temporal ASC NULLS LAST
+            """
+        )
+        rows = cursor.fetchall()
+
+    requests: list[SilverRequest] = []
+    for row in rows:
+        requests.append(
+            SilverRequest(
+                nombre=row[0],
+                whatsapp=row[1],
+                instagram=row[2],
+                fechas_disponibles=row[3],
+                marca_temporal=row[4],
+            )
+        )
+    return requests
+
+
+def upsert_comico(conn, request: SilverRequest) -> tuple[str, str]:
+    with conn.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT id::text, categoria::text
+            FROM comicos_gold
+            WHERE whatsapp = %s
+            """,
+            (request.whatsapp,),
+        )
+        found = cursor.fetchone()
+
+        if found:
+            return found[0], normalize_category(found[1])
+
+        new_id = str(uuid4())
+        cursor.execute(
+            """
+            INSERT INTO comicos_gold (id, whatsapp, instagram, nombre, categoria)
+            VALUES (%s, %s, %s, %s, %s)
+            """,
+            (new_id, request.whatsapp, request.instagram, request.nombre, "standard"),
+        )
+        return new_id, "standard"
+
+
+def has_recent_acceptance_penalty(conn, comico_id: str) -> bool:
+    with conn.cursor() as cursor:
+        cursor.execute(
+            """
+            WITH ultimos_shows AS (
+                SELECT DISTINCT fecha_evento
+                FROM solicitudes_gold
+                WHERE estado = 'aceptado'
+                ORDER BY fecha_evento DESC
+                LIMIT 2
+            )
+            SELECT EXISTS (
+                SELECT 1
+                FROM solicitudes_gold sg
+                JOIN ultimos_shows us ON us.fecha_evento = sg.fecha_evento
+                WHERE sg.comico_id = %s
+                  AND sg.estado = 'aceptado'
+            )
+            """,
+            (comico_id,),
+        )
+        result = cursor.fetchone()
+
+    return bool(result[0]) if result else False
+
+
+def parse_primary_date(fechas_disponibles: str) -> date:
+    tokens = [item.strip() for item in (fechas_disponibles or "").split(",") if item.strip()]
+    for token in tokens:
+        for pattern in ("%Y-%m-%d", "%d-%m-%Y", "%d-%m-%y"):
+            try:
+                return datetime.strptime(token, pattern).date()
+            except ValueError:
+                continue
+    return datetime.now(timezone.utc).date()
+
+
+def has_single_date(fechas_disponibles: str) -> bool:
+    tokens = [item.strip() for item in (fechas_disponibles or "").split(",") if item.strip()]
+    return len(tokens) == 1
+
+
+def compute_score(category: str, penalty_recent_acceptance: bool, single_date: bool) -> int:
+    score = CATEGORY_BONUS.get(category, 0)
+    if penalty_recent_acceptance:
+        score -= 100
+    if single_date:
+        score += 20
+    return score
+
+
+def persist_pending_score(conn, candidate: CandidateScore) -> None:
+    with conn.cursor() as cursor:
+        cursor.execute(
+            """
+            INSERT INTO solicitudes_gold (
+                id,
+                comico_id,
+                fecha_evento,
+                estado,
+                score_aplicado,
+                marca_temporal
+            )
+            VALUES (%s, %s, %s, 'pendiente', %s, %s)
+            """,
+            (
+                str(uuid4()),
+                candidate.comico_id,
+                candidate.fecha_evento,
+                float(candidate.score_final),
+                candidate.marca_temporal,
+            ),
+        )
+
+
+def build_ranking(conn, requests: list[SilverRequest]) -> tuple[list[CandidateScore], int]:
+    scored_candidates: list[CandidateScore] = []
+    skipped_blacklist = 0
+
+    for request in requests:
+        try:
+            comico_id, category = upsert_comico(conn, request)
+            if category == "blacklist":
+                skipped_blacklist += 1
+                LOGGER.info("Descartado por blacklist: %s", request.whatsapp)
+                continue
+
+            penalty = has_recent_acceptance_penalty(conn, comico_id)
+            single_date = has_single_date(request.fechas_disponibles)
+            score = compute_score(category, penalty, single_date)
+
+            scored_candidates.append(
+                CandidateScore(
+                    nombre=request.nombre,
+                    whatsapp=request.whatsapp,
+                    instagram=request.instagram,
+                    comico_id=comico_id,
+                    categoria=category,
+                    score_final=score,
+                    marca_temporal=request.marca_temporal,
+                    fecha_evento=parse_primary_date(request.fechas_disponibles),
+                    penalizado_por_recencia=penalty,
+                    bono_bala_unica=single_date,
+                )
+            )
+        except Exception as exc:  # noqa: BLE001
+            LOGGER.exception(
+                "Error procesando solicitud whatsapp=%s: %s",
+                request.whatsapp,
+                exc,
+            )
+
+    scored_candidates.sort(
+        key=lambda item: (
+            -item.score_final,
+            item.marca_temporal or datetime.max.replace(tzinfo=timezone.utc),
+        )
+    )
+    return scored_candidates, skipped_blacklist
+
+
+def execute_scoring() -> dict[str, Any]:
+    with db_connection() as conn:
+        requests = fetch_silver_requests(conn)
+        ranking, skipped_blacklist = build_ranking(conn, requests)
+
+        for candidate in ranking:
+            persist_pending_score(conn, candidate)
+
+    top_10 = [
+        {
+            "nombre": candidate.nombre,
+            "whatsapp": candidate.whatsapp,
+            "instagram": candidate.instagram,
+            "categoria": candidate.categoria,
+            "score_final": candidate.score_final,
+            "marca_temporal": candidate.marca_temporal.isoformat()
+            if candidate.marca_temporal
+            else None,
+        }
+        for candidate in ranking[:10]
+    ]
+
+    return {
+        "status": "ok",
+        "filas_procesadas": len(requests),
+        "filas_insertadas_gold": len(ranking),
+        "filas_descartadas_blacklist": skipped_blacklist,
+        "top_10_sugeridos": top_10,
+    }
+
+
+def run_dummy_scoring_test() -> None:
+    old_request = SilverRequest(
+        nombre="Comica A",
+        whatsapp="+34111111111",
+        instagram="comica_a",
+        fechas_disponibles="2026-03-10",
+        marca_temporal=datetime(2026, 2, 1, 10, 0, tzinfo=timezone.utc),
+    )
+    new_request = SilverRequest(
+        nombre="Comico B",
+        whatsapp="+34222222222",
+        instagram="comico_b",
+        fechas_disponibles="2026-03-10",
+        marca_temporal=datetime(2026, 2, 2, 10, 0, tzinfo=timezone.utc),
+    )
+
+    score_a = compute_score("preferred", penalty_recent_acceptance=False, single_date=True)
+    score_b = compute_score("preferred", penalty_recent_acceptance=False, single_date=True)
+
+    ranking = sorted(
+        [
+            CandidateScore(
+                nombre=old_request.nombre,
+                whatsapp=old_request.whatsapp,
+                instagram=old_request.instagram,
+                comico_id="1",
+                categoria="preferred",
+                score_final=score_a,
+                marca_temporal=old_request.marca_temporal,
+                fecha_evento=date(2026, 3, 10),
+                penalizado_por_recencia=False,
+                bono_bala_unica=True,
+            ),
+            CandidateScore(
+                nombre=new_request.nombre,
+                whatsapp=new_request.whatsapp,
+                instagram=new_request.instagram,
+                comico_id="2",
+                categoria="preferred",
+                score_final=score_b,
+                marca_temporal=new_request.marca_temporal,
+                fecha_evento=date(2026, 3, 10),
+                penalizado_por_recencia=False,
+                bono_bala_unica=True,
+            ),
+        ],
+        key=lambda item: (-item.score_final, item.marca_temporal),
+    )
+
+    assert ranking[0].whatsapp == old_request.whatsapp
+    assert compute_score("gold", penalty_recent_acceptance=True, single_date=True) == -68
+    assert compute_score("standard", penalty_recent_acceptance=False, single_date=False) == 0
+
+
+if __name__ == "__main__":
+    load_dotenv()
+    configure_logging()
+
+    if os.getenv("SCORING_ENGINE_DUMMY_TEST", "false").lower() in {"1", "true", "yes"}:
+        run_dummy_scoring_test()
+        print(json.dumps({"status": "dummy_test_ok"}, ensure_ascii=False))
+    else:
+        result = execute_scoring()
+        print(json.dumps(result, ensure_ascii=False))
