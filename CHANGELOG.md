@@ -5,12 +5,17 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.5.2] - 2026-02-16
 
 ### Changed
 - `setup_db.py` ahora gestiona la capa Gold como parte del ciclo estándar (`SQL_SEQUENCE`, backup de `gold.comicos`/`gold.solicitudes`, reset de esquema `gold` y verificación de enums Gold).
 - `specs/sql/gold_relacional.sql` incorpora bloque de seguridad y operación equivalente a Bronze/Silver (RLS, policies `service_role` y grants del esquema).
 - Tests actualizados para validar la nueva gestión de Gold en setup y contratos SQL.
+- `specs/sql/gold_relacional.sql` renombra el identificador de contacto de Gold a `telefono` (antes `whatsapp`) y mantiene compatibilidad para migrar instalaciones existentes.
+- `backend/src/scoring_engine.py` migra de `whatsapp` a `telefono` en lectura/escritura de Gold, logs y salida JSON.
+- `specs/sql/silver_relacional.sql` elimina los flags booleanos legacy de Silver (`is_gold`, `is_priority`, `is_restricted`) y su lógica de mantenimiento en esquema.
+- `specs/sql/seed_data.sql` se ajusta al nuevo contrato de `silver.comicos` sin flags booleanos.
+- Incremento de versión a `0.5.2` en `package.json`, `pyproject.toml` y `README.md`.
 
 ## [0.5.1] - 2026-02-16
 

@@ -42,6 +42,9 @@ def test_silver_contains_master_and_transactional_tables():
     assert "create table if not exists silver.comicos" in content
     assert "create table if not exists silver.proveedores" in content
     assert "create table if not exists silver.solicitudes" in content
+    assert "is_gold boolean" not in content
+    assert "is_priority boolean" not in content
+    assert "is_restricted boolean" not in content
 
 
 def test_silver_enum_types_live_in_silver_schema():
@@ -86,6 +89,8 @@ def test_gold_contains_master_and_history_tables():
     assert "create table if not exists gold.solicitudes" in content
     assert "create table if not exists gold.comicos_gold" not in content
     assert "create table if not exists gold.solicitudes_gold" not in content
+    assert "telefono text not null unique" in content
+    assert "whatsapp text not null unique" not in content
 
 
 def test_gold_defines_expected_enum_types():
@@ -100,6 +105,7 @@ def test_gold_supports_lineage_bridge_with_silver():
     assert "create or replace view gold.vw_linaje_silver_a_gold" in content
     assert "from silver.solicitudes" in content
     assert "join silver.comicos" in content
+    assert "sc.telefono = c.telefono" in content
 
 
 def test_gold_enforces_rls_and_service_role_permissions():

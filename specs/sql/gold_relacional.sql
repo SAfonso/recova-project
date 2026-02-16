@@ -27,6 +27,26 @@ BEGIN
 END
 $$;
 
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'gold'
+      AND table_name = 'comicos'
+      AND column_name = 'whatsapp'
+  ) AND NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'gold'
+      AND table_name = 'comicos'
+      AND column_name = 'telefono'
+  ) THEN
+    ALTER TABLE gold.comicos RENAME COLUMN whatsapp TO telefono;
+  END IF;
+END
+$$;
+
 -- ---------------------------------------------------------
 -- ENUMs Gold
 -- ---------------------------------------------------------
@@ -76,7 +96,7 @@ create table if not exists gold.comicos (
   id uuid primary key,
 
   -- Identificadores normalizados de contacto.
-  whatsapp text not null unique,
+  telefono text not null unique,
   instagram text not null unique,
 
   nombre text,
@@ -93,13 +113,13 @@ create table if not exists gold.comicos (
       and left(instagram, 1) <> '@'
     ),
 
-  constraint chk_gold_comicos_whatsapp_internacional
-    check (whatsapp ~ '^\+[1-9][0-9]{7,14}$')
+  constraint chk_gold_comicos_telefono_internacional
+    check (telefono ~ '^\+[1-9][0-9]{7,14}$')
 );
 
--- Índices de lookup para cruce rápido desde Silver por whatsapp/instagram.
-create index if not exists idx_gold_comicos_whatsapp
-  on gold.comicos (whatsapp);
+-- Índices de lookup para cruce rápido desde Silver por telefono/instagram.
+create index if not exists idx_gold_comicos_telefono
+  on gold.comicos (telefono);
 
 create index if not exists idx_gold_comicos_instagram
   on gold.comicos (instagram);
@@ -149,7 +169,7 @@ create index if not exists idx_gold_solicitudes_aceptadas_por_comico
 -- Vista de ayuda de linaje Silver -> Gold
 -- ---------------------------------------------------------
 -- Esta vista permite cruzar silver.solicitudes con comicos usando
--- whatsapp o instagram como llave de negocio, para resolver comico_id Gold
+-- telefono o instagram como llave de negocio, para resolver comico_id Gold
 -- aun cuando el proceso de carga llegue por distintas rutas.
 create or replace view gold.vw_linaje_silver_a_gold as
 select
@@ -157,14 +177,14 @@ select
   s.fecha_evento,
   s.created_at as silver_created_at,
   c.id as comico_gold_id,
-  c.whatsapp,
+  c.telefono,
   c.instagram
 from silver.solicitudes s
 join silver.comicos sc
   on sc.id = s.comico_id
 join gold.comicos c
   on (
-    (sc.telefono is not null and sc.telefono = c.whatsapp)
+    (sc.telefono is not null and sc.telefono = c.telefono)
     or sc.instagram_user = c.instagram
   );
 
@@ -175,7 +195,7 @@ comment on table gold.solicitudes is
   'Histórico Gold de solicitudes + scoring. ID heredado de silver.solicitudes.';
 
 comment on view gold.vw_linaje_silver_a_gold is
-  'Cruce operacional entre Silver y Gold por whatsapp/instagram para resolver linaje de comico_id.';
+  'Cruce operacional entre Silver y Gold por telefono/instagram para resolver linaje de comico_id.';
 
 -- ---------------------------------------------------------
 -- Operación y Seguridad Gold (alineado con Bronze/Silver)

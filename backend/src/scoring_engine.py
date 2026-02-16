@@ -34,7 +34,7 @@ CATEGORY_ALIASES = {
 class SilverRequest:
     comico_id: str
     nombre: str
-    whatsapp: str
+    telefono: str
     instagram: str
     fechas_disponibles: str
     marca_temporal: datetime | None
@@ -43,7 +43,7 @@ class SilverRequest:
 @dataclass(frozen=True)
 class CandidateScore:
     nombre: str
-    whatsapp: str
+    telefono: str
     instagram: str
     comico_id: str
     categoria: str
@@ -105,7 +105,7 @@ def fetch_silver_requests(conn) -> list[SilverRequest]:
             SELECT
                 s.comico_id::text AS comico_id,
                 COALESCE(c.nombre_artistico, b.nombre_raw, '') AS nombre,
-                c.telefono AS whatsapp,
+                c.telefono AS telefono,
                 COALESCE(c.instagram_user, '') AS instagram,
                 to_char(s.fecha_evento, 'YYYY-MM-DD') AS fechas_disponibles,
                 s.created_at AS marca_temporal
@@ -124,7 +124,7 @@ def fetch_silver_requests(conn) -> list[SilverRequest]:
             SilverRequest(
                 comico_id=row[0],
                 nombre=row[1],
-                whatsapp=row[2],
+                telefono=row[2],
                 instagram=row[3],
                 fechas_disponibles=row[4],
                 marca_temporal=row[5],
@@ -150,12 +150,12 @@ def upsert_comico(conn, request: SilverRequest) -> tuple[str, str]:
 
         cursor.execute(
             """
-            INSERT INTO gold.comicos (id, whatsapp, instagram, nombre, categoria)
+            INSERT INTO gold.comicos (id, telefono, instagram, nombre, categoria)
             VALUES (%s, %s, %s, %s, %s)
             """,
             (
                 request.comico_id,
-                request.whatsapp,
+                request.telefono,
                 request.instagram,
                 request.nombre,
                 "standard",
@@ -248,7 +248,7 @@ def build_ranking(conn, requests: list[SilverRequest]) -> tuple[list[CandidateSc
             comico_id, category = upsert_comico(conn, request)
             if category == "blacklist":
                 skipped_blacklist += 1
-                LOGGER.info("Descartado por blacklist: %s", request.whatsapp)
+                LOGGER.info("Descartado por blacklist: %s", request.telefono)
                 continue
 
             penalty = has_recent_acceptance_penalty(conn, comico_id)
@@ -258,7 +258,7 @@ def build_ranking(conn, requests: list[SilverRequest]) -> tuple[list[CandidateSc
             scored_candidates.append(
                 CandidateScore(
                     nombre=request.nombre,
-                    whatsapp=request.whatsapp,
+                    telefono=request.telefono,
                     instagram=request.instagram,
                     comico_id=comico_id,
                     categoria=category,
@@ -271,8 +271,8 @@ def build_ranking(conn, requests: list[SilverRequest]) -> tuple[list[CandidateSc
             )
         except Exception as exc:  # noqa: BLE001
             LOGGER.exception(
-                "Error procesando solicitud whatsapp=%s: %s",
-                request.whatsapp,
+                "Error procesando solicitud telefono=%s: %s",
+                request.telefono,
                 exc,
             )
 
@@ -296,7 +296,7 @@ def execute_scoring() -> dict[str, Any]:
     top_10 = [
         {
             "nombre": candidate.nombre,
-            "whatsapp": candidate.whatsapp,
+            "telefono": candidate.telefono,
             "instagram": candidate.instagram,
             "categoria": candidate.categoria,
             "score_final": candidate.score_final,
@@ -320,7 +320,7 @@ def run_dummy_scoring_test() -> None:
     old_request = SilverRequest(
         comico_id="1",
         nombre="Comica A",
-        whatsapp="+34111111111",
+        telefono="+34111111111",
         instagram="comica_a",
         fechas_disponibles="2026-03-10",
         marca_temporal=datetime(2026, 2, 1, 10, 0, tzinfo=timezone.utc),
@@ -328,7 +328,7 @@ def run_dummy_scoring_test() -> None:
     new_request = SilverRequest(
         comico_id="2",
         nombre="Comico B",
-        whatsapp="+34222222222",
+        telefono="+34222222222",
         instagram="comico_b",
         fechas_disponibles="2026-03-10",
         marca_temporal=datetime(2026, 2, 2, 10, 0, tzinfo=timezone.utc),
@@ -341,7 +341,7 @@ def run_dummy_scoring_test() -> None:
         [
             CandidateScore(
                 nombre=old_request.nombre,
-                whatsapp=old_request.whatsapp,
+                telefono=old_request.telefono,
                 instagram=old_request.instagram,
                 comico_id="1",
                 categoria="preferred",
@@ -353,7 +353,7 @@ def run_dummy_scoring_test() -> None:
             ),
             CandidateScore(
                 nombre=new_request.nombre,
-                whatsapp=new_request.whatsapp,
+                telefono=new_request.telefono,
                 instagram=new_request.instagram,
                 comico_id="2",
                 categoria="preferred",
@@ -367,7 +367,7 @@ def run_dummy_scoring_test() -> None:
         key=lambda item: (-item.score_final, item.marca_temporal),
     )
 
-    assert ranking[0].whatsapp == old_request.whatsapp
+    assert ranking[0].telefono == old_request.telefono
     assert compute_score("gold", penalty_recent_acceptance=True, single_date=True) == -68
     assert compute_score("standard", penalty_recent_acceptance=False, single_date=False) == 0
 

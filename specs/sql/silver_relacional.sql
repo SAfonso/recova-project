@@ -109,9 +109,6 @@ create table if not exists silver.comicos (
   instagram_user text not null unique,
   nombre_artistico text,
   telefono text,
-  is_gold boolean not null default false,
-  is_priority boolean not null default false,
-  is_restricted boolean not null default false,
   categoria silver.tipo_categoria not null default 'general',
   metadata_comico jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
@@ -133,13 +130,15 @@ create table if not exists silver.comicos (
 alter table silver.comicos
   add column if not exists nombre_artistico text,
   add column if not exists telefono text,
-  add column if not exists is_gold boolean not null default false,
-  add column if not exists is_priority boolean not null default false,
-  add column if not exists is_restricted boolean not null default false,
   add column if not exists categoria silver.tipo_categoria not null default 'general',
   add column if not exists metadata_comico jsonb not null default '{}'::jsonb,
   add column if not exists created_at timestamptz not null default now(),
   add column if not exists updated_at timestamptz not null default now();
+
+alter table silver.comicos
+  drop column if exists is_gold,
+  drop column if exists is_priority,
+  drop column if exists is_restricted;
 
 DO $$
 BEGIN

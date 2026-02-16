@@ -19,34 +19,28 @@ INSERT INTO silver.comicos (
   instagram_user,
   nombre_artistico,
   telefono,
-  is_gold,
-  is_priority,
-  is_restricted,
   categoria,
   metadata_comico
 )
 VALUES
-  ('20000000-0000-0000-0000-000000000001', 'veterano_alpha', 'Veterano Alpha', '+5491111111101', true,  false, false, 'gold', '{}'),
-  ('20000000-0000-0000-0000-000000000002', 'veterano_beta',  'Veterano Beta',  '+5491111111102', true,  false, false, 'gold', '{}'),
+  ('20000000-0000-0000-0000-000000000001', 'veterano_alpha', 'Veterano Alpha', '+5491111111101', 'gold', '{}'),
+  ('20000000-0000-0000-0000-000000000002', 'veterano_beta',  'Veterano Beta',  '+5491111111102', 'gold', '{}'),
 
-  ('20000000-0000-0000-0000-000000000003', 'prioridad_nora', 'Nora Priority',  '+5491111111103', false, true,  false, 'priority', '{}'),
-  ('20000000-0000-0000-0000-000000000004', 'prioridad_tomi', 'Tomi Priority',  '+5491111111104', false, true,  false, 'priority', '{}'),
-  ('20000000-0000-0000-0000-000000000005', 'prioridad_luz',  'Luz Priority',   '+5491111111105', false, true,  false, 'priority', '{}'),
+  ('20000000-0000-0000-0000-000000000003', 'prioridad_nora', 'Nora Priority',  '+5491111111103', 'priority', '{}'),
+  ('20000000-0000-0000-0000-000000000004', 'prioridad_tomi', 'Tomi Priority',  '+5491111111104', 'priority', '{}'),
+  ('20000000-0000-0000-0000-000000000005', 'prioridad_luz',  'Luz Priority',   '+5491111111105', 'priority', '{}'),
 
-  ('20000000-0000-0000-0000-000000000006', 'general_mati',   'Mati General',   '+5491111111106', false, false, false, 'general', '{}'),
-  ('20000000-0000-0000-0000-000000000007', 'general_ro',     'Ro General',     '+5491111111107', false, false, false, 'general', '{}'),
-  ('20000000-0000-0000-0000-000000000008', 'general_santi',  'Santi General',  '+5491111111108', false, false, false, 'general', '{}'),
-  ('20000000-0000-0000-0000-000000000009', 'general_eli',    'Eli General',    '+5491111111109', false, false, false, 'general', '{}'),
-  ('20000000-0000-0000-0000-000000000010', 'general_fer',    'Fer General',    '+5491111111110', false, false, false, 'general', '{}'),
+  ('20000000-0000-0000-0000-000000000006', 'general_mati',   'Mati General',   '+5491111111106', 'general', '{}'),
+  ('20000000-0000-0000-0000-000000000007', 'general_ro',     'Ro General',     '+5491111111107', 'general', '{}'),
+  ('20000000-0000-0000-0000-000000000008', 'general_santi',  'Santi General',  '+5491111111108', 'general', '{}'),
+  ('20000000-0000-0000-0000-000000000009', 'general_eli',    'Eli General',    '+5491111111109', 'general', '{}'),
+  ('20000000-0000-0000-0000-000000000010', 'general_fer',    'Fer General',    '+5491111111110', 'general', '{}'),
 
   (
     '20000000-0000-0000-0000-000000000011',
     'el_cancelado',
     'El Cancelado',
     '+5491111111111',
-    false,
-    false,
-    true,
     'restricted',
     '{"motivo": "Falta de respeto al público", "fecha_veto": "2026-01-01"}'::jsonb
   )
