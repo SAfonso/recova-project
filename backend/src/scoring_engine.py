@@ -32,6 +32,7 @@ CATEGORY_ALIASES = {
 
 @dataclass(frozen=True)
 class SilverRequest:
+    comico_id: str
     nombre: str
     whatsapp: str
     instagram: str
@@ -102,14 +103,17 @@ def fetch_silver_requests(conn) -> list[SilverRequest]:
         cursor.execute(
             """
             SELECT
-                COALESCE(nombre, '') AS nombre,
-                whatsapp,
-                COALESCE(instagram, '') AS instagram,
-                COALESCE(fechas_disponibles, '') AS fechas_disponibles,
-                marca_temporal
-            FROM solicitudes_silver
-            WHERE whatsapp IS NOT NULL
-            ORDER BY marca_temporal ASC NULLS LAST
+                s.comico_id::text AS comico_id,
+                COALESCE(c.nombre_artistico, b.nombre_raw, '') AS nombre,
+                c.telefono AS whatsapp,
+                COALESCE(c.instagram_user, '') AS instagram,
+                to_char(s.fecha_evento, 'YYYY-MM-DD') AS fechas_disponibles,
+                s.created_at AS marca_temporal
+            FROM silver.solicitudes s
+            JOIN silver.comicos c ON c.id = s.comico_id
+            LEFT JOIN bronze.solicitudes b ON b.id = s.bronze_id
+            WHERE c.telefono IS NOT NULL
+            ORDER BY s.created_at ASC NULLS LAST
             """
         )
         rows = cursor.fetchall()
@@ -118,11 +122,12 @@ def fetch_silver_requests(conn) -> list[SilverRequest]:
     for row in rows:
         requests.append(
             SilverRequest(
-                nombre=row[0],
-                whatsapp=row[1],
-                instagram=row[2],
-                fechas_disponibles=row[3],
-                marca_temporal=row[4],
+                comico_id=row[0],
+                nombre=row[1],
+                whatsapp=row[2],
+                instagram=row[3],
+                fechas_disponibles=row[4],
+                marca_temporal=row[5],
             )
         )
     return requests
@@ -133,25 +138,30 @@ def upsert_comico(conn, request: SilverRequest) -> tuple[str, str]:
         cursor.execute(
             """
             SELECT id::text, categoria::text
-            FROM comicos_gold
-            WHERE whatsapp = %s
+            FROM gold.comicos
+            WHERE id = %s
             """,
-            (request.whatsapp,),
+            (request.comico_id,),
         )
         found = cursor.fetchone()
 
         if found:
             return found[0], normalize_category(found[1])
 
-        new_id = str(uuid4())
         cursor.execute(
             """
-            INSERT INTO comicos_gold (id, whatsapp, instagram, nombre, categoria)
+            INSERT INTO gold.comicos (id, whatsapp, instagram, nombre, categoria)
             VALUES (%s, %s, %s, %s, %s)
             """,
-            (new_id, request.whatsapp, request.instagram, request.nombre, "standard"),
+            (
+                request.comico_id,
+                request.whatsapp,
+                request.instagram,
+                request.nombre,
+                "standard",
+            ),
         )
-        return new_id, "standard"
+        return request.comico_id, "standard"
 
 
 def has_recent_acceptance_penalty(conn, comico_id: str) -> bool:
@@ -160,14 +170,14 @@ def has_recent_acceptance_penalty(conn, comico_id: str) -> bool:
             """
             WITH ultimos_shows AS (
                 SELECT DISTINCT fecha_evento
-                FROM solicitudes_gold
+                FROM gold.solicitudes
                 WHERE estado = 'aceptado'
                 ORDER BY fecha_evento DESC
                 LIMIT 2
             )
             SELECT EXISTS (
                 SELECT 1
-                FROM solicitudes_gold sg
+                FROM gold.solicitudes sg
                 JOIN ultimos_shows us ON us.fecha_evento = sg.fecha_evento
                 WHERE sg.comico_id = %s
                   AND sg.estado = 'aceptado'
@@ -209,7 +219,7 @@ def persist_pending_score(conn, candidate: CandidateScore) -> None:
     with conn.cursor() as cursor:
         cursor.execute(
             """
-            INSERT INTO solicitudes_gold (
+            INSERT INTO gold.solicitudes (
                 id,
                 comico_id,
                 fecha_evento,
@@ -308,6 +318,7 @@ def execute_scoring() -> dict[str, Any]:
 
 def run_dummy_scoring_test() -> None:
     old_request = SilverRequest(
+        comico_id="1",
         nombre="Comica A",
         whatsapp="+34111111111",
         instagram="comica_a",
@@ -315,6 +326,7 @@ def run_dummy_scoring_test() -> None:
         marca_temporal=datetime(2026, 2, 1, 10, 0, tzinfo=timezone.utc),
     )
     new_request = SilverRequest(
+        comico_id="2",
         nombre="Comico B",
         whatsapp="+34222222222",
         instagram="comico_b",

@@ -2,13 +2,30 @@
 -- AI LineUp Architect - Capa Gold (PostgreSQL / Supabase)
 -- =========================================================
 -- Objetivo:
---   1) Mantener una maestra de perfiles enriquecidos (comicos_gold).
---   2) Persistir historial de solicitudes + scoring (solicitudes_gold).
+--   1) Mantener una maestra de perfiles enriquecidos (comicos).
+--   2) Persistir historial de solicitudes + scoring (solicitudes).
 --   3) Conservar linaje desde Silver reutilizando IDs de origen.
 
 create extension if not exists pgcrypto;
 
 create schema if not exists gold;
+
+-- ---------------------------------------------------------
+-- Compatibilidad: renombrar tablas legacy *_gold
+-- ---------------------------------------------------------
+DO $$
+BEGIN
+  IF to_regclass('gold.comicos') IS NULL
+     AND to_regclass('gold.comicos_gold') IS NOT NULL THEN
+    ALTER TABLE gold.comicos_gold RENAME TO comicos;
+  END IF;
+
+  IF to_regclass('gold.solicitudes') IS NULL
+     AND to_regclass('gold.solicitudes_gold') IS NOT NULL THEN
+    ALTER TABLE gold.solicitudes_gold RENAME TO solicitudes;
+  END IF;
+END
+$$;
 
 -- ---------------------------------------------------------
 -- ENUMs Gold
@@ -54,7 +71,7 @@ $$;
 -- ---------------------------------------------------------
 -- Tabla maestra de perfiles (nutrida de silver.comicos)
 -- ---------------------------------------------------------
-create table if not exists gold.comicos_gold (
+create table if not exists gold.comicos (
   -- Linaje: este ID debe venir de silver.comicos.id para mantener trazabilidad.
   id uuid primary key,
 
@@ -82,18 +99,18 @@ create table if not exists gold.comicos_gold (
 
 -- Índices de lookup para cruce rápido desde Silver por whatsapp/instagram.
 create index if not exists idx_gold_comicos_whatsapp
-  on gold.comicos_gold (whatsapp);
+  on gold.comicos (whatsapp);
 
 create index if not exists idx_gold_comicos_instagram
-  on gold.comicos_gold (instagram);
+  on gold.comicos (instagram);
 
 create index if not exists idx_gold_comicos_fecha_ultima_actuacion
-  on gold.comicos_gold (fecha_ultima_actuacion);
+  on gold.comicos (fecha_ultima_actuacion);
 
 -- ---------------------------------------------------------
 -- Historial de solicitudes y scoring (nutrida de silver.solicitudes)
 -- ---------------------------------------------------------
-create table if not exists gold.solicitudes_gold (
+create table if not exists gold.solicitudes (
   -- Linaje: este ID debe venir de silver.solicitudes.id.
   id uuid primary key,
 
@@ -110,28 +127,28 @@ create table if not exists gold.solicitudes_gold (
 
   constraint fk_gold_solicitudes_comico
     foreign key (comico_id)
-    references gold.comicos_gold(id)
+    references gold.comicos(id)
     on delete cascade
 );
 
 create index if not exists idx_gold_solicitudes_comico_fecha
-  on gold.solicitudes_gold (comico_id, fecha_evento desc);
+  on gold.solicitudes (comico_id, fecha_evento desc);
 
 create index if not exists idx_gold_solicitudes_estado_fecha
-  on gold.solicitudes_gold (estado, fecha_evento desc);
+  on gold.solicitudes (estado, fecha_evento desc);
 
 create index if not exists idx_gold_solicitudes_marca_temporal
-  on gold.solicitudes_gold (marca_temporal);
+  on gold.solicitudes (marca_temporal);
 
 -- Índice parcial clave para reglas de “ha actuado recientemente”.
 create index if not exists idx_gold_solicitudes_aceptadas_por_comico
-  on gold.solicitudes_gold (comico_id, fecha_evento desc)
+  on gold.solicitudes (comico_id, fecha_evento desc)
   where estado = 'aceptado';
 
 -- ---------------------------------------------------------
 -- Vista de ayuda de linaje Silver -> Gold
 -- ---------------------------------------------------------
--- Esta vista permite cruzar solicitudes_silver con comicos_gold usando
+-- Esta vista permite cruzar silver.solicitudes con comicos usando
 -- whatsapp o instagram como llave de negocio, para resolver comico_id Gold
 -- aun cuando el proceso de carga llegue por distintas rutas.
 create or replace view gold.vw_linaje_silver_a_gold as
@@ -145,16 +162,16 @@ select
 from silver.solicitudes s
 join silver.comicos sc
   on sc.id = s.comico_id
-join gold.comicos_gold c
+join gold.comicos c
   on (
     (sc.telefono is not null and sc.telefono = c.whatsapp)
     or sc.instagram_user = c.instagram
   );
 
-comment on table gold.comicos_gold is
+comment on table gold.comicos is
   'Maestra Gold de perfiles. ID heredado de silver.comicos para trazabilidad end-to-end.';
 
-comment on table gold.solicitudes_gold is
+comment on table gold.solicitudes is
   'Histórico Gold de solicitudes + scoring. ID heredado de silver.solicitudes.';
 
 comment on view gold.vw_linaje_silver_a_gold is
