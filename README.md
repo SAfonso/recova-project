@@ -241,7 +241,7 @@ Referencia extendida: `docs/webhook-listener-n8n-ingesta.md`
 El workflow `.github/workflows/deploy.yml` despliega al VPS por SSH en cada push a `dev`:
 1. `git pull origin dev`
 2. `pip install -r requirements.txt`
-3. ejecución de test de ingesta en servidor (gate previo)
+3. ejecución de la suite `backend/tests` en servidor (gate previo)
 4. reinicio/start de PM2 para `webhook-ingesta` solo si el test es exitoso
 
 ## 🏗️ Estructura del Proyecto (Refactorizada)

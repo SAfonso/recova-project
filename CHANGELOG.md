@@ -15,7 +15,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 
 ### Changed
 - `backend/tests/sql/test_sql_contracts.py` amplía contratos para validar existencia/estructura de la capa Gold y su vista de linaje con Silver.
-- `.github/workflows/deploy.yml` añade gate de pruebas previo al restart/start de PM2 en deploy (`push` a `dev`), para evitar publicar cambios si el test de ingesta falla.
+- `.github/workflows/deploy.yml` añade gate de pruebas previo al restart/start de PM2 en deploy (`push` a `dev`), ejecutando `pytest -q backend/tests` para evitar publicar cambios con regresiones.
 - Incremento de versión a `0.5.0` en `package.json`, `pyproject.toml` y `README.md`.
 
 ## [0.4.9] - 2026-02-15

@@ -17,20 +17,19 @@ jobs:
           username: root
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
+              set -euo pipefail
               export PATH=$PATH:/usr/bin:/usr/local/bin
               cd /root/RECOVA
               git pull origin dev
               ./venv/bin/pip install -r requirements.txt
               
-              # 1. Ejecutamos los tests primero. 
-              # Importante: Asegúrate de que la ruta sea backend/src/test_ingestion.py 
-              # que es donde lo creamos antes.
-              ./venv/bin/python3 -m pytest backend/src/test_ingestion.py && \
+              # 1. Ejecutamos la suite real del backend antes de reiniciar servicios.
+              ./venv/bin/python3 -m pytest -q backend/tests && \
               
               # 2. Solo si el comando anterior (pytest) es exitoso, se ejecuta lo siguiente:
               (
-                $(which pm2) restart webhook-ingesta || \
-                $(which pm2) start /root/RECOVA/backend/src/triggers/webhook_listener.py \
+                pm2 restart webhook-ingesta || \
+                pm2 start /root/RECOVA/backend/src/triggers/webhook_listener.py \
                 --name "webhook-ingesta" \
                 --interpreter /root/RECOVA/venv/bin/python3
               )
