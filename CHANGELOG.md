@@ -5,6 +5,13 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.8] - 2026-02-17
+
+### Changed
+- `backend/tests/unit/test_scoring_engine.py` actualiza las instancias de `CandidateScore` para incluir el nuevo argumento obligatorio `genero`, evitando `TypeError` por constructor incompleto.
+- Se mantiene la cobertura de desempate por tiempo en `test_sorting_prioritizes_oldest_timestamp_when_score_ties`, ahora con fixtures sintácticamente compatibles con el contrato actual de `CandidateScore`.
+- Incremento de versión a `0.5.8` en `package.json`, `pyproject.toml` y `README.md`.
+
 ## [0.5.7] - 2026-02-17
 
 ### Added
