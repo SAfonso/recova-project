@@ -17,6 +17,9 @@ MIGRATION_LINEUP_SQL = (
     PROJECT_ROOT
     / "specs/sql/migrations/20260218_create_lineup_candidates_and_validate_lineup.sql"
 )
+MIGRATION_LINEUP_SYNC_SQL = (
+    PROJECT_ROOT / "specs/sql/migrations/20260217_sync_lineup_validation_states.sql"
+)
 GOLD_SQL = PROJECT_ROOT / "specs/sql/gold_relacional.sql"
 
 
@@ -31,6 +34,7 @@ def test_sql_files_exist():
     assert MIGRATION_STATUS_SQL.exists()
     assert MIGRATION_RLS_SQL.exists()
     assert MIGRATION_LINEUP_SQL.exists()
+    assert MIGRATION_LINEUP_SYNC_SQL.exists()
     assert GOLD_SQL.exists()
 
 
@@ -131,6 +135,18 @@ def test_migration_creates_lineup_candidates_view_and_validate_lineup_function()
     assert "grant select on gold.lineup_candidates to anon, authenticated, service_role" in content
     assert "grant execute on function gold.validate_lineup(jsonb, date) to anon, authenticated, service_role" in content
     assert "grant usage on schema gold to anon, authenticated" in content
+
+
+def test_migration_syncs_lineup_validation_states_between_gold_and_silver():
+    content = read_lower(MIGRATION_LINEUP_SYNC_SQL)
+    assert "create or replace view gold.lineup_candidates as" in content
+    assert "s.id as solicitud_id" in content
+    assert "s.fecha_evento" in content
+    assert "create or replace function gold.validate_lineup(" in content
+    assert "update gold.solicitudes as s" in content
+    assert "set estado = 'aceptado'" in content
+    assert "update silver.solicitudes as ss" in content
+    assert "set status = 'aprobado'" in content
 
 
 def test_gold_contains_master_and_history_tables():

@@ -47,6 +47,7 @@ class SilverRequest:
     categoria_silver: str
     fechas_disponibles: str
     marca_temporal: datetime | None
+    solicitud_id: str = ""
 
 
 @dataclass(frozen=True)
@@ -62,6 +63,7 @@ class CandidateScore:
     fecha_evento: date
     penalizado_por_recencia: bool
     bono_bala_unica: bool
+    solicitud_id: str = ""
 
 
 def configure_logging() -> None:
@@ -118,6 +120,7 @@ def fetch_silver_requests(conn) -> list[SilverRequest]:
         cursor.execute(
             """
             SELECT
+                s.id::text AS solicitud_id,
                 s.comico_id::text AS comico_id,
                 COALESCE(c.nombre, b.nombre_raw, '') AS nombre,
                 c.telefono AS telefono,
@@ -130,6 +133,7 @@ def fetch_silver_requests(conn) -> list[SilverRequest]:
             JOIN silver.comicos c ON c.id = s.comico_id
             LEFT JOIN bronze.solicitudes b ON b.id = s.bronze_id
             WHERE c.telefono IS NOT NULL
+              AND s.status IN ('normalizado', 'scorado')
             ORDER BY s.created_at ASC NULLS LAST
             """
         )
@@ -139,14 +143,15 @@ def fetch_silver_requests(conn) -> list[SilverRequest]:
     for row in rows:
         requests.append(
             SilverRequest(
-                comico_id=row[0],
-                nombre=row[1],
-                telefono=row[2],
-                instagram=row[3],
-                genero=row[4],
-                categoria_silver=row[5],
-                fechas_disponibles=row[6],
-                marca_temporal=row[7],
+                solicitud_id=row[0],
+                comico_id=row[1],
+                nombre=row[2],
+                telefono=row[3],
+                instagram=row[4],
+                genero=row[5],
+                categoria_silver=row[6],
+                fechas_disponibles=row[7],
+                marca_temporal=row[8],
             )
         )
     return requests
@@ -235,6 +240,7 @@ def compute_score(category: str, penalty_recent_acceptance: bool, single_date: b
 
 
 def persist_pending_score(conn, candidate: CandidateScore) -> None:
+    solicitud_id = candidate.solicitud_id or str(uuid4())
     with conn.cursor() as cursor:
         cursor.execute(
             """
@@ -247,15 +253,33 @@ def persist_pending_score(conn, candidate: CandidateScore) -> None:
                 marca_temporal
             )
             VALUES (%s, %s, %s, 'pendiente', %s, %s)
+            ON CONFLICT (id) DO UPDATE
+            SET comico_id = EXCLUDED.comico_id,
+                fecha_evento = EXCLUDED.fecha_evento,
+                score_aplicado = EXCLUDED.score_aplicado,
+                marca_temporal = EXCLUDED.marca_temporal
+            WHERE gold.solicitudes.estado = 'pendiente'
             """,
             (
-                str(uuid4()),
+                solicitud_id,
                 candidate.comico_id,
                 candidate.fecha_evento,
                 float(candidate.score_final),
                 candidate.marca_temporal,
             ),
         )
+        if candidate.solicitud_id:
+            cursor.execute(
+                """
+                UPDATE silver.solicitudes
+                SET status = 'scorado',
+                    score_final = %s,
+                    updated_at = now()
+                WHERE id = %s
+                  AND status <> 'aprobado'
+                """,
+                (float(candidate.score_final), candidate.solicitud_id),
+            )
 
 
 def build_ranking(conn, requests: list[SilverRequest]) -> tuple[list[CandidateScore], int]:
@@ -287,6 +311,7 @@ def build_ranking(conn, requests: list[SilverRequest]) -> tuple[list[CandidateSc
                     fecha_evento=parse_primary_date(request.fechas_disponibles),
                     penalizado_por_recencia=penalty,
                     bono_bala_unica=single_date,
+                    solicitud_id=request.solicitud_id,
                 )
             )
         except Exception as exc:  # noqa: BLE001

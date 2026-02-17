@@ -25,7 +25,7 @@ function App() {
   const [error, setError] = useState('');
 
   const activeCandidate = useMemo(
-    () => candidates.find((candidate) => candidate.comico_id === activeId),
+    () => candidates.find((candidate) => candidate.solicitud_id === activeId),
     [candidates, activeId],
   );
 
@@ -36,7 +36,7 @@ function App() {
 
       const { data, error: fetchError } = await supabase
         .from('lineup_candidates')
-        .select('nombre,genero,categoria,estado,score_final,comico_id,contacto,telefono,instagram')
+        .select('solicitud_id,fecha_evento,nombre,genero,categoria,estado,score_final,comico_id,contacto,telefono,instagram')
         .order('score_final', { ascending: false, nullsFirst: false });
 
       if (fetchError) {
@@ -50,9 +50,11 @@ function App() {
         genero: row.genero === 'unknown' ? 'nb' : row.genero ?? 'nb',
         categoria: row.categoria === 'standard' ? 'priority' : row.categoria ?? 'priority',
       }));
+      const pendingFirst = normalized.filter((candidate) => candidate.estado === 'pendiente');
+      const selectionSource = pendingFirst.length > 0 ? pendingFirst : normalized;
 
       setCandidates(normalized);
-      setSelectedIds(normalized.slice(0, 5).map((candidate) => candidate.comico_id));
+      setSelectedIds(selectionSource.slice(0, 5).map((candidate) => candidate.solicitud_id));
       setLoading(false);
     };
 
@@ -60,7 +62,7 @@ function App() {
   }, []);
 
   const getDraft = (candidate) => {
-    const existing = edits[candidate.comico_id];
+    const existing = edits[candidate.solicitud_id];
     if (existing) {
       return existing;
     }
@@ -68,7 +70,7 @@ function App() {
   };
 
   const hasPendingEdit = (candidate) => {
-    const draft = edits[candidate.comico_id];
+    const draft = edits[candidate.solicitud_id];
     return !!draft && (draft.categoria !== candidate.categoria || draft.genero !== candidate.genero);
   };
 
@@ -77,7 +79,7 @@ function App() {
 
     setEdits((previous) => ({
       ...previous,
-      [activeCandidate.comico_id]: {
+      [activeCandidate.solicitud_id]: {
         ...getDraft(activeCandidate),
         [field]: value,
       },
@@ -97,7 +99,7 @@ function App() {
   };
 
   const selectedCandidates = useMemo(
-    () => candidates.filter((candidate) => selectedIds.includes(candidate.comico_id)),
+    () => candidates.filter((candidate) => selectedIds.includes(candidate.solicitud_id)),
     [candidates, selectedIds],
   );
 
@@ -137,6 +139,7 @@ function App() {
       const payload = selectedCandidates.map((candidate) => {
         const draft = getDraft(candidate);
         return {
+          solicitud_id: candidate.solicitud_id,
           comico_id: candidate.comico_id,
           categoria: draft.categoria,
           genero: draft.genero,
@@ -155,7 +158,7 @@ function App() {
 
       setCandidates((previous) =>
         previous.map((candidate) => {
-          const edited = payload.find((entry) => entry.comico_id === candidate.comico_id);
+          const edited = payload.find((entry) => entry.solicitud_id === candidate.solicitud_id);
           if (!edited) {
             return candidate;
           }
@@ -251,10 +254,10 @@ function App() {
           ) : (
             (activeTab === 'lineup' ? selectedCandidates : candidates).map((candidate) => {
               const draft = getDraft(candidate);
-              const selected = selectedIds.includes(candidate.comico_id);
+              const selected = selectedIds.includes(candidate.solicitud_id);
               return (
                 <article
-                  key={candidate.comico_id}
+                  key={candidate.solicitud_id}
                   className={`rounded-xl border p-4 ${
                     selected ? 'border-emerald-500/70 bg-slate-900' : 'border-slate-800 bg-slate-900/60'
                   }`}
@@ -284,14 +287,14 @@ function App() {
                   <div className="mt-4 flex flex-wrap gap-2">
                     <button
                       type="button"
-                      onClick={() => toggleSelected(candidate.comico_id)}
+                      onClick={() => toggleSelected(candidate.solicitud_id)}
                       className="rounded-md border border-emerald-500/60 px-3 py-1.5 text-sm text-emerald-200"
                     >
                       {selected ? 'Quitar del lineup' : 'Añadir al lineup'}
                     </button>
                     <button
                       type="button"
-                      onClick={() => setActiveId(candidate.comico_id)}
+                      onClick={() => setActiveId(candidate.solicitud_id)}
                       className="rounded-md border border-indigo-500/60 px-3 py-1.5 text-sm text-indigo-200"
                     >
                       Abrir ficha
