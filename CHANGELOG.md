@@ -5,6 +5,18 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.12] - 2026-02-17
+
+### Fixed
+- `frontend/src/App.jsx` endurece `validateLineup` para evitar `404` por webhook relativo cuando `VITE_N8N_WEBHOOK_URL` falta o está mal formateada.
+- `frontend/src/App.jsx` añade diagnóstico en consola (`URL detectada`, validación de protocolo, y detalle de `status/body` de respuesta no-OK desde n8n) para distinguir errores de ruta vs errores del webhook.
+- `frontend/src/App.jsx` asegura `setSaving(false)` en `finally`, evitando que el botón quede bloqueado en estado `Validando...`.
+
+### Changed
+- `README.md` documenta `VITE_N8N_WEBHOOK_URL` como variable requerida del frontend y recomienda URL absoluta `http/https`.
+- Incremento de versión a `0.5.12` en `package.json`, `pyproject.toml` y `README.md`.
+- Incremento de versión de frontend a `0.1.1` en `frontend/package.json`.
+
 ## [0.5.11] - 2026-02-17
 
 ### Fixed

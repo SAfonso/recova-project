@@ -1,6 +1,6 @@
 [project]
 name = "ai-lineup-architect-backend"
-version = "0.5.11"
+version = "0.5.12"
 description = "Backend scripts for LineUp scoring and ingestion"
 authors = [
     {name = "SAfonso"}
