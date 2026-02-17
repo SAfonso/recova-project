@@ -192,6 +192,24 @@ Los tests del backend viven en `backend/tests` y se ejecutan con `pytest`.
 
 Referencia extendida: `docs/tests-backend.md`
 
+## 💻 Frontend (Vite + React + Tailwind)
+La interfaz web vive en `frontend/` y usa `@supabase/supabase-js` con `db.schema = 'gold'` por defecto.
+
+Configuración:
+1. En `frontend/`, copia `.env.example` a `.env`.
+2. Define:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+
+Desarrollo local:
+- `cd frontend`
+- `npm install`
+- `npm run dev`
+
+Build:
+- `cd frontend`
+- `npm run build`
+
 ## 🔁 Flujo de Ingesta Bronze -> Silver
 El ingestion engine (`backend/src/bronze_to_silver_ingestion.py`) prepara el linaje operativo:
 1. Lee registros pendientes en `bronze.solicitudes`.
@@ -254,6 +272,8 @@ El workflow `.github/workflows/deploy.yml` despliega al VPS por SSH en cada push
 │   └── tests/            # Suite pytest (unit + contratos SQL)
 │       ├── unit/test_scoring_engine.py
 │       └── sql/test_sql_contracts.py
+├── frontend/             # App web (Vite + React + Tailwind)
+│   └── src/
 ├── .github/workflows/    # CI/CD
 │   └── deploy.yml
 ├── backups/              # Volcados temporales de seguridad (Local CSV) [GIT IGNORED]
