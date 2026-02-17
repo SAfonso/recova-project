@@ -1,7 +1,7 @@
 # AI LineUp Architect (MVP) 🎭
 
 **Estado del Proyecto:** 🛠️ En Desarrollo (MVP)  
-**Versión:** 0.5.8  
+**Versión:** 0.5.9  
 **Metodología:** Spec-Driven Development (SDD)
 
 Sistema automatizado para la gestión y generación de lineups y cartelería para Open Mics de comedia.
@@ -210,6 +210,7 @@ El scoring engine (`backend/src/scoring_engine.py`) transforma solicitudes curad
 - Salida:
   - Inserción de registros `pendiente` con `score_aplicado` en historial Gold.
   - Resumen JSON con `filas_procesadas`, `filas_insertadas_gold`, `filas_descartadas_blacklist` y `top_10_sugeridos`.
+  - `build_ranking` aplica intercalado por género con prioridad F/NB -> M -> Unknown y deduplicación por `comico_id` para evitar candidatos repetidos.
 - Logging: archivo rotativo diario en `/root/RECOVA/backend/logs/scoring_engine.log` (retención 14 días).
 
 Ejecución local:
