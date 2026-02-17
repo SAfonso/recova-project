@@ -25,7 +25,7 @@ function App() {
   const [error, setError] = useState('');
 
   const activeCandidate = useMemo(
-    () => candidates.find((candidate) => candidate.solicitud_id === activeId),
+    () => candidates.find((candidate) => candidate.row_key === activeId),
     [candidates, activeId],
   );
 
@@ -34,27 +34,63 @@ function App() {
       setLoading(true);
       setError('');
 
-      const { data, error: fetchError } = await supabase
+      let rows = [];
+      let useLegacyView = false;
+
+      const { data: dataV2, error: errorV2 } = await supabase
         .from('lineup_candidates')
         .select('solicitud_id,fecha_evento,nombre,genero,categoria,estado,score_final,comico_id,contacto,telefono,instagram')
         .order('score_final', { ascending: false, nullsFirst: false });
 
-      if (fetchError) {
-        setError(fetchError.message);
-        setLoading(false);
-        return;
+      if (errorV2) {
+        const isSchemaDrift = String(errorV2.message || '').includes('solicitud_id');
+        if (!isSchemaDrift) {
+          setError(errorV2.message);
+          setLoading(false);
+          return;
+        }
+
+        console.warn(
+          'lineup_candidates sin columna solicitud_id en este entorno. Usando modo compatibilidad legacy.',
+          { message: errorV2.message },
+        );
+
+        useLegacyView = true;
+        const { data: dataLegacy, error: errorLegacy } = await supabase
+          .from('lineup_candidates')
+          .select('nombre,genero,categoria,estado,score_final,comico_id,contacto,telefono,instagram')
+          .order('score_final', { ascending: false, nullsFirst: false });
+
+        if (errorLegacy) {
+          setError(errorLegacy.message);
+          setLoading(false);
+          return;
+        }
+
+        rows = dataLegacy ?? [];
+      } else {
+        rows = dataV2 ?? [];
       }
 
-      const normalized = (data ?? []).map((row) => ({
+      const normalized = rows.map((row, index) => ({
         ...row,
+        solicitud_id: useLegacyView ? null : (row.solicitud_id ?? null),
+        row_key: useLegacyView
+          ? `${row.comico_id ?? 'unknown'}-${index}`
+          : (row.solicitud_id ?? `${row.comico_id ?? 'unknown'}-${index}`),
+        fecha_evento: row.fecha_evento ?? null,
         genero: row.genero === 'unknown' ? 'nb' : row.genero ?? 'nb',
         categoria: row.categoria === 'standard' ? 'priority' : row.categoria ?? 'priority',
       }));
       const pendingFirst = normalized.filter((candidate) => candidate.estado === 'pendiente');
       const selectionSource = pendingFirst.length > 0 ? pendingFirst : normalized;
+      const firstEventDate = selectionSource.find((candidate) => candidate.fecha_evento)?.fecha_evento;
 
       setCandidates(normalized);
-      setSelectedIds(selectionSource.slice(0, 5).map((candidate) => candidate.solicitud_id));
+      setSelectedIds(selectionSource.slice(0, 5).map((candidate) => candidate.row_key));
+      if (firstEventDate) {
+        setEventDate(firstEventDate);
+      }
       setLoading(false);
     };
 
@@ -62,7 +98,7 @@ function App() {
   }, []);
 
   const getDraft = (candidate) => {
-    const existing = edits[candidate.solicitud_id];
+    const existing = edits[candidate.row_key];
     if (existing) {
       return existing;
     }
@@ -70,7 +106,7 @@ function App() {
   };
 
   const hasPendingEdit = (candidate) => {
-    const draft = edits[candidate.solicitud_id];
+    const draft = edits[candidate.row_key];
     return !!draft && (draft.categoria !== candidate.categoria || draft.genero !== candidate.genero);
   };
 
@@ -79,7 +115,7 @@ function App() {
 
     setEdits((previous) => ({
       ...previous,
-      [activeCandidate.solicitud_id]: {
+      [activeCandidate.row_key]: {
         ...getDraft(activeCandidate),
         [field]: value,
       },
@@ -99,7 +135,7 @@ function App() {
   };
 
   const selectedCandidates = useMemo(
-    () => candidates.filter((candidate) => selectedIds.includes(candidate.solicitud_id)),
+    () => candidates.filter((candidate) => selectedIds.includes(candidate.row_key)),
     [candidates, selectedIds],
   );
 
@@ -139,6 +175,7 @@ function App() {
       const payload = selectedCandidates.map((candidate) => {
         const draft = getDraft(candidate);
         return {
+          row_key: candidate.row_key,
           solicitud_id: candidate.solicitud_id,
           comico_id: candidate.comico_id,
           categoria: draft.categoria,
@@ -158,7 +195,7 @@ function App() {
 
       setCandidates((previous) =>
         previous.map((candidate) => {
-          const edited = payload.find((entry) => entry.solicitud_id === candidate.solicitud_id);
+          const edited = payload.find((entry) => entry.row_key === candidate.row_key);
           if (!edited) {
             return candidate;
           }
@@ -254,10 +291,10 @@ function App() {
           ) : (
             (activeTab === 'lineup' ? selectedCandidates : candidates).map((candidate) => {
               const draft = getDraft(candidate);
-              const selected = selectedIds.includes(candidate.solicitud_id);
+              const selected = selectedIds.includes(candidate.row_key);
               return (
                 <article
-                  key={candidate.solicitud_id}
+                  key={candidate.row_key}
                   className={`rounded-xl border p-4 ${
                     selected ? 'border-emerald-500/70 bg-slate-900' : 'border-slate-800 bg-slate-900/60'
                   }`}
@@ -287,14 +324,14 @@ function App() {
                   <div className="mt-4 flex flex-wrap gap-2">
                     <button
                       type="button"
-                      onClick={() => toggleSelected(candidate.solicitud_id)}
+                      onClick={() => toggleSelected(candidate.row_key)}
                       className="rounded-md border border-emerald-500/60 px-3 py-1.5 text-sm text-emerald-200"
                     >
                       {selected ? 'Quitar del lineup' : 'Añadir al lineup'}
                     </button>
                     <button
                       type="button"
-                      onClick={() => setActiveId(candidate.solicitud_id)}
+                      onClick={() => setActiveId(candidate.row_key)}
                       className="rounded-md border border-indigo-500/60 px-3 py-1.5 text-sm text-indigo-200"
                     >
                       Abrir ficha
