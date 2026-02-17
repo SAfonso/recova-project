@@ -102,6 +102,8 @@ function App() {
   );
 
   const validateLineup = async () => {
+    const n8nWebhookUrl = import.meta.env.VITE_N8N_WEBHOOK_URL;
+
     if (selectedIds.length !== 5) {
       setError('Debes seleccionar exactamente 5 cómicos para validar el lineup.');
       return;
@@ -141,6 +143,30 @@ function App() {
     );
 
     setEdits({});
+
+    try {
+      const n8nResponse = await fetch(n8nWebhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fecha: eventDate,
+          status: 'validado',
+          total: selectedIds.length,
+        }),
+      });
+
+      if (!n8nResponse.ok) {
+        throw new Error(`HTTP ${n8nResponse.status}`);
+      }
+
+      alert('✅ ¡LineUp validado! Enviando a n8n para generar el póster...');
+      window.location.reload();
+    } catch (n8nError) {
+      console.error('Error enviando webhook a n8n:', n8nError);
+    }
+
     setSaving(false);
   };
 
