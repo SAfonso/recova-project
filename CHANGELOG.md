@@ -5,6 +5,16 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.11] - 2026-02-17
+
+### Fixed
+- `setup_db.py` incorpora `specs/sql/migrations/20260218_create_lineup_candidates_and_validate_lineup.sql` en `SQL_SEQUENCE`, garantizando que `--reset` también aplique la vista `gold.lineup_candidates` y la función `gold.validate_lineup`.
+
+### Changed
+- `backend/tests/unit/test_setup_db.py` valida explícitamente que la migración `20260218_create_lineup_candidates_and_validate_lineup.sql` forme parte de la secuencia de despliegue.
+- `backend/tests/sql/test_sql_contracts.py` añade contrato para asegurar la existencia y contenido de la migración de `lineup_candidates` y `validate_lineup`.
+- Incremento de versión a `0.5.11` en `package.json`, `pyproject.toml` y `README.md`.
+
 ## [0.5.10] - 2026-02-17
 
 ### Fixed

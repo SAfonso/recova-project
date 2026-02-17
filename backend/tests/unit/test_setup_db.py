@@ -137,6 +137,10 @@ def test_sql_sequence_files_exist():
         assert path.exists(), f"No existe archivo SQL en secuencia: {path}"
 
     assert any(path.name == "gold_relacional.sql" for path in setup_db.SQL_SEQUENCE)
+    assert any(
+        path.name == "20260218_create_lineup_candidates_and_validate_lineup.sql"
+        for path in setup_db.SQL_SEQUENCE
+    )
     assert setup_db.SEED_SQL_PATH.exists(), "No existe archivo seed_data.sql"
 
 
