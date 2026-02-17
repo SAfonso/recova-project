@@ -350,7 +350,7 @@ function App() {
             onClick={validateLineup}
             className="mt-6 w-full rounded-md bg-emerald-500 px-4 py-2 font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {saving ? 'Validando...' : 'Validar LineUp'}
+            {saving ? 'Enviando a n8n...' : '🚀 VALIDAR Y GENERAR'}
           </button>
         </aside>
       </section>
