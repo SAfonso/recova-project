@@ -123,6 +123,9 @@ def test_migration_enforces_anon_update_policy_on_silver_comicos():
 def test_migration_creates_lineup_candidates_view_and_validate_lineup_function():
     content = read_lower(MIGRATION_LINEUP_SQL)
     assert "create or replace view gold.lineup_candidates as" in content
+    assert "s.estado" in content
+    assert "coalesce(c.telefono, c.instagram) as contacto" in content
+    assert "where s.estado = 'pendiente'" not in content
     assert "create or replace function gold.validate_lineup(" in content
     assert "returns void" in content
     assert "grant select on gold.lineup_candidates to anon, authenticated, service_role" in content
