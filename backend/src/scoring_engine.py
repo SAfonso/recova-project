@@ -296,21 +296,21 @@ def build_ranking(conn, requests: list[SilverRequest]) -> tuple[list[CandidateSc
                 exc,
             )
 
-    women_nb_candidates = sorted(
+    f_nb_candidates = sorted(
         [candidate for candidate in scored_candidates if candidate.genero in {"f", "nb"}],
         key=lambda item: (
             -item.score_final,
             item.marca_temporal or datetime.max.replace(tzinfo=timezone.utc),
         ),
     )
-    men_candidates = sorted(
+    m_candidates = sorted(
         [candidate for candidate in scored_candidates if candidate.genero == "m"],
         key=lambda item: (
             -item.score_final,
             item.marca_temporal or datetime.max.replace(tzinfo=timezone.utc),
         ),
     )
-    other_candidates = sorted(
+    unknowns = sorted(
         [candidate for candidate in scored_candidates if candidate.genero not in {"m", "f", "nb"}],
         key=lambda item: (
             -item.score_final,
@@ -322,33 +322,26 @@ def build_ranking(conn, requests: list[SilverRequest]) -> tuple[list[CandidateSc
     seen_ids: set[str] = set()
     idx_f = 0
     idx_m = 0
-    idx_u = 0
 
-    while (
-        idx_f < len(women_nb_candidates)
-        or idx_m < len(men_candidates)
-        or idx_u < len(other_candidates)
-    ):
-        if idx_f < len(women_nb_candidates):
-            candidate_f = women_nb_candidates[idx_f]
+    while idx_f < len(f_nb_candidates) or idx_m < len(m_candidates):
+        if idx_f < len(f_nb_candidates):
+            candidate_f = f_nb_candidates[idx_f]
             idx_f += 1
             if candidate_f.comico_id not in seen_ids:
                 balanced_ranking.append(candidate_f)
                 seen_ids.add(candidate_f.comico_id)
 
-        if idx_m < len(men_candidates):
-            candidate_m = men_candidates[idx_m]
+        if idx_m < len(m_candidates):
+            candidate_m = m_candidates[idx_m]
             idx_m += 1
             if candidate_m.comico_id not in seen_ids:
                 balanced_ranking.append(candidate_m)
                 seen_ids.add(candidate_m.comico_id)
 
-        if idx_u < len(other_candidates):
-            candidate_u = other_candidates[idx_u]
-            idx_u += 1
-            if candidate_u.comico_id not in seen_ids:
-                balanced_ranking.append(candidate_u)
-                seen_ids.add(candidate_u.comico_id)
+    for candidate_u in unknowns:
+        if candidate_u.comico_id not in seen_ids:
+            balanced_ranking.append(candidate_u)
+            seen_ids.add(candidate_u.comico_id)
 
     return balanced_ranking, skipped_blacklist
 
