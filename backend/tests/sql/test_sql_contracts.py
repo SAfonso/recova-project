@@ -127,6 +127,7 @@ def test_migration_creates_lineup_candidates_view_and_validate_lineup_function()
     assert "returns void" in content
     assert "grant select on gold.lineup_candidates to anon, authenticated, service_role" in content
     assert "grant execute on function gold.validate_lineup(jsonb, date) to anon, authenticated, service_role" in content
+    assert "grant usage on schema gold to anon, authenticated" in content
 
 
 def test_gold_contains_master_and_history_tables():
