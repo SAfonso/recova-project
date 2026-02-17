@@ -21,6 +21,7 @@ SQL_SEQUENCE = [
     ROOT_DIR / "specs/sql/migrations/20260217_fix_anon_update_policy_silver_comicos.sql",
     ROOT_DIR / "specs/sql/gold_relacional.sql",
     ROOT_DIR / "specs/sql/migrations/20260218_create_lineup_candidates_and_validate_lineup.sql",
+    ROOT_DIR / "specs/sql/migrations/20260217_sync_lineup_validation_states.sql",
 ]
 SEED_SQL_PATH = ROOT_DIR / "specs/sql/seed_data.sql"
 ENUM_TYPES = (
