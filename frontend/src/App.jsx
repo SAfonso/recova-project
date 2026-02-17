@@ -110,42 +110,62 @@ function App() {
     }
 
     setSaving(true);
-    setError('');
-
-    const payload = selectedCandidates.map((candidate) => {
-      const draft = getDraft(candidate);
-      return {
-        comico_id: candidate.comico_id,
-        categoria: draft.categoria,
-        genero: draft.genero,
-      };
-    });
-
-    const { error: rpcError } = await supabase.rpc('validate_lineup', {
-      p_selection: payload,
-      p_event_date: eventDate,
-    });
-
-    if (rpcError) {
-      setError(rpcError.message);
-      setSaving(false);
-      return;
-    }
-
-    setCandidates((previous) =>
-      previous.map((candidate) => {
-        const edited = payload.find((entry) => entry.comico_id === candidate.comico_id);
-        if (!edited) {
-          return candidate;
-        }
-        return { ...candidate, categoria: edited.categoria, genero: edited.genero };
-      }),
-    );
-
-    setEdits({});
-
     try {
-      const n8nResponse = await fetch(n8nWebhookUrl, {
+      setError('');
+      console.log('🔗 URL de n8n detectada:', n8nWebhookUrl);
+
+      const normalizedN8nWebhookUrl =
+        typeof n8nWebhookUrl === 'string' ? n8nWebhookUrl.trim() : '';
+
+      if (!normalizedN8nWebhookUrl) {
+        console.error(
+          'Error de configuración: VITE_N8N_WEBHOOK_URL está vacía o no definida. Revisa las variables de entorno en Vercel y en frontend/.env.',
+          { n8nWebhookUrl },
+        );
+        alert('⚠️ Error de configuración: La URL de n8n no está definida en las variables de entorno.');
+        return;
+      }
+
+      if (!normalizedN8nWebhookUrl.startsWith('http')) {
+        console.warn(
+          'VITE_N8N_WEBHOOK_URL parece mal formada (debe empezar por http/https). Se aborta el fetch para evitar rutas relativas.',
+          { normalizedN8nWebhookUrl },
+        );
+        return;
+      }
+
+      const payload = selectedCandidates.map((candidate) => {
+        const draft = getDraft(candidate);
+        return {
+          comico_id: candidate.comico_id,
+          categoria: draft.categoria,
+          genero: draft.genero,
+        };
+      });
+
+      const { error: rpcError } = await supabase.rpc('validate_lineup', {
+        p_selection: payload,
+        p_event_date: eventDate,
+      });
+
+      if (rpcError) {
+        setError(rpcError.message);
+        return;
+      }
+
+      setCandidates((previous) =>
+        previous.map((candidate) => {
+          const edited = payload.find((entry) => entry.comico_id === candidate.comico_id);
+          if (!edited) {
+            return candidate;
+          }
+          return { ...candidate, categoria: edited.categoria, genero: edited.genero };
+        }),
+      );
+
+      setEdits({});
+
+      const n8nResponse = await fetch(normalizedN8nWebhookUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -158,6 +178,13 @@ function App() {
       });
 
       if (!n8nResponse.ok) {
+        const n8nErrorBody = await n8nResponse.text();
+        console.error('Error HTTP desde n8n webhook', {
+          status: n8nResponse.status,
+          statusText: n8nResponse.statusText,
+          body: n8nErrorBody,
+          webhookUrl: normalizedN8nWebhookUrl,
+        });
         throw new Error(`HTTP ${n8nResponse.status}`);
       }
 
@@ -165,9 +192,10 @@ function App() {
       window.location.reload();
     } catch (n8nError) {
       console.error('Error enviando webhook a n8n:', n8nError);
+      setError('No se pudo notificar a n8n. Revisa la consola para más detalle.');
+    } finally {
+      setSaving(false);
     }
-
-    setSaving(false);
   };
 
   return (

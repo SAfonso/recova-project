@@ -1,7 +1,7 @@
 # AI LineUp Architect (MVP) 🎭
 
 **Estado del Proyecto:** 🛠️ En Desarrollo (MVP)  
-**Versión:** 0.5.11  
+**Versión:** 0.5.12  
 **Metodología:** Spec-Driven Development (SDD)
 
 Sistema automatizado para la gestión y generación de lineups y cartelería para Open Mics de comedia.
@@ -200,6 +200,7 @@ Configuración:
 2. Define:
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
+   - `VITE_N8N_WEBHOOK_URL` (URL absoluta `http/https` del webhook de n8n)
 
 Desarrollo local:
 - `cd frontend`
