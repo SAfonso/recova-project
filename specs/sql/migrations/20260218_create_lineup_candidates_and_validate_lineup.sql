@@ -8,13 +8,14 @@ SELECT
   c.nombre,
   c.genero,
   c.categoria,
+  s.estado,
   s.score_aplicado AS score_final,
   c.id AS comico_id,
+  COALESCE(c.telefono, c.instagram) AS contacto,
   c.telefono,
   c.instagram
 FROM gold.solicitudes s
-JOIN gold.comicos c ON c.id = s.comico_id
-WHERE s.estado = 'pendiente';
+JOIN gold.comicos c ON c.id = s.comico_id;
 
 CREATE OR REPLACE FUNCTION gold.validate_lineup(
   p_selection jsonb,

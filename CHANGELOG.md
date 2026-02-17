@@ -5,6 +5,21 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.13] - 2026-02-17
+
+### Fixed
+- `specs/sql/migrations/20260218_create_lineup_candidates_and_validate_lineup.sql` actualiza la vista `gold.lineup_candidates` para incluir `estado` (de `gold.solicitudes`) y `contacto` (`COALESCE(telefono, instagram)`), eliminando el filtro exclusivo por `pendiente` para exponer el estado real en Curation.
+- `frontend/src/App.jsx` amplía la consulta a `lineup_candidates` para recuperar `estado` y `contacto`, y muestra el estado por candidato en la UI de curación.
+
+### Added
+- `workflows/main_pipeline.json` añade una plantilla de flujo n8n con `Postgres -> Split in Batches -> HTTP Request` en bucle para procesar todos los registros de `silver.solicitudes` sin detenerse en el primer ítem.
+- `docs/scoring-batch-n8n-fix.md` documenta la configuración batch para n8n, payload por lotes y la consulta SQL de candidatos de scoring sin `LIMIT 1`.
+
+### Changed
+- `backend/tests/sql/test_sql_contracts.py` refuerza el contrato de la migración de `lineup_candidates` validando presencia de `estado`, `contacto` y ausencia de filtro fijo `WHERE s.estado = 'pendiente'`.
+- Incremento de versión a `0.5.13` en `package.json`, `pyproject.toml` y `README.md`.
+- Incremento de versión de frontend a `0.1.2` en `frontend/package.json`.
+
 ## [0.5.12] - 2026-02-17
 
 ### Fixed
