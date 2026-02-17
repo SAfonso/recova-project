@@ -43,6 +43,7 @@ class SilverRequest:
     nombre: str
     telefono: str
     instagram: str
+    genero: str
     categoria_silver: str
     fechas_disponibles: str
     marca_temporal: datetime | None
@@ -53,6 +54,7 @@ class CandidateScore:
     nombre: str
     telefono: str
     instagram: str
+    genero: str
     comico_id: str
     categoria: str
     score_final: int
@@ -120,6 +122,7 @@ def fetch_silver_requests(conn) -> list[SilverRequest]:
                 COALESCE(c.nombre, b.nombre_raw, '') AS nombre,
                 c.telefono AS telefono,
                 COALESCE(c.instagram, '') AS instagram,
+                COALESCE(c.genero, 'unknown') AS genero,
                 c.categoria::text AS categoria_silver,
                 to_char(s.fecha_evento, 'YYYY-MM-DD') AS fechas_disponibles,
                 s.created_at AS marca_temporal
@@ -140,9 +143,10 @@ def fetch_silver_requests(conn) -> list[SilverRequest]:
                 nombre=row[1],
                 telefono=row[2],
                 instagram=row[3],
-                categoria_silver=row[4],
-                fechas_disponibles=row[5],
-                marca_temporal=row[6],
+                genero=row[4],
+                categoria_silver=row[5],
+                fechas_disponibles=row[6],
+                marca_temporal=row[7],
             )
         )
     return requests
@@ -153,12 +157,13 @@ def upsert_comico(conn, request: SilverRequest) -> tuple[str, str]:
     with conn.cursor() as cursor:
         cursor.execute(
             """
-            INSERT INTO gold.comicos (id, telefono, instagram, nombre, categoria)
-            VALUES (%s, %s, %s, %s, %s)
+            INSERT INTO gold.comicos (id, telefono, instagram, nombre, genero, categoria)
+            VALUES (%s, %s, %s, %s, %s, %s)
             ON CONFLICT (id) DO UPDATE
             SET telefono = EXCLUDED.telefono,
                 instagram = EXCLUDED.instagram,
                 nombre = COALESCE(EXCLUDED.nombre, gold.comicos.nombre),
+                genero = EXCLUDED.genero,
                 categoria = EXCLUDED.categoria
             RETURNING id::text, categoria::text
             """,
@@ -167,6 +172,7 @@ def upsert_comico(conn, request: SilverRequest) -> tuple[str, str]:
                 request.telefono,
                 request.instagram,
                 request.nombre,
+                request.genero,
                 categoria_gold,
             ),
         )
@@ -273,6 +279,7 @@ def build_ranking(conn, requests: list[SilverRequest]) -> tuple[list[CandidateSc
                     nombre=request.nombre,
                     telefono=request.telefono,
                     instagram=request.instagram,
+                    genero=request.genero,
                     comico_id=comico_id,
                     categoria=category,
                     score_final=score,
@@ -289,13 +296,43 @@ def build_ranking(conn, requests: list[SilverRequest]) -> tuple[list[CandidateSc
                 exc,
             )
 
-    scored_candidates.sort(
+    women_nb_candidates = sorted(
+        [candidate for candidate in scored_candidates if candidate.genero in {"f", "nb"}],
         key=lambda item: (
             -item.score_final,
             item.marca_temporal or datetime.max.replace(tzinfo=timezone.utc),
-        )
+        ),
     )
-    return scored_candidates, skipped_blacklist
+    men_candidates = sorted(
+        [candidate for candidate in scored_candidates if candidate.genero == "m"],
+        key=lambda item: (
+            -item.score_final,
+            item.marca_temporal or datetime.max.replace(tzinfo=timezone.utc),
+        ),
+    )
+    other_candidates = sorted(
+        [candidate for candidate in scored_candidates if candidate.genero not in {"m", "f", "nb"}],
+        key=lambda item: (
+            -item.score_final,
+            item.marca_temporal or datetime.max.replace(tzinfo=timezone.utc),
+        ),
+    )
+
+    balanced_ranking: list[CandidateScore] = []
+    women_index = 0
+    men_index = 0
+
+    while women_index < len(women_nb_candidates) or men_index < len(men_candidates):
+        if women_index < len(women_nb_candidates):
+            balanced_ranking.append(women_nb_candidates[women_index])
+            women_index += 1
+        if men_index < len(men_candidates):
+            balanced_ranking.append(men_candidates[men_index])
+            men_index += 1
+
+    balanced_ranking.extend(other_candidates)
+
+    return balanced_ranking, skipped_blacklist
 
 
 def execute_scoring() -> dict[str, Any]:
@@ -311,6 +348,7 @@ def execute_scoring() -> dict[str, Any]:
             "nombre": candidate.nombre,
             "telefono": candidate.telefono,
             "instagram": candidate.instagram,
+            "genero": candidate.genero,
             "categoria": candidate.categoria,
             "score_final": candidate.score_final,
             "marca_temporal": candidate.marca_temporal.isoformat()
@@ -335,6 +373,7 @@ def run_dummy_scoring_test() -> None:
         nombre="Comica A",
         telefono="+34111111111",
         instagram="comica_a",
+        genero="f",
         categoria_silver="priority",
         fechas_disponibles="2026-03-10",
         marca_temporal=datetime(2026, 2, 1, 10, 0, tzinfo=timezone.utc),
@@ -344,6 +383,7 @@ def run_dummy_scoring_test() -> None:
         nombre="Comico B",
         telefono="+34222222222",
         instagram="comico_b",
+        genero="m",
         categoria_silver="priority",
         fechas_disponibles="2026-03-10",
         marca_temporal=datetime(2026, 2, 2, 10, 0, tzinfo=timezone.utc),
@@ -358,6 +398,7 @@ def run_dummy_scoring_test() -> None:
                 nombre=old_request.nombre,
                 telefono=old_request.telefono,
                 instagram=old_request.instagram,
+                genero=old_request.genero,
                 comico_id="1",
                 categoria="preferred",
                 score_final=score_a,
@@ -370,6 +411,7 @@ def run_dummy_scoring_test() -> None:
                 nombre=new_request.nombre,
                 telefono=new_request.telefono,
                 instagram=new_request.instagram,
+                genero=new_request.genero,
                 comico_id="2",
                 categoria="preferred",
                 score_final=score_b,
