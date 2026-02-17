@@ -6,7 +6,13 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 BRONZE_SQL = PROJECT_ROOT / "specs/sql/bronze_multi_proveedor_master.sql"
 SILVER_SQL = PROJECT_ROOT / "specs/sql/silver_relacional.sql"
 SEED_SQL = PROJECT_ROOT / "specs/sql/seed_data.sql"
-MIGRATION_SQL = PROJECT_ROOT / "specs/sql/migrations/20260212_alter_tipo_solicitud_status.sql"
+MIGRATION_STATUS_SQL = (
+    PROJECT_ROOT / "specs/sql/migrations/20260212_alter_tipo_solicitud_status.sql"
+)
+MIGRATION_RLS_SQL = (
+    PROJECT_ROOT
+    / "specs/sql/migrations/20260217_fix_anon_update_policy_silver_comicos.sql"
+)
 GOLD_SQL = PROJECT_ROOT / "specs/sql/gold_relacional.sql"
 
 
@@ -18,7 +24,8 @@ def test_sql_files_exist():
     assert BRONZE_SQL.exists()
     assert SILVER_SQL.exists()
     assert SEED_SQL.exists()
-    assert MIGRATION_SQL.exists()
+    assert MIGRATION_STATUS_SQL.exists()
+    assert MIGRATION_RLS_SQL.exists()
     assert GOLD_SQL.exists()
 
 
@@ -70,6 +77,16 @@ def test_silver_comicos_enforces_instagram_normalization():
     assert "instagram = lower(instagram)" in content
 
 
+def test_silver_allows_anon_select_update_on_comicos_with_rls_policies():
+    content = read_lower(SILVER_SQL)
+    assert "alter table silver.comicos enable row level security" in content
+    assert 'drop policy if exists "p_anon_select_silver_comicos" on silver.comicos' in content
+    assert 'drop policy if exists "p_anon_update_silver_comicos" on silver.comicos' in content
+    assert 'create policy "p_anon_select_silver_comicos"' in content
+    assert 'create policy "p_anon_update_silver_comicos"' in content
+    assert "grant select, update on silver.comicos to anon" in content
+
+
 def test_seed_uses_bronze_and_silver_with_lineage_column():
     content = read_lower(SEED_SQL)
     assert "insert into bronze.solicitudes" in content
@@ -83,9 +100,19 @@ def test_seed_avoids_public_schema_inserts():
 
 
 def test_migration_targets_silver_tipo_status():
-    content = read_lower(MIGRATION_SQL)
+    content = read_lower(MIGRATION_STATUS_SQL)
     assert "create type silver.tipo_status" in content
     assert "alter type silver.tipo_status add value if not exists 'error_ingesta'" in content
+
+
+def test_migration_enforces_anon_update_policy_on_silver_comicos():
+    content = read_lower(MIGRATION_RLS_SQL)
+    assert "alter table silver.comicos enable row level security" in content
+    assert 'drop policy if exists "p_anon_update_silver_comicos" on silver.comicos' in content
+    assert 'create policy "p_anon_update_silver_comicos"' in content
+    assert "for update to anon" in content
+    assert "using (true)" in content
+    assert "with check (true)" in content
 
 
 def test_gold_contains_master_and_history_tables():

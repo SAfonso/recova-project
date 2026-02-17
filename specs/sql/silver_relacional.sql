@@ -461,15 +461,20 @@ to anon
 using (true)
 with check (true);
 
+alter table silver.comicos enable row level security;
+
 drop policy if exists "Permitir lectura comicos anon" on silver.comicos;
-create policy "Permitir lectura comicos anon"
+drop policy if exists "Permitir update comicos anon" on silver.comicos;
+drop policy if exists "p_anon_select_silver_comicos" on silver.comicos;
+drop policy if exists "p_anon_update_silver_comicos" on silver.comicos;
+
+create policy "p_anon_select_silver_comicos"
 on silver.comicos
 for select
 to anon
 using (true);
 
-drop policy if exists "Permitir update comicos anon" on silver.comicos;
-create policy "Permitir update comicos anon"
+create policy "p_anon_update_silver_comicos"
 on silver.comicos
 for update
 to anon
