@@ -319,18 +319,36 @@ def build_ranking(conn, requests: list[SilverRequest]) -> tuple[list[CandidateSc
     )
 
     balanced_ranking: list[CandidateScore] = []
-    women_index = 0
-    men_index = 0
+    seen_ids: set[str] = set()
+    idx_f = 0
+    idx_m = 0
+    idx_u = 0
 
-    while women_index < len(women_nb_candidates) or men_index < len(men_candidates):
-        if women_index < len(women_nb_candidates):
-            balanced_ranking.append(women_nb_candidates[women_index])
-            women_index += 1
-        if men_index < len(men_candidates):
-            balanced_ranking.append(men_candidates[men_index])
-            men_index += 1
+    while (
+        idx_f < len(women_nb_candidates)
+        or idx_m < len(men_candidates)
+        or idx_u < len(other_candidates)
+    ):
+        if idx_f < len(women_nb_candidates):
+            candidate_f = women_nb_candidates[idx_f]
+            idx_f += 1
+            if candidate_f.comico_id not in seen_ids:
+                balanced_ranking.append(candidate_f)
+                seen_ids.add(candidate_f.comico_id)
 
-    balanced_ranking.extend(other_candidates)
+        if idx_m < len(men_candidates):
+            candidate_m = men_candidates[idx_m]
+            idx_m += 1
+            if candidate_m.comico_id not in seen_ids:
+                balanced_ranking.append(candidate_m)
+                seen_ids.add(candidate_m.comico_id)
+
+        if idx_u < len(other_candidates):
+            candidate_u = other_candidates[idx_u]
+            idx_u += 1
+            if candidate_u.comico_id not in seen_ids:
+                balanced_ranking.append(candidate_u)
+                seen_ids.add(candidate_u.comico_id)
 
     return balanced_ranking, skipped_blacklist
 
