@@ -36,7 +36,7 @@ function App() {
 
       const { data, error: fetchError } = await supabase
         .from('lineup_candidates')
-        .select('nombre,genero,categoria,score_final,comico_id,telefono,instagram')
+        .select('nombre,genero,categoria,estado,score_final,comico_id,contacto,telefono,instagram')
         .order('score_final', { ascending: false, nullsFirst: false });
 
       if (fetchError) {
@@ -263,10 +263,11 @@ function App() {
                     <div>
                       <h2 className="text-lg font-semibold">{candidate.nombre ?? candidate.instagram}</h2>
                       <p className="text-sm text-slate-400">@{candidate.instagram}</p>
-                      <p className="text-sm text-slate-400">{candidate.telefono}</p>
+                      <p className="text-sm text-slate-400">{candidate.contacto ?? candidate.telefono}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-sm text-slate-300">Score: {candidate.score_final?.toFixed?.(2) ?? '-'}</p>
+                      <p className="text-xs text-slate-400">Estado: {candidate.estado ?? 'sin_estado'}</p>
                       {hasPendingEdit(candidate) && (
                         <span className="mt-1 inline-block rounded-full bg-amber-400/20 px-2 py-0.5 text-xs font-medium text-amber-200">
                           Editado
