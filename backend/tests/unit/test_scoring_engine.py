@@ -71,3 +71,109 @@ def test_sorting_prioritizes_oldest_timestamp_when_score_ties():
     )
 
     assert ranking[0].telefono == older.telefono
+
+
+def test_build_ranking_deduplicates_comico_id_and_interleaves_all_buckets(monkeypatch):
+    requests = [
+        engine.SilverRequest(
+            comico_id="dup-id",
+            nombre="Comica Dup",
+            telefono="+34111111111",
+            instagram="dup_f",
+            genero="f",
+            categoria_silver="priority",
+            fechas_disponibles="2026-03-14",
+            marca_temporal=datetime(2026, 2, 1, 10, 0, tzinfo=timezone.utc),
+        ),
+        engine.SilverRequest(
+            comico_id="m-1",
+            nombre="Comico Uno",
+            telefono="+34222222222",
+            instagram="m1",
+            genero="m",
+            categoria_silver="priority",
+            fechas_disponibles="2026-03-14",
+            marca_temporal=datetime(2026, 2, 2, 10, 0, tzinfo=timezone.utc),
+        ),
+        engine.SilverRequest(
+            comico_id="dup-id",
+            nombre="Comica Dup Repetida",
+            telefono="+34333333333",
+            instagram="dup_u",
+            genero="unknown",
+            categoria_silver="priority",
+            fechas_disponibles="2026-03-14",
+            marca_temporal=datetime(2026, 2, 3, 10, 0, tzinfo=timezone.utc),
+        ),
+    ]
+
+    monkeypatch.setattr(engine, "upsert_comico", lambda _conn, request: (request.comico_id, "preferred"))
+    monkeypatch.setattr(engine, "has_recent_acceptance_penalty", lambda _conn, _comico_id: False)
+
+    ranking, skipped = engine.build_ranking(conn=None, requests=requests)
+
+    assert skipped == 0
+    assert [candidate.comico_id for candidate in ranking] == ["dup-id", "m-1"]
+
+
+def test_build_ranking_continues_when_a_gender_bucket_is_exhausted(monkeypatch):
+    requests = [
+        engine.SilverRequest(
+            comico_id="f-1",
+            nombre="Comica",
+            telefono="+34111111111",
+            instagram="f1",
+            genero="f",
+            categoria_silver="priority",
+            fechas_disponibles="2026-03-14",
+            marca_temporal=datetime(2026, 2, 1, 10, 0, tzinfo=timezone.utc),
+        ),
+        engine.SilverRequest(
+            comico_id="m-1",
+            nombre="Comico Uno",
+            telefono="+34222222222",
+            instagram="m1",
+            genero="m",
+            categoria_silver="priority",
+            fechas_disponibles="2026-03-14",
+            marca_temporal=datetime(2026, 2, 2, 10, 0, tzinfo=timezone.utc),
+        ),
+        engine.SilverRequest(
+            comico_id="m-2",
+            nombre="Comico Dos",
+            telefono="+34333333333",
+            instagram="m2",
+            genero="m",
+            categoria_silver="priority",
+            fechas_disponibles="2026-03-14",
+            marca_temporal=datetime(2026, 2, 3, 10, 0, tzinfo=timezone.utc),
+        ),
+        engine.SilverRequest(
+            comico_id="u-1",
+            nombre="Comique X",
+            telefono="+34444444444",
+            instagram="u1",
+            genero="unknown",
+            categoria_silver="priority",
+            fechas_disponibles="2026-03-14",
+            marca_temporal=datetime(2026, 2, 4, 10, 0, tzinfo=timezone.utc),
+        ),
+        engine.SilverRequest(
+            comico_id="u-2",
+            nombre="Comique Y",
+            telefono="+34555555555",
+            instagram="u2",
+            genero="unknown",
+            categoria_silver="priority",
+            fechas_disponibles="2026-03-14",
+            marca_temporal=datetime(2026, 2, 5, 10, 0, tzinfo=timezone.utc),
+        ),
+    ]
+
+    monkeypatch.setattr(engine, "upsert_comico", lambda _conn, request: (request.comico_id, "preferred"))
+    monkeypatch.setattr(engine, "has_recent_acceptance_penalty", lambda _conn, _comico_id: False)
+
+    ranking, skipped = engine.build_ranking(conn=None, requests=requests)
+
+    assert skipped == 0
+    assert [candidate.comico_id for candidate in ranking] == ["f-1", "m-1", "u-1", "m-2", "u-2"]

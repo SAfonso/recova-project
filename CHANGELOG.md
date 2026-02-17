@@ -5,6 +5,19 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.9] - 2026-02-17
+
+### Fixed
+- `backend/src/scoring_engine.py` corrige `build_ranking` para intercalar con punteros independientes por bucket de género (`idx_f`, `idx_m`, `idx_u`) en prioridad F/NB -> M -> Unknown.
+- `backend/src/scoring_engine.py` incorpora `seen_ids` para evitar que un mismo `comico_id` aparezca duplicado en `top_10_sugeridos` y en el ranking final.
+- El intercalado ahora continúa consumiendo candidatos de los buckets restantes cuando uno se agota, hasta procesar todas las listas.
+
+### Added
+- `backend/tests/unit/test_scoring_engine.py` añade cobertura unitaria para deduplicación por `comico_id` y continuidad de intercalado cuando se agota un bucket de género.
+
+### Changed
+- Incremento de versión a `0.5.9` en `package.json`, `pyproject.toml` y `README.md`.
+
 ## [0.5.8] - 2026-02-17
 
 ### Changed
