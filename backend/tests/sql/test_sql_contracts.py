@@ -13,6 +13,10 @@ MIGRATION_RLS_SQL = (
     PROJECT_ROOT
     / "specs/sql/migrations/20260217_fix_anon_update_policy_silver_comicos.sql"
 )
+MIGRATION_LINEUP_SQL = (
+    PROJECT_ROOT
+    / "specs/sql/migrations/20260218_create_lineup_candidates_and_validate_lineup.sql"
+)
 GOLD_SQL = PROJECT_ROOT / "specs/sql/gold_relacional.sql"
 
 
@@ -26,6 +30,7 @@ def test_sql_files_exist():
     assert SEED_SQL.exists()
     assert MIGRATION_STATUS_SQL.exists()
     assert MIGRATION_RLS_SQL.exists()
+    assert MIGRATION_LINEUP_SQL.exists()
     assert GOLD_SQL.exists()
 
 
@@ -113,6 +118,15 @@ def test_migration_enforces_anon_update_policy_on_silver_comicos():
     assert "for update to anon" in content
     assert "using (true)" in content
     assert "with check (true)" in content
+
+
+def test_migration_creates_lineup_candidates_view_and_validate_lineup_function():
+    content = read_lower(MIGRATION_LINEUP_SQL)
+    assert "create or replace view gold.lineup_candidates as" in content
+    assert "create or replace function gold.validate_lineup(" in content
+    assert "returns void" in content
+    assert "grant select on gold.lineup_candidates to anon, authenticated, service_role" in content
+    assert "grant execute on function gold.validate_lineup(jsonb, date) to anon, authenticated, service_role" in content
 
 
 def test_gold_contains_master_and_history_tables():
