@@ -5,6 +5,24 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.7] - 2026-02-17
+
+### Added
+- Nueva migración `specs/sql/migrations/20260217_fix_anon_update_policy_silver_comicos.sql` para aplicar de forma idempotente el bloque solicitado sobre `silver.comicos`: `ENABLE ROW LEVEL SECURITY`, `DROP POLICY IF EXISTS "p_anon_update_silver_comicos"` y recreación de la policy `FOR UPDATE TO anon`.
+
+### Changed
+- `setup_db.py` incorpora la nueva migración en `SQL_SEQUENCE` para que se ejecute automáticamente en despliegues estándar.
+- `backend/tests/sql/test_sql_contracts.py` valida la existencia y el contenido de la migración de RLS/policy para `silver.comicos`.
+- Incremento de versión a `0.5.7` en `package.json`, `pyproject.toml` y `README.md`.
+
+## [0.5.6] - 2026-02-16
+
+### Changed
+- `specs/sql/silver_relacional.sql` estandariza las policies RLS de `anon` en `silver.comicos` con nombres técnicos idempotentes: `p_anon_select_silver_comicos` y `p_anon_update_silver_comicos`.
+- `specs/sql/silver_relacional.sql` añade limpieza explícita de políticas previas antes de crear las nuevas para evitar conflictos en redeploys.
+- `backend/tests/sql/test_sql_contracts.py` incorpora validación de contrato para asegurar RLS + grants de `anon` sobre `silver.comicos`.
+- Incremento de versión a `0.5.6` en `package.json`, `pyproject.toml` y `README.md`.
+
 ## [0.5.5] - 2026-02-16
 
 ### Changed
