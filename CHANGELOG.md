@@ -5,6 +5,19 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.10] - 2026-02-17
+
+### Fixed
+- `backend/src/scoring_engine.py` ajusta `build_ranking` para intercalar estrictamente solo entre `f_nb_candidates` y `m_candidates` (orden F/NB -> M), dejando `unknowns` exclusivamente para el final cuando ambos buckets están agotados.
+- `backend/src/scoring_engine.py` mantiene `seen_ids` durante toda la construcción del ranking para prevenir duplicados por `comico_id`.
+
+### Added
+- `backend/tests/unit/test_scoring_engine.py` incorpora una prueba específica que valida que `unknown` se añade al final y que el patrón inicial respeta el intercalado estricto (`f, m, f, m` cuando aplica).
+
+### Changed
+- `backend/tests/unit/test_scoring_engine.py` actualiza expectativas de orden para reflejar la nueva regla de paridad estricta sin intercalado temprano de `unknown`.
+- Incremento de versión a `0.5.10` en `package.json`, `pyproject.toml` y `README.md`.
+
 ## [0.5.9] - 2026-02-17
 
 ### Fixed

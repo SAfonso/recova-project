@@ -73,7 +73,7 @@ def test_sorting_prioritizes_oldest_timestamp_when_score_ties():
     assert ranking[0].telefono == older.telefono
 
 
-def test_build_ranking_deduplicates_comico_id_and_interleaves_all_buckets(monkeypatch):
+def test_build_ranking_deduplicates_comico_id_with_strict_gender_order(monkeypatch):
     requests = [
         engine.SilverRequest(
             comico_id="dup-id",
@@ -176,4 +176,77 @@ def test_build_ranking_continues_when_a_gender_bucket_is_exhausted(monkeypatch):
     ranking, skipped = engine.build_ranking(conn=None, requests=requests)
 
     assert skipped == 0
-    assert [candidate.comico_id for candidate in ranking] == ["f-1", "m-1", "u-1", "m-2", "u-2"]
+    assert [candidate.comico_id for candidate in ranking] == ["f-1", "m-1", "m-2", "u-1", "u-2"]
+
+
+def test_build_ranking_places_unknowns_only_after_fnb_and_m_buckets(monkeypatch):
+    requests = [
+        engine.SilverRequest(
+            comico_id="f-1",
+            nombre="Comica Uno",
+            telefono="+34111111111",
+            instagram="f1",
+            genero="f",
+            categoria_silver="priority",
+            fechas_disponibles="2026-03-14",
+            marca_temporal=datetime(2026, 2, 1, 10, 0, tzinfo=timezone.utc),
+        ),
+        engine.SilverRequest(
+            comico_id="f-2",
+            nombre="Comica Dos",
+            telefono="+34111111112",
+            instagram="f2",
+            genero="f",
+            categoria_silver="priority",
+            fechas_disponibles="2026-03-14",
+            marca_temporal=datetime(2026, 2, 2, 10, 0, tzinfo=timezone.utc),
+        ),
+        engine.SilverRequest(
+            comico_id="m-1",
+            nombre="Comico Uno",
+            telefono="+34222222221",
+            instagram="m1",
+            genero="m",
+            categoria_silver="priority",
+            fechas_disponibles="2026-03-14",
+            marca_temporal=datetime(2026, 2, 1, 10, 30, tzinfo=timezone.utc),
+        ),
+        engine.SilverRequest(
+            comico_id="m-2",
+            nombre="Comico Dos",
+            telefono="+34222222222",
+            instagram="m2",
+            genero="m",
+            categoria_silver="priority",
+            fechas_disponibles="2026-03-14",
+            marca_temporal=datetime(2026, 2, 2, 10, 30, tzinfo=timezone.utc),
+        ),
+        engine.SilverRequest(
+            comico_id="m-3",
+            nombre="Comico Tres",
+            telefono="+34222222223",
+            instagram="m3",
+            genero="m",
+            categoria_silver="priority",
+            fechas_disponibles="2026-03-14",
+            marca_temporal=datetime(2026, 2, 3, 10, 30, tzinfo=timezone.utc),
+        ),
+        engine.SilverRequest(
+            comico_id="u-1",
+            nombre="Comique X",
+            telefono="+34333333331",
+            instagram="u1",
+            genero="unknown",
+            categoria_silver="priority",
+            fechas_disponibles="2026-03-14",
+            marca_temporal=datetime(2026, 2, 4, 10, 30, tzinfo=timezone.utc),
+        ),
+    ]
+
+    monkeypatch.setattr(engine, "upsert_comico", lambda _conn, request: (request.comico_id, "preferred"))
+    monkeypatch.setattr(engine, "has_recent_acceptance_penalty", lambda _conn, _comico_id: False)
+
+    ranking, skipped = engine.build_ranking(conn=None, requests=requests)
+
+    assert skipped == 0
+    assert [candidate.comico_id for candidate in ranking] == ["f-1", "m-1", "f-2", "m-2", "m-3", "u-1"]
