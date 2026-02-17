@@ -69,3 +69,4 @@ $$;
 
 GRANT SELECT ON gold.lineup_candidates TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION gold.validate_lineup(jsonb, date) TO anon, authenticated, service_role;
+GRANT USAGE ON SCHEMA gold TO anon, authenticated;
