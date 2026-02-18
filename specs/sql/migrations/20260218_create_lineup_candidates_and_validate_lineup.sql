@@ -17,6 +17,10 @@ SELECT
 FROM gold.solicitudes s
 JOIN gold.comicos c ON c.id = s.comico_id;
 
+ALTER TYPE gold.estado_solicitud ADD VALUE IF NOT EXISTS 'scorado';
+ALTER TYPE gold.estado_solicitud ADD VALUE IF NOT EXISTS 'aprobado';
+ALTER TYPE gold.estado_solicitud ADD VALUE IF NOT EXISTS 'no_seleccionado';
+
 CREATE OR REPLACE FUNCTION gold.validate_lineup(
   p_selection jsonb,
   p_event_date date
@@ -36,13 +40,22 @@ BEGIN
   END IF;
 
   UPDATE gold.solicitudes AS s
-  SET estado = 'aceptado'
+  SET estado = 'aprobado'
   WHERE s.comico_id IN (
     SELECT (entry->>'comico_id')::uuid
     FROM jsonb_array_elements(p_selection) AS entry
   )
     AND s.fecha_evento = p_event_date
-    AND s.estado = 'pendiente';
+    AND s.estado IN ('scorado', 'pendiente');
+
+  UPDATE gold.solicitudes AS s
+  SET estado = 'no_seleccionado'
+  WHERE s.fecha_evento = p_event_date
+    AND s.estado IN ('scorado', 'pendiente')
+    AND s.comico_id NOT IN (
+      SELECT (entry->>'comico_id')::uuid
+      FROM jsonb_array_elements(p_selection) AS entry
+    );
 
   UPDATE gold.comicos AS gc
   SET
@@ -65,6 +78,25 @@ BEGIN
     updated_at = now()
   FROM jsonb_array_elements(p_selection) AS entry
   WHERE sc.id = (entry->>'comico_id')::uuid;
+
+  UPDATE silver.solicitudes AS ss
+  SET status = 'aprobado',
+      updated_at = now()
+  WHERE ss.fecha_evento = p_event_date
+    AND ss.comico_id IN (
+      SELECT (entry->>'comico_id')::uuid
+      FROM jsonb_array_elements(p_selection) AS entry
+    );
+
+  UPDATE silver.solicitudes AS ss
+  SET status = 'no_seleccionado',
+      updated_at = now()
+  WHERE ss.fecha_evento = p_event_date
+    AND ss.status IN ('scorado', 'normalizado')
+    AND ss.comico_id NOT IN (
+      SELECT (entry->>'comico_id')::uuid
+      FROM jsonb_array_elements(p_selection) AS entry
+    );
 END;
 $$;
 

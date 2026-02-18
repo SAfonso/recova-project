@@ -69,6 +69,9 @@ DO $$
 BEGIN
   IF to_regtype('gold.estado_solicitud') IS NULL THEN
     CREATE TYPE gold.estado_solicitud AS ENUM (
+      'scorado',
+      'aprobado',
+      'no_seleccionado',
       'pendiente',
       'aceptado',
       'rechazado',
@@ -78,6 +81,15 @@ BEGIN
   END IF;
 END
 $$;
+
+ALTER TYPE gold.estado_solicitud ADD VALUE IF NOT EXISTS 'scorado';
+ALTER TYPE gold.estado_solicitud ADD VALUE IF NOT EXISTS 'aprobado';
+ALTER TYPE gold.estado_solicitud ADD VALUE IF NOT EXISTS 'no_seleccionado';
+ALTER TYPE gold.estado_solicitud ADD VALUE IF NOT EXISTS 'pendiente';
+ALTER TYPE gold.estado_solicitud ADD VALUE IF NOT EXISTS 'aceptado';
+ALTER TYPE gold.estado_solicitud ADD VALUE IF NOT EXISTS 'rechazado';
+ALTER TYPE gold.estado_solicitud ADD VALUE IF NOT EXISTS 'cancelado';
+ALTER TYPE gold.estado_solicitud ADD VALUE IF NOT EXISTS 'expirado';
 
 -- ---------------------------------------------------------
 -- Tabla maestra de perfiles (nutrida de silver.comicos)
@@ -159,7 +171,7 @@ create table if not exists gold.solicitudes (
 
   comico_id uuid not null,
   fecha_evento date not null,
-  estado gold.estado_solicitud not null default 'pendiente',
+  estado gold.estado_solicitud not null default 'scorado',
 
   -- Score calculado por el motor de selección.
   score_aplicado double precision,
@@ -186,7 +198,7 @@ create index if not exists idx_gold_solicitudes_marca_temporal
 -- Índice parcial clave para reglas de “ha actuado recientemente”.
 create index if not exists idx_gold_solicitudes_aceptadas_por_comico
   on gold.solicitudes (comico_id, fecha_evento desc)
-  where estado = 'aceptado';
+  where estado in ('aprobado', 'aceptado');
 
 -- ---------------------------------------------------------
 -- Vista de ayuda de linaje Silver -> Gold

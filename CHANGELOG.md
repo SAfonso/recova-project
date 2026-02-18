@@ -5,6 +5,20 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.15] - 2026-02-18
+
+### Fixed
+- `specs/sql/migrations/20260217_sync_lineup_validation_states.sql` corrige el error de RPC `relation "accepted_gold" does not exist` en `gold.validate_lineup`, reemplazando el uso fuera de alcance de CTE por tablas temporales de trabajo.
+- `gold.validate_lineup` sincroniza el cierre de lineup en ambos esquemas: seleccionados a `aprobado` y no seleccionados a `no_seleccionado` en `gold.solicitudes` y `silver.solicitudes`.
+
+### Changed
+- `backend/src/scoring_engine.py` persiste scoring en `gold.solicitudes.estado = 'scorado'`, actualiza `gold.comicos.score_actual` y mantiene compatibilidad de recencia con estados `aprobado/aceptado`.
+- `specs/sql/gold_relacional.sql` amplía el enum `gold.estado_solicitud` para incluir `scorado`, `aprobado` y `no_seleccionado`, y ajusta defaults/índice parcial de recencia.
+- `frontend/src/App.jsx` prioriza candidatos en estado `scorado` al construir la selección inicial del lineup (fallback legacy a `pendiente`).
+- `backend/tests/sql/test_sql_contracts.py` y `backend/tests/unit/test_scoring_engine.py` actualizan contratos y expectativas a los nuevos estados y al flujo de persistencia.
+- Incremento de versión a `0.5.15` en `package.json`, `pyproject.toml` y `README.md`.
+- Incremento de versión de frontend a `0.1.3` en `frontend/package.json`.
+
 ## [0.5.14] - 2026-02-18
 
 ### Fixed

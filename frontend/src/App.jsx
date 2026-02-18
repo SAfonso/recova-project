@@ -100,8 +100,10 @@ function App() {
         genero: row.genero === 'unknown' ? 'nb' : row.genero ?? 'nb',
         categoria: row.categoria === 'standard' ? 'priority' : row.categoria ?? 'priority',
       }));
-      const pendingFirst = normalized.filter((candidate) => candidate.estado === 'pendiente');
-      const selectionSource = pendingFirst.length > 0 ? pendingFirst : normalized;
+      const scoredFirst = normalized.filter((candidate) => candidate.estado === 'scorado');
+      const pendingLegacy = normalized.filter((candidate) => candidate.estado === 'pendiente');
+      const selectionSource =
+        scoredFirst.length > 0 ? scoredFirst : (pendingLegacy.length > 0 ? pendingLegacy : normalized);
       const firstEventDate = selectionSource.find((candidate) => candidate.fecha_evento)?.fecha_evento;
 
       setCandidates(normalized);

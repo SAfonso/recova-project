@@ -6,6 +6,18 @@
 ALTER TABLE gold.comicos
   ADD COLUMN IF NOT EXISTS score_actual double precision;
 
+ALTER TYPE gold.estado_solicitud ADD VALUE IF NOT EXISTS 'scorado';
+ALTER TYPE gold.estado_solicitud ADD VALUE IF NOT EXISTS 'aprobado';
+ALTER TYPE gold.estado_solicitud ADD VALUE IF NOT EXISTS 'no_seleccionado';
+
+UPDATE gold.solicitudes
+SET estado = 'scorado'
+WHERE estado = 'pendiente';
+
+UPDATE gold.solicitudes
+SET estado = 'aprobado'
+WHERE estado = 'aceptado';
+
 DROP VIEW IF EXISTS gold.lineup_candidates;
 
 CREATE OR REPLACE VIEW gold.lineup_candidates AS
@@ -43,22 +55,31 @@ BEGIN
     RAISE EXCEPTION 'Se requieren exactamente 5 cómicos para validar (actual: %).', selected_count;
   END IF;
 
-  WITH payload_entries AS (
-    SELECT
-      NULLIF(entry->>'solicitud_id', '')::uuid AS solicitud_id,
-      NULLIF(entry->>'comico_id', '')::uuid AS comico_id,
-      NULLIF(entry->>'categoria', '') AS categoria,
-      NULLIF(entry->>'genero', '') AS genero,
-      NULLIF(entry->>'fecha_evento', '')::date AS fecha_evento
-    FROM jsonb_array_elements(p_selection) AS entry
-  ),
-  accepted_gold AS (
+  DROP TABLE IF EXISTS tmp_payload_entries;
+  DROP TABLE IF EXISTS tmp_accepted_gold;
+
+  CREATE TEMP TABLE tmp_payload_entries ON COMMIT DROP AS
+  SELECT
+    NULLIF(entry->>'solicitud_id', '')::uuid AS solicitud_id,
+    NULLIF(entry->>'comico_id', '')::uuid AS comico_id,
+    NULLIF(entry->>'categoria', '') AS categoria,
+    NULLIF(entry->>'genero', '') AS genero,
+    NULLIF(entry->>'fecha_evento', '')::date AS fecha_evento
+  FROM jsonb_array_elements(p_selection) AS entry;
+
+  CREATE TEMP TABLE tmp_accepted_gold (
+    id uuid,
+    comico_id uuid,
+    fecha_evento date
+  ) ON COMMIT DROP;
+
+  WITH accepted_gold AS (
     UPDATE gold.solicitudes AS s
-    SET estado = 'aceptado'
-    WHERE s.estado = 'pendiente'
+    SET estado = 'aprobado'
+    WHERE s.estado IN ('scorado', 'pendiente')
       AND EXISTS (
         SELECT 1
-        FROM payload_entries pe
+        FROM tmp_payload_entries pe
         WHERE (
           pe.solicitud_id IS NOT NULL
           AND pe.solicitud_id = s.id
@@ -75,15 +96,36 @@ BEGIN
       )
     RETURNING s.id, s.comico_id, s.fecha_evento
   )
+  INSERT INTO tmp_accepted_gold (id, comico_id, fecha_evento)
+  SELECT id, comico_id, fecha_evento
+  FROM accepted_gold;
+
+  UPDATE gold.solicitudes AS s
+  SET estado = 'no_seleccionado'
+  WHERE s.estado IN ('scorado', 'pendiente')
+    AND s.fecha_evento IN (
+      SELECT DISTINCT fecha_evento
+      FROM tmp_accepted_gold
+      UNION
+      SELECT DISTINCT COALESCE(pe.fecha_evento, p_event_date)
+      FROM tmp_payload_entries pe
+      WHERE COALESCE(pe.fecha_evento, p_event_date) IS NOT NULL
+    )
+    AND NOT EXISTS (
+      SELECT 1
+      FROM tmp_accepted_gold ag
+      WHERE ag.id = s.id
+    );
+
   UPDATE silver.solicitudes AS ss
   SET status = 'aprobado',
       updated_at = now()
-  WHERE ss.id IN (SELECT id FROM accepted_gold)
+  WHERE ss.id IN (SELECT id FROM tmp_accepted_gold)
      OR (
        ss.fecha_evento = p_event_date
        AND ss.comico_id IN (
          SELECT comico_id
-         FROM payload_entries
+         FROM tmp_payload_entries
          WHERE solicitud_id IS NULL
            AND comico_id IS NOT NULL
        )
@@ -92,31 +134,30 @@ BEGIN
   UPDATE silver.solicitudes AS ss
   SET status = 'no_seleccionado',
       updated_at = now()
-  WHERE ss.status = 'scorado'
+  WHERE ss.status IN ('scorado', 'normalizado')
     AND ss.fecha_evento IN (
       SELECT DISTINCT fecha_evento
-      FROM accepted_gold
+      FROM tmp_accepted_gold
+      UNION
+      SELECT DISTINCT COALESCE(pe.fecha_evento, p_event_date)
+      FROM tmp_payload_entries pe
+      WHERE COALESCE(pe.fecha_evento, p_event_date) IS NOT NULL
     )
-    AND ss.id NOT IN (
-      SELECT id
-      FROM accepted_gold
+    AND NOT EXISTS (
+      SELECT 1
+      FROM tmp_accepted_gold ag
+      WHERE ag.id = ss.id
     );
 
   UPDATE gold.comicos AS gc
   SET
     categoria = COALESCE((entry.categoria)::gold.categoria_comico, gc.categoria),
     genero = COALESCE(entry.genero, gc.genero),
-    fecha_ultima_actuacion = p_event_date,
+    fecha_ultima_actuacion = COALESCE(entry.fecha_evento, p_event_date, gc.fecha_ultima_actuacion),
     modified_at = now()
   FROM (
-    SELECT DISTINCT comico_id, categoria, genero
-    FROM (
-      SELECT
-        NULLIF(entry->>'comico_id', '')::uuid AS comico_id,
-        NULLIF(entry->>'categoria', '') AS categoria,
-        NULLIF(entry->>'genero', '') AS genero
-      FROM jsonb_array_elements(p_selection) AS entry
-    ) dedup
+    SELECT DISTINCT comico_id, categoria, genero, fecha_evento
+    FROM tmp_payload_entries
     WHERE comico_id IS NOT NULL
   ) AS entry
   WHERE gc.id = entry.comico_id;
@@ -134,13 +175,7 @@ BEGIN
     updated_at = now()
   FROM (
     SELECT DISTINCT comico_id, categoria, genero
-    FROM (
-      SELECT
-        NULLIF(entry->>'comico_id', '')::uuid AS comico_id,
-        NULLIF(entry->>'categoria', '') AS categoria,
-        NULLIF(entry->>'genero', '') AS genero
-      FROM jsonb_array_elements(p_selection) AS entry
-    ) dedup
+    FROM tmp_payload_entries
     WHERE comico_id IS NOT NULL
   ) AS entry
   WHERE sc.id = entry.comico_id;
