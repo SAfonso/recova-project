@@ -5,6 +5,21 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.17] - 2026-02-18
+
+### Added
+- `backend/src/canva_auth_utils.py` incorpora `CanvaAuthError` con metadatos (`status_code`, `error_code`, `response_body`) y flag `requires_reauthorization` para detectar flujos OAuth que requieren reautorización manual.
+- `backend/src/canva_auth_utils.py` añade el comando `authorize` para generar `code_verifier`/`code_challenge` (PKCE) y la URL de autorización de Canva de forma guiada.
+- `backend/src/canva_auth_utils.py` persiste `CANVA_ACCESS_TOKEN` y `CANVA_ACCESS_TOKEN_EXPIRES_AT`, además del refresh token, para reutilizar sesiones válidas tras reinicios cortos.
+
+### Changed
+- `backend/src/canva_auth_utils.py` reemplaza escritura manual del `.env` por `dotenv.set_key`, reduciendo riesgo de corrupción del archivo de entorno.
+- `backend/src/canva_auth_utils.py` alinea `exchange/refresh` con payload `application/x-www-form-urlencoded` y endpoint OAuth oficial de Canva.
+- `backend/src/canva_builder.py` reutiliza primero el access token cacheado y solo hace `refresh`/`exchange` cuando el token local no es válido.
+- `backend/src/canva_builder.py` eleva un mensaje explícito de reautorización cuando el refresh devuelve `invalid_grant`.
+- `README.md` actualiza la documentación de Canva con el flujo `authorize -> exchange -> refresh` y la caché de access token.
+- Incremento de versión a `0.5.17` en `package.json`, `pyproject.toml` y `README.md`.
+
 ## [0.5.16] - 2026-02-18
 
 ### Added

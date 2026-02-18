@@ -1,15 +1,16 @@
 # AI LineUp Architect (MVP) 🎭
 
 **Estado del Proyecto:** 🛠️ En Desarrollo (MVP)  
-**Versión:** 0.5.16  
+**Versión:** 0.5.17  
 **Metodología:** Spec-Driven Development (SDD)
 
 Sistema automatizado para la gestión y generación de lineups y cartelería para Open Mics de comedia.
 
-## Novedades recientes (0.5.16)
-- Se añade `backend/src/canva_auth_utils.py` para gestionar OAuth2 de Canva (exchange + refresh con persistencia opcional del `refresh_token` en `.env`).
-- Se añade `backend/src/canva_builder.py` para que n8n genere cartelería vía endpoint de autofill de Canva y devuelva la URL del diseño.
-- Se documenta la configuración exacta de variables `CANVA_*` y payload JSON esperado para la fase Designer.
+## Novedades recientes (0.5.17)
+- `canva_auth_utils.py` ahora soporta flujo PKCE completo con comando `authorize` (genera `code_verifier` y URL de autorización).
+- OAuth de Canva endurecido con `CanvaAuthError` para identificar `invalid_grant` y forzar reautorización manual cuando procede.
+- Persistencia segura de `.env` con `dotenv.set_key` para `CANVA_REFRESH_TOKEN`, `CANVA_ACCESS_TOKEN` y `CANVA_ACCESS_TOKEN_EXPIRES_AT`.
+- `canva_builder.py` reutiliza access token cacheado antes de ejecutar refresh, reduciendo llamadas OAuth innecesarias tras reinicios cortos.
 
 El proyecto nace con una arquitectura **SaaS-Ready**, garantizando la privacidad de los datos entre diferentes productores mediante un modelo de datos maestro/detalle y políticas de seguridad avanzadas.
 
@@ -287,6 +288,8 @@ CANVA_REDIRECT_URI=https://n8n.tu-dominio/rest/oauth2-callback
 CANVA_AUTHORIZATION_CODE=solo_para_bootstrap_inicial_opcional
 CANVA_CODE_VERIFIER=pkce_code_verifier_del_exchange
 CANVA_REFRESH_TOKEN=refresh_token_vigente
+CANVA_ACCESS_TOKEN=access_token_cacheado
+CANVA_ACCESS_TOKEN_EXPIRES_AT=1771457314
 CANVA_TEMPLATE_ID=tpl_xxxxxxxxx
 CANVA_FIELD_OVERRIDES_JSON={"fecha":"fecha_evento","comico_1_nombre":"nombre_1"}
 CANVA_ENV_PATH=/workspace/recova-project/.env
@@ -295,22 +298,28 @@ CANVA_ENV_PATH=/workspace/recova-project/.env
 Notas:
 - `CANVA_AUTHORIZATION_CODE` puede vaciarse tras obtener el primer refresh token estable.
 - `CANVA_CODE_VERIFIER` debe ser exactamente el mismo valor usado al solicitar el `authorization_code` (PKCE).
+- `CANVA_ACCESS_TOKEN` y `CANVA_ACCESS_TOKEN_EXPIRES_AT` se persisten automáticamente tras `exchange/refresh`; el builder reutiliza ese token si sigue vigente para evitar refresh innecesario.
 - `CANVA_FIELD_OVERRIDES_JSON` es opcional y permite mapear claves genéricas del script a los nombres reales de campos del template Canva.
 - Si no defines `CANVA_ENV_PATH`, se usa `.env` en la raíz del repo.
 
 ### Uso rápido
 
-1) Bootstrap de tokens (una vez):
+1) Generar URL de autorización + `code_verifier` (PKCE):
 ```bash
-python backend/src/canva_auth_utils.py exchange
+python backend/src/canva_auth_utils.py authorize
 ```
 
-2) Renovación manual (diagnóstico):
+2) Bootstrap de tokens (una vez, tras obtener `code` del callback):
+```bash
+python backend/src/canva_auth_utils.py exchange --code "<code_del_callback>" --code-verifier "<code_verifier>"
+```
+
+3) Renovación manual (diagnóstico):
 ```bash
 python backend/src/canva_auth_utils.py refresh
 ```
 
-3) Ejecución del builder con payload de n8n:
+4) Ejecución del builder con payload de n8n:
 ```bash
 python backend/src/canva_builder.py '{"fecha":"2026-02-22","comicos":[{"nombre":"A","instagram":"@a"},{"nombre":"B","instagram":"@b"},{"nombre":"C","instagram":"@c"},{"nombre":"D","instagram":"@d"},{"nombre":"E","instagram":"@e"}]}'
 ```
