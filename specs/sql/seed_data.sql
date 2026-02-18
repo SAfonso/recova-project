@@ -47,6 +47,7 @@ VALUES
 ON CONFLICT (instagram) DO NOTHING;
 
 -- 3) Solicitudes Bronze asociadas (origen de linaje)
+--    Escenario controlado: 5 cómicos distintos para el mismo show (2026-04-04)
 INSERT INTO bronze.solicitudes (
   id,
   proveedor_id,
@@ -63,30 +64,14 @@ INSERT INTO bronze.solicitudes (
   procesado
 )
 VALUES
-  ('30000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 1001, 'Mati General', '@general_mati', '+5491111111106', 'intermedio', to_char(current_date + 1, 'YYYY-MM-DD'), 'si', 'Show barrial', 'instagram', '{"seed": true}'::jsonb, true),
-  ('30000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000001', 1002, 'Mati General', '@general_mati', '+5491111111106', 'intermedio', to_char(current_date + 4, 'YYYY-MM-DD'), 'si', 'Show barrial', 'instagram', '{"seed": true}'::jsonb, true),
-  ('30000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000002', 1003, 'Mati General', '@general_mati', '+5491111111106', 'intermedio', to_char(current_date + 7, 'YYYY-MM-DD'), 'no', 'Bar local', 'recomendacion', '{"seed": true}'::jsonb, true),
-  ('30000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000002', 1004, 'Mati General', '@general_mati', '+5491111111106', 'intermedio', to_char(current_date + 10, 'YYYY-MM-DD'), 'si', 'Open mic', 'whatsapp', '{"seed": true}'::jsonb, true),
-
-  ('30000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000001', 1005, 'Nora Priority', '@prioridad_nora', '+5491111111103', 'avanzado', to_char(current_date + 5, 'YYYY-MM-DD'), 'si', 'Teatro', 'instagram', '{"seed": true, "caso": "doblete"}'::jsonb, true),
-  ('30000000-0000-0000-0000-000000000006', '10000000-0000-0000-0000-000000000002', 1006, 'Nora Priority', '@prioridad_nora', '+5491111111103', 'avanzado', to_char(current_date + 6, 'YYYY-MM-DD'), 'si', 'Teatro', 'instagram', '{"seed": true, "caso": "doblete"}'::jsonb, true),
-
-  ('30000000-0000-0000-0000-000000000007', '10000000-0000-0000-0000-000000000001', 1007, 'El Cancelado', '@el_cancelado', '+5491111111111', 'intermedio', to_char(current_date + 2, 'YYYY-MM-DD'), 'si', 'N/A', 'instagram', '{"seed": true, "caso": "restringido"}'::jsonb, true),
-
-  ('30000000-0000-0000-0000-000000000008', '10000000-0000-0000-0000-000000000001', 1008, 'Veterano Alpha', '@veterano_alpha', '+5491111111101', 'pro', to_char(current_date + 3, 'YYYY-MM-DD'), 'no', 'Teatro', 'referido', '{"seed": true}'::jsonb, true),
-  ('30000000-0000-0000-0000-000000000009', '10000000-0000-0000-0000-000000000002', 1009, 'Veterano Beta', '@veterano_beta', '+5491111111102', 'pro', to_char(current_date + 6, 'YYYY-MM-DD'), 'si', 'Show privado', 'referido', '{"seed": true}'::jsonb, true),
-  ('30000000-0000-0000-0000-000000000010', '10000000-0000-0000-0000-000000000001', 1010, 'Tomi Priority', '@prioridad_tomi', '+5491111111104', 'intermedio', to_char(current_date + 8, 'YYYY-MM-DD'), 'si', 'Open mic', 'instagram', '{"seed": true}'::jsonb, true),
-  ('30000000-0000-0000-0000-000000000011', '10000000-0000-0000-0000-000000000002', 1011, 'Luz Priority', '@prioridad_luz', '+5491111111105', 'intermedio', to_char(current_date + 9, 'YYYY-MM-DD'), 'no', 'Bar local', 'amigos', '{"seed": true}'::jsonb, true),
-  ('30000000-0000-0000-0000-000000000012', '10000000-0000-0000-0000-000000000001', 1012, 'Ro General', '@general_ro', '+5491111111107', 'inicial', to_char(current_date + 11, 'YYYY-MM-DD'), 'si', 'Primera vez', 'instagram', '{"seed": true}'::jsonb, true),
-  ('30000000-0000-0000-0000-000000000013', '10000000-0000-0000-0000-000000000002', 1013, 'Santi General', '@general_santi', '+5491111111108', 'intermedio', to_char(current_date + 12, 'YYYY-MM-DD'), 'no', 'Ronda de bares', 'instagram', '{"seed": true}'::jsonb, true),
-  ('30000000-0000-0000-0000-000000000014', '10000000-0000-0000-0000-000000000001', 1014, 'Eli General', '@general_eli', '+5491111111109', 'inicial', to_char(current_date + 13, 'YYYY-MM-DD'), 'si', 'Escenario chico', 'whatsapp', '{"seed": true}'::jsonb, true),
-  ('30000000-0000-0000-0000-000000000015', '10000000-0000-0000-0000-000000000002', 1015, 'Fer General', '@general_fer', '+5491111111110', 'intermedio', to_char(current_date + 14, 'YYYY-MM-DD'), 'si', 'Open set', 'instagram', '{"seed": true}'::jsonb, true),
-  ('30000000-0000-0000-0000-000000000016', '10000000-0000-0000-0000-000000000001', 1016, 'Tomi Priority', '@prioridad_tomi', '+5491111111104', 'intermedio', to_char(current_date + 15, 'YYYY-MM-DD'), 'si', 'Open set', 'instagram', '{"seed": true}'::jsonb, true),
-  ('30000000-0000-0000-0000-000000000017', '10000000-0000-0000-0000-000000000002', 1017, 'Ro General', '@general_ro', '+5491111111107', 'inicial', to_char(current_date + 2, 'YYYY-MM-DD'), 'no', 'Primera vez', 'instagram', '{"seed": true}'::jsonb, true),
-  ('30000000-0000-0000-0000-000000000018', '10000000-0000-0000-0000-000000000001', 1018, 'Santi General', '@general_santi', '+5491111111108', 'intermedio', to_char(current_date + 4, 'YYYY-MM-DD'), 'si', 'Bar local', 'recomendacion', '{"seed": true}'::jsonb, true)
+  ('30000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 1001, 'Veterano Alpha', '@veterano_alpha', '+5491111111101', 'pro', '2026-04-04', 'si', 'Teatro', 'referido', '{"seed": true, "show_date": "2026-04-04"}'::jsonb, true),
+  ('30000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000002', 1002, 'Veterano Beta', '@veterano_beta', '+5491111111102', 'pro', '2026-04-04', 'no', 'Show privado', 'referido', '{"seed": true, "show_date": "2026-04-04"}'::jsonb, true),
+  ('30000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000001', 1003, 'Nora Priority', '@prioridad_nora', '+5491111111103', 'avanzado', '2026-04-04', 'si', 'Open mic', 'instagram', '{"seed": true, "show_date": "2026-04-04"}'::jsonb, true),
+  ('30000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000002', 1004, 'Tomi Priority', '@prioridad_tomi', '+5491111111104', 'intermedio', '2026-04-04', 'si', 'Bar local', 'whatsapp', '{"seed": true, "show_date": "2026-04-04"}'::jsonb, true),
+  ('30000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000001', 1005, 'Luz Priority', '@prioridad_luz', '+5491111111105', 'intermedio', '2026-04-04', 'no', 'Escenario chico', 'amigos', '{"seed": true, "show_date": "2026-04-04"}'::jsonb, true)
 ON CONFLICT (id) DO NOTHING;
 
--- 4) Solicitudes Silver (18 registros)
+-- 4) Solicitudes Silver (5 registros, mismo día: 2026-04-04, distinto status)
 INSERT INTO silver.solicitudes (
   id,
   bronze_id,
@@ -99,27 +84,11 @@ INSERT INTO silver.solicitudes (
   metadata_ia
 )
 VALUES
-  ('40000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000006', current_date + 1, 2, true, 'normalizado', '{"caso": "spammer"}'::jsonb),
-  ('40000000-0000-0000-0000-000000000002', '30000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000006', current_date + 4, 2, true, 'normalizado', '{"caso": "spammer"}'::jsonb),
-  ('40000000-0000-0000-0000-000000000003', '30000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000006', current_date + 7, 2, false, 'normalizado', '{"caso": "spammer"}'::jsonb),
-  ('40000000-0000-0000-0000-000000000004', '30000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000006', current_date + 10,2, true, 'normalizado', '{"caso": "spammer"}'::jsonb),
-
-  ('40000000-0000-0000-0000-000000000005', '30000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000003', current_date + 5, 3, true, 'normalizado', '{"caso": "doblete"}'::jsonb),
-  ('40000000-0000-0000-0000-000000000006', '30000000-0000-0000-0000-000000000006', '10000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000003', current_date + 6, 3, true, 'normalizado', '{"caso": "doblete"}'::jsonb),
-
-  ('40000000-0000-0000-0000-000000000007', '30000000-0000-0000-0000-000000000007', '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000011', current_date + 2, 2, true, 'normalizado', '{"caso": "restringido_activo"}'::jsonb),
-
-  ('40000000-0000-0000-0000-000000000008', '30000000-0000-0000-0000-000000000008', '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', current_date + 3, 3, false, 'scorado', '{"ai_modifier": 6}'::jsonb),
-  ('40000000-0000-0000-0000-000000000009', '30000000-0000-0000-0000-000000000009', '10000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000002', current_date + 6, 3, true, 'aprobado', '{"ai_modifier": 8}'::jsonb),
-  ('40000000-0000-0000-0000-000000000010', '30000000-0000-0000-0000-000000000010', '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000004', current_date + 8, 2, true, 'normalizado', '{}'::jsonb),
-  ('40000000-0000-0000-0000-000000000011', '30000000-0000-0000-0000-000000000011', '10000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000005', current_date + 9, 2, false, 'normalizado', '{}'::jsonb),
-  ('40000000-0000-0000-0000-000000000012', '30000000-0000-0000-0000-000000000012', '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000007', current_date + 11,1, true, 'normalizado', '{}'::jsonb),
-  ('40000000-0000-0000-0000-000000000013', '30000000-0000-0000-0000-000000000013', '10000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000008', current_date + 12,2, false, 'normalizado', '{}'::jsonb),
-  ('40000000-0000-0000-0000-000000000014', '30000000-0000-0000-0000-000000000014', '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000009', current_date + 13,1, true, 'normalizado', '{}'::jsonb),
-  ('40000000-0000-0000-0000-000000000015', '30000000-0000-0000-0000-000000000015', '10000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000010', current_date + 14,2, true, 'normalizado', '{}'::jsonb),
-  ('40000000-0000-0000-0000-000000000016', '30000000-0000-0000-0000-000000000016', '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000004', current_date + 15,2, true, 'normalizado', '{}'::jsonb),
-  ('40000000-0000-0000-0000-000000000017', '30000000-0000-0000-0000-000000000017', '10000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000007', current_date + 2, 1, false, 'normalizado', '{}'::jsonb),
-  ('40000000-0000-0000-0000-000000000018', '30000000-0000-0000-0000-000000000018', '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000008', current_date + 4, 2, true, 'normalizado', '{}'::jsonb)
+  ('40000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', DATE '2026-04-04', 3, true,  'normalizado',     '{"seed_case": "same_day_status_mix"}'::jsonb),
+  ('40000000-0000-0000-0000-000000000002', '30000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000002', DATE '2026-04-04', 3, false, 'scorado',        '{"seed_case": "same_day_status_mix"}'::jsonb),
+  ('40000000-0000-0000-0000-000000000003', '30000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000003', DATE '2026-04-04', 3, true,  'aprobado',       '{"seed_case": "same_day_status_mix"}'::jsonb),
+  ('40000000-0000-0000-0000-000000000004', '30000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000004', DATE '2026-04-04', 2, true,  'no_seleccionado','{"seed_case": "same_day_status_mix"}'::jsonb),
+  ('40000000-0000-0000-0000-000000000005', '30000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000005', DATE '2026-04-04', 2, false, 'rechazado',      '{"seed_case": "same_day_status_mix"}'::jsonb)
 ON CONFLICT (id) DO NOTHING;
 
 COMMIT;
