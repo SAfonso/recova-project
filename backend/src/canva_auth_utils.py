@@ -16,8 +16,9 @@ from dotenv import load_dotenv
 from requests.auth import HTTPBasicAuth
 
 CANVA_TOKEN_URL = "https://api.canva.com/rest/v1/oauth/token"
-LOG_DIRECTORY = "/root/RECOVA/backend/logs"
-LOG_FILE_PATH = "/root/RECOVA/backend/logs/canva_auth.log"
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+DEFAULT_LOG_DIRECTORY = BACKEND_DIR / "logs"
+DEFAULT_LOG_FILE_PATH = DEFAULT_LOG_DIRECTORY / "canva_auth.log"
 DEFAULT_ENV_PATH = Path(__file__).resolve().parents[2] / ".env"
 
 LOGGER = logging.getLogger("canva_auth")
@@ -41,7 +42,13 @@ class CanvaTokens:
 
 
 def configure_logging() -> None:
-    os.makedirs(LOG_DIRECTORY, exist_ok=True)
+    log_directory = Path(
+        os.getenv("CANVA_LOG_DIRECTORY", str(DEFAULT_LOG_DIRECTORY))
+    )
+    log_file_path = Path(
+        os.getenv("CANVA_AUTH_LOG_FILE_PATH", str(DEFAULT_LOG_FILE_PATH))
+    )
+    log_directory.mkdir(parents=True, exist_ok=True)
 
     logger = logging.getLogger()
     logger.handlers.clear()
@@ -49,7 +56,7 @@ def configure_logging() -> None:
 
     formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
     rotating_handler = TimedRotatingFileHandler(
-        LOG_FILE_PATH,
+        str(log_file_path),
         when="midnight",
         interval=1,
         backupCount=14,
@@ -96,17 +103,20 @@ def _persist_refresh_token(new_refresh_token: str, env_path: Path | None = None)
 def exchange_code_for_tokens(
     authorization_code: str | None = None,
     redirect_uri: str | None = None,
+    code_verifier: str | None = None,
     persist_refresh_token: bool = True,
 ) -> CanvaTokens:
     """Intercambia un authorization code por access y refresh token."""
 
     code = authorization_code or _get_required_env("CANVA_AUTHORIZATION_CODE")
     callback = redirect_uri or _get_required_env("CANVA_REDIRECT_URI")
+    pkce_code_verifier = code_verifier or _get_required_env("CANVA_CODE_VERIFIER")
 
     payload = {
         "grant_type": "authorization_code",
         "code": code,
         "redirect_uri": callback,
+        "code_verifier": pkce_code_verifier,
     }
     response = requests.post(
         CANVA_TOKEN_URL,
@@ -116,7 +126,12 @@ def exchange_code_for_tokens(
     )
     if response.status_code != 200:
         LOGGER.error("Error al canjear authorization code: %s - %s", response.status_code, response.text)
-        raise RuntimeError(f"Canva OAuth exchange falló: {response.status_code} {response.text}")
+        raise RuntimeError(
+            "Canva OAuth exchange falló: "
+            f"{response.status_code} {response.text}. "
+            "Revisa client_id/client_secret, redirect_uri exacta, "
+            "authorization code vigente y code_verifier (PKCE)."
+        )
 
     tokens = CanvaTokens.from_response(response.json())
     if persist_refresh_token and tokens.refresh_token:
@@ -159,6 +174,12 @@ def _build_cli() -> argparse.ArgumentParser:
     exchange_parser = subparsers.add_parser("exchange", help="Canjear code inicial")
     exchange_parser.add_argument("--code", dest="code", help="Authorization code", default=None)
     exchange_parser.add_argument("--redirect-uri", dest="redirect_uri", default=None)
+    exchange_parser.add_argument(
+        "--code-verifier",
+        dest="code_verifier",
+        help="PKCE code verifier usado al pedir el authorization code",
+        default=None,
+    )
 
     refresh_parser = subparsers.add_parser("refresh", help="Renovar access token")
     refresh_parser.add_argument("--refresh-token", dest="refresh_token", default=None)
@@ -177,6 +198,7 @@ def main() -> None:
         tokens = exchange_code_for_tokens(
             authorization_code=args.code,
             redirect_uri=args.redirect_uri,
+            code_verifier=args.code_verifier,
             persist_refresh_token=True,
         )
     else:

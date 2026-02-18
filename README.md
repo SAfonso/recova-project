@@ -285,6 +285,7 @@ CANVA_CLIENT_ID=tu_client_id
 CANVA_CLIENT_SECRET=tu_client_secret
 CANVA_REDIRECT_URI=https://n8n.tu-dominio/rest/oauth2-callback
 CANVA_AUTHORIZATION_CODE=solo_para_bootstrap_inicial_opcional
+CANVA_CODE_VERIFIER=pkce_code_verifier_del_exchange
 CANVA_REFRESH_TOKEN=refresh_token_vigente
 CANVA_TEMPLATE_ID=tpl_xxxxxxxxx
 CANVA_FIELD_OVERRIDES_JSON={"fecha":"fecha_evento","comico_1_nombre":"nombre_1"}
@@ -293,6 +294,7 @@ CANVA_ENV_PATH=/workspace/recova-project/.env
 
 Notas:
 - `CANVA_AUTHORIZATION_CODE` puede vaciarse tras obtener el primer refresh token estable.
+- `CANVA_CODE_VERIFIER` debe ser exactamente el mismo valor usado al solicitar el `authorization_code` (PKCE).
 - `CANVA_FIELD_OVERRIDES_JSON` es opcional y permite mapear claves genéricas del script a los nombres reales de campos del template Canva.
 - Si no defines `CANVA_ENV_PATH`, se usa `.env` en la raíz del repo.
 
