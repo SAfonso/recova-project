@@ -54,7 +54,6 @@ Incluye:
   - `fecha_evento`
   - `nivel_experiencia` (0-3)
   - `disponibilidad_ultimo_minuto`
-  - `score_final`
   - `status`
   - `metadata_ia`
 

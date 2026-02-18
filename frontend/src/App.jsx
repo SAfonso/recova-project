@@ -21,7 +21,7 @@ function App() {
   const [activeTab, setActiveTab] = useState('lineup');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [eventDate, setEventDate] = useState(new Date().toISOString().slice(0, 10));
+  const [eventDate, setEventDate] = useState('');
   const [error, setError] = useState('');
 
   const activeCandidate = useMemo(
@@ -36,6 +36,7 @@ function App() {
 
       let rows = [];
       let useLegacyView = false;
+      let hasFechaEvento = true;
 
       const { data: dataV2, error: errorV2 } = await supabase
         .from('lineup_candidates')
@@ -56,18 +57,35 @@ function App() {
         );
 
         useLegacyView = true;
-        const { data: dataLegacy, error: errorLegacy } = await supabase
+        const { data: dataLegacyWithDate, error: errorLegacyWithDate } = await supabase
           .from('lineup_candidates')
-          .select('nombre,genero,categoria,estado,score_final,comico_id,contacto,telefono,instagram')
+          .select('fecha_evento,nombre,genero,categoria,estado,score_final,comico_id,contacto,telefono,instagram')
           .order('score_final', { ascending: false, nullsFirst: false });
 
-        if (errorLegacy) {
-          setError(errorLegacy.message);
-          setLoading(false);
-          return;
-        }
+        if (errorLegacyWithDate) {
+          const missingFechaEvento = String(errorLegacyWithDate.message || '').includes('fecha_evento');
+          if (!missingFechaEvento) {
+            setError(errorLegacyWithDate.message);
+            setLoading(false);
+            return;
+          }
 
-        rows = dataLegacy ?? [];
+          hasFechaEvento = false;
+          const { data: dataLegacy, error: errorLegacy } = await supabase
+            .from('lineup_candidates')
+            .select('nombre,genero,categoria,estado,score_final,comico_id,contacto,telefono,instagram')
+            .order('score_final', { ascending: false, nullsFirst: false });
+
+          if (errorLegacy) {
+            setError(errorLegacy.message);
+            setLoading(false);
+            return;
+          }
+
+          rows = dataLegacy ?? [];
+        } else {
+          rows = dataLegacyWithDate ?? [];
+        }
       } else {
         rows = dataV2 ?? [];
       }
@@ -78,7 +96,7 @@ function App() {
         row_key: useLegacyView
           ? `${row.comico_id ?? 'unknown'}-${index}`
           : (row.solicitud_id ?? `${row.comico_id ?? 'unknown'}-${index}`),
-        fecha_evento: row.fecha_evento ?? null,
+        fecha_evento: hasFechaEvento ? (row.fecha_evento ?? null) : null,
         genero: row.genero === 'unknown' ? 'nb' : row.genero ?? 'nb',
         categoria: row.categoria === 'standard' ? 'priority' : row.categoria ?? 'priority',
       }));
@@ -178,14 +196,18 @@ function App() {
           row_key: candidate.row_key,
           solicitud_id: candidate.solicitud_id,
           comico_id: candidate.comico_id,
+          fecha_evento: candidate.fecha_evento,
           categoria: draft.categoria,
           genero: draft.genero,
         };
       });
+      const selectedEventDate =
+        selectedCandidates.find((candidate) => candidate.fecha_evento)?.fecha_evento ?? null;
+      const rpcEventDate = selectedEventDate ?? (eventDate || null);
 
       const { error: rpcError } = await supabase.rpc('validate_lineup', {
         p_selection: payload,
-        p_event_date: eventDate,
+        p_event_date: rpcEventDate,
       });
 
       if (rpcError) {
@@ -211,7 +233,7 @@ function App() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          fecha: eventDate,
+          fecha: rpcEventDate,
           status: 'validado',
           total: selectedIds.length,
         }),

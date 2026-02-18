@@ -3,6 +3,9 @@
 -- Fecha: 2026-02-17
 -- =========================================================
 
+ALTER TABLE gold.comicos
+  ADD COLUMN IF NOT EXISTS score_actual double precision;
+
 CREATE OR REPLACE VIEW gold.lineup_candidates AS
 SELECT
   s.id AS solicitud_id,
@@ -11,6 +14,7 @@ SELECT
   c.nombre,
   c.genero,
   c.categoria,
+  c.score_actual,
   s.score_aplicado AS score_final,
   c.id AS comico_id,
   COALESCE(c.telefono, c.instagram) AS contacto,
@@ -42,26 +46,28 @@ BEGIN
       NULLIF(entry->>'solicitud_id', '')::uuid AS solicitud_id,
       NULLIF(entry->>'comico_id', '')::uuid AS comico_id,
       NULLIF(entry->>'categoria', '') AS categoria,
-      NULLIF(entry->>'genero', '') AS genero
+      NULLIF(entry->>'genero', '') AS genero,
+      NULLIF(entry->>'fecha_evento', '')::date AS fecha_evento
     FROM jsonb_array_elements(p_selection) AS entry
   ),
   accepted_gold AS (
     UPDATE gold.solicitudes AS s
     SET estado = 'aceptado'
     WHERE s.estado = 'pendiente'
-      AND (
-        s.id IN (
-          SELECT solicitud_id
-          FROM payload_entries
-          WHERE solicitud_id IS NOT NULL
-        )
-        OR (
-          s.fecha_evento = p_event_date
-          AND s.comico_id IN (
-            SELECT comico_id
-            FROM payload_entries
-            WHERE solicitud_id IS NULL
-              AND comico_id IS NOT NULL
+      AND EXISTS (
+        SELECT 1
+        FROM payload_entries pe
+        WHERE (
+          pe.solicitud_id IS NOT NULL
+          AND pe.solicitud_id = s.id
+        ) OR (
+          pe.solicitud_id IS NULL
+          AND pe.comico_id IS NOT NULL
+          AND pe.comico_id = s.comico_id
+          AND (
+            (pe.fecha_evento IS NOT NULL AND s.fecha_evento = pe.fecha_evento)
+            OR (pe.fecha_evento IS NULL AND p_event_date IS NOT NULL AND s.fecha_evento = p_event_date)
+            OR (pe.fecha_evento IS NULL AND p_event_date IS NULL)
           )
         )
       )
@@ -80,6 +86,19 @@ BEGIN
            AND comico_id IS NOT NULL
        )
      );
+
+  UPDATE silver.solicitudes AS ss
+  SET status = 'no_seleccionado',
+      updated_at = now()
+  WHERE ss.status = 'scorado'
+    AND ss.fecha_evento IN (
+      SELECT DISTINCT fecha_evento
+      FROM accepted_gold
+    )
+    AND ss.id NOT IN (
+      SELECT id
+      FROM accepted_gold
+    );
 
   UPDATE gold.comicos AS gc
   SET
@@ -123,6 +142,30 @@ BEGIN
     WHERE comico_id IS NOT NULL
   ) AS entry
   WHERE sc.id = entry.comico_id;
+
+  UPDATE gold.comicos AS gc
+  SET score_actual = latest.score_aplicado
+  FROM (
+    SELECT DISTINCT ON (s.comico_id)
+      s.comico_id,
+      s.score_aplicado
+    FROM gold.solicitudes s
+    WHERE s.score_aplicado IS NOT NULL
+    ORDER BY s.comico_id, s.fecha_evento DESC, s.created_at DESC
+  ) AS latest
+  WHERE gc.id = latest.comico_id;
+
+  -- Corrección de consistencia histórica:
+  -- si la solicitud ya existe en Gold pero quedó como normalizado, se normaliza a scorado.
+  UPDATE silver.solicitudes AS ss
+  SET status = 'scorado',
+      updated_at = now()
+  WHERE ss.status = 'normalizado'
+    AND EXISTS (
+      SELECT 1
+      FROM gold.solicitudes gs
+      WHERE gs.id = ss.id
+    );
 END;
 $$;
 

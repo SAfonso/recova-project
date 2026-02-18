@@ -273,13 +273,21 @@ def persist_pending_score(conn, candidate: CandidateScore) -> None:
                 """
                 UPDATE silver.solicitudes
                 SET status = 'scorado',
-                    score_final = %s,
                     updated_at = now()
                 WHERE id = %s
                   AND status <> 'aprobado'
                 """,
-                (float(candidate.score_final), candidate.solicitud_id),
+                (candidate.solicitud_id,),
             )
+        cursor.execute(
+            """
+            UPDATE gold.comicos
+            SET score_actual = %s,
+                modified_at = now()
+            WHERE id = %s
+            """,
+            (float(candidate.score_final), candidate.comico_id),
+        )
 
 
 def build_ranking(conn, requests: list[SilverRequest]) -> tuple[list[CandidateScore], int]:

@@ -145,6 +145,10 @@ def test_sql_sequence_files_exist():
         path.name == "20260217_sync_lineup_validation_states.sql"
         for path in setup_db.SQL_SEQUENCE
     )
+    assert any(
+        path.name == "20260217_drop_score_final_from_silver_solicitudes.sql"
+        for path in setup_db.SQL_SEQUENCE
+    )
     assert setup_db.SEED_SQL_PATH.exists(), "No existe archivo seed_data.sql"
 
 
