@@ -1,15 +1,15 @@
 # AI LineUp Architect (MVP) 🎭
 
 **Estado del Proyecto:** 🛠️ En Desarrollo (MVP)  
-**Versión:** 0.5.15  
+**Versión:** 0.5.16  
 **Metodología:** Spec-Driven Development (SDD)
 
 Sistema automatizado para la gestión y generación de lineups y cartelería para Open Mics de comedia.
 
-## Novedades recientes (0.5.15)
-- `gold.validate_lineup` corrige el error `relation "accepted_gold" does not exist` y sincroniza estados entre capas: `scorado -> aprobado/no_seleccionado`.
-- El scoring persiste solicitudes Gold en estado `scorado` y mantiene `score_actual` en `gold.comicos`.
-- La UI de curación prioriza candidatos en estado `scorado` (compatibilidad legacy con `pendiente`).
+## Novedades recientes (0.5.16)
+- Se añade `backend/src/canva_auth_utils.py` para gestionar OAuth2 de Canva (exchange + refresh con persistencia opcional del `refresh_token` en `.env`).
+- Se añade `backend/src/canva_builder.py` para que n8n genere cartelería vía endpoint de autofill de Canva y devuelva la URL del diseño.
+- Se documenta la configuración exacta de variables `CANVA_*` y payload JSON esperado para la fase Designer.
 
 El proyecto nace con una arquitectura **SaaS-Ready**, garantizando la privacidad de los datos entre diferentes productores mediante un modelo de datos maestro/detalle y políticas de seguridad avanzadas.
 
@@ -260,6 +260,60 @@ curl -X POST http://localhost:5000/ingest \
 ```
 
 Referencia extendida: `docs/webhook-listener-n8n-ingesta.md`
+
+
+## 🎨 Generación de Cartelería (Canva API)
+
+Se incorporan dos scripts en `backend/src` para cubrir la fase Designer:
+
+- `canva_auth_utils.py`
+  - `exchange`: canjea `authorization_code` por `access_token` + `refresh_token`.
+  - `refresh`: renueva `access_token` usando `CANVA_REFRESH_TOKEN`.
+  - Persiste automáticamente el `refresh_token` rotado en `.env` (si existe).
+- `canva_builder.py`
+  - Recibe por CLI un JSON (desde n8n) con `fecha` y exactamente 5 cómicos.
+  - Obtiene un token válido (refresh automático; fallback opcional a authorization code).
+  - Llama al endpoint de autofill de Canva usando `CANVA_TEMPLATE_ID`.
+  - Imprime por `stdout` la URL del diseño para que n8n la capture.
+
+### Variables necesarias en `.env`
+
+Añade estas variables al entorno del backend:
+
+```dotenv
+CANVA_CLIENT_ID=tu_client_id
+CANVA_CLIENT_SECRET=tu_client_secret
+CANVA_REDIRECT_URI=https://n8n.tu-dominio/rest/oauth2-callback
+CANVA_AUTHORIZATION_CODE=solo_para_bootstrap_inicial_opcional
+CANVA_REFRESH_TOKEN=refresh_token_vigente
+CANVA_TEMPLATE_ID=tpl_xxxxxxxxx
+CANVA_FIELD_OVERRIDES_JSON={"fecha":"fecha_evento","comico_1_nombre":"nombre_1"}
+CANVA_ENV_PATH=/workspace/recova-project/.env
+```
+
+Notas:
+- `CANVA_AUTHORIZATION_CODE` puede vaciarse tras obtener el primer refresh token estable.
+- `CANVA_FIELD_OVERRIDES_JSON` es opcional y permite mapear claves genéricas del script a los nombres reales de campos del template Canva.
+- Si no defines `CANVA_ENV_PATH`, se usa `.env` en la raíz del repo.
+
+### Uso rápido
+
+1) Bootstrap de tokens (una vez):
+```bash
+python backend/src/canva_auth_utils.py exchange
+```
+
+2) Renovación manual (diagnóstico):
+```bash
+python backend/src/canva_auth_utils.py refresh
+```
+
+3) Ejecución del builder con payload de n8n:
+```bash
+python backend/src/canva_builder.py '{"fecha":"2026-02-22","comicos":[{"nombre":"A","instagram":"@a"},{"nombre":"B","instagram":"@b"},{"nombre":"C","instagram":"@c"},{"nombre":"D","instagram":"@d"},{"nombre":"E","instagram":"@e"}]}'
+```
+
+Respuesta esperada: URL del diseño en Canva por salida estándar (`stdout`).
 
 ## 🚚 Deploy Automatizado (Rama `dev`)
 El workflow `.github/workflows/deploy.yml` despliega al VPS por SSH en cada push a `dev`:
