@@ -5,6 +5,17 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.16] - 2026-02-18
+
+### Added
+- `backend/src/canva_auth_utils.py` con utilidades OAuth2 para Canva: intercambio de `authorization_code`, renovación de `access_token` con `refresh_token`, CLI (`exchange`/`refresh`) y persistencia del refresh token rotado en `.env`.
+- `backend/src/canva_builder.py` como entrypoint para n8n: valida payload JSON de 5 cómicos + fecha, resuelve token válido, ejecuta autofill contra Canva y devuelve la URL del diseño por `stdout`.
+- `backend/tests/unit/test_canva_builder.py` con pruebas unitarias para validación de payload, mapeo de campos autofill y extracción robusta de URL de diseño.
+
+### Changed
+- `README.md` documenta la fase Designer con Canva API, variables `CANVA_*`, uso CLI y ejemplo de payload para integración en n8n.
+- Incremento de versión a `0.5.16` en `package.json` y `pyproject.toml`.
+
 ## [0.5.15] - 2026-02-18
 
 ### Fixed

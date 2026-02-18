@@ -1,0 +1,190 @@
+"""Generador de cartelería en Canva mediante autofill API."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import logging
+import os
+from dataclasses import dataclass
+from logging.handlers import TimedRotatingFileHandler
+from typing import Any
+
+import requests
+from dotenv import load_dotenv
+
+from canva_auth_utils import exchange_code_for_tokens, refresh_access_token
+
+CANVA_AUTOFILL_URL = "https://api.canva.com/rest/v1/autofills"
+LOG_DIRECTORY = "/root/RECOVA/backend/logs"
+LOG_FILE_PATH = "/root/RECOVA/backend/logs/canva_builder.log"
+LOGGER = logging.getLogger("canva_builder")
+
+
+@dataclass(frozen=True)
+class ComicEntry:
+    nombre: str
+    instagram: str
+
+
+@dataclass(frozen=True)
+class PosterRequest:
+    fecha: str
+    comicos: list[ComicEntry]
+
+
+def configure_logging() -> None:
+    os.makedirs(LOG_DIRECTORY, exist_ok=True)
+
+    logger = logging.getLogger()
+    logger.handlers.clear()
+    logger.setLevel(os.getenv("LOG_LEVEL", "INFO").upper())
+
+    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+    rotating_handler = TimedRotatingFileHandler(
+        LOG_FILE_PATH,
+        when="midnight",
+        interval=1,
+        backupCount=14,
+        encoding="utf-8",
+    )
+    rotating_handler.setFormatter(formatter)
+    logger.addHandler(rotating_handler)
+
+
+def _normalize_instagram(value: str) -> str:
+    cleaned = value.strip().replace("@", "")
+    return cleaned
+
+
+def parse_cli_payload(raw_payload: str) -> PosterRequest:
+    try:
+        payload = json.loads(raw_payload)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Payload JSON inválido: {exc}") from exc
+
+    fecha = str(payload.get("fecha") or payload.get("fecha_evento") or "").strip()
+    if not fecha:
+        raise ValueError("El payload debe incluir 'fecha' o 'fecha_evento'")
+
+    raw_comics = payload.get("comicos")
+    if not isinstance(raw_comics, list):
+        raise ValueError("El payload debe incluir 'comicos' como array")
+
+    comics: list[ComicEntry] = []
+    for index, raw_comic in enumerate(raw_comics, start=1):
+        if not isinstance(raw_comic, dict):
+            raise ValueError(f"comicos[{index}] debe ser un objeto")
+        nombre = str(raw_comic.get("nombre", "")).strip()
+        instagram = _normalize_instagram(str(raw_comic.get("instagram", "")))
+        if not nombre or not instagram:
+            raise ValueError(f"comicos[{index}] requiere 'nombre' e 'instagram'")
+        comics.append(ComicEntry(nombre=nombre, instagram=instagram))
+
+    if len(comics) != 5:
+        raise ValueError("El payload debe incluir exactamente 5 cómicos")
+
+    return PosterRequest(fecha=fecha, comicos=comics)
+
+
+def build_autofill_payload(request_payload: PosterRequest) -> dict[str, Any]:
+    template_id = os.getenv("CANVA_TEMPLATE_ID", "").strip()
+    if not template_id:
+        raise RuntimeError("Falta CANVA_TEMPLATE_ID en variables de entorno")
+
+    data: dict[str, str] = {"fecha": request_payload.fecha}
+    for index, comico in enumerate(request_payload.comicos, start=1):
+        data[f"comico_{index}_nombre"] = comico.nombre
+        data[f"comico_{index}_instagram"] = comico.instagram
+
+    field_overrides = os.getenv("CANVA_FIELD_OVERRIDES_JSON", "").strip()
+    if field_overrides:
+        overrides = json.loads(field_overrides)
+        for source_key, target_key in overrides.items():
+            if source_key in data and isinstance(target_key, str) and target_key.strip():
+                data[target_key.strip()] = data.pop(source_key)
+
+    return {
+        "template_id": template_id,
+        "data": data,
+    }
+
+
+def resolve_access_token() -> str:
+    try:
+        tokens = refresh_access_token(persist_refresh_token=True)
+        return tokens.access_token
+    except Exception as refresh_error:
+        LOGGER.warning("No se pudo renovar token con refresh token: %s", refresh_error)
+        if os.getenv("CANVA_AUTHORIZATION_CODE", "").strip():
+            LOGGER.info("Intentando recuperación con authorization code...")
+            tokens = exchange_code_for_tokens(persist_refresh_token=True)
+            return tokens.access_token
+        raise RuntimeError("No se pudo obtener un access token válido para Canva") from refresh_error
+
+
+def request_canva_autofill(access_token: str, payload: dict[str, Any]) -> dict[str, Any]:
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+    }
+    response = requests.post(
+        CANVA_AUTOFILL_URL,
+        headers=headers,
+        json=payload,
+        timeout=45,
+    )
+
+    if response.status_code not in (200, 201):
+        LOGGER.error("Error Canva autofill: %s - %s", response.status_code, response.text)
+        raise RuntimeError(f"Canva autofill falló: {response.status_code} {response.text}")
+
+    return response.json()
+
+
+def extract_design_url(response_payload: dict[str, Any]) -> str:
+    candidates = [
+        response_payload.get("design_url"),
+        response_payload.get("url"),
+        ((response_payload.get("job") or {}).get("result") or {}).get("design_url"),
+        ((response_payload.get("result") or {}).get("design") or {}).get("url"),
+        ((response_payload.get("design") or {}).get("urls") or {}).get("edit_url"),
+    ]
+
+    for candidate in candidates:
+        if isinstance(candidate, str) and candidate.strip():
+            return candidate.strip()
+
+    raise RuntimeError(f"No se pudo extraer URL del diseño desde la respuesta de Canva: {response_payload}")
+
+
+def _build_cli() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Generador de cartelería Canva")
+    parser.add_argument(
+        "payload_json",
+        help="Payload JSON con fecha y 5 cómicos",
+    )
+    return parser
+
+
+def main() -> None:
+    load_dotenv()
+    configure_logging()
+
+    parser = _build_cli()
+    args = parser.parse_args()
+
+    poster_request = parse_cli_payload(args.payload_json)
+    access_token = resolve_access_token()
+    autofill_payload = build_autofill_payload(poster_request)
+
+    LOGGER.info("Solicitando autofill a Canva para template_id=%s", os.getenv("CANVA_TEMPLATE_ID", ""))
+    response_payload = request_canva_autofill(access_token, autofill_payload)
+    design_url = extract_design_url(response_payload)
+
+    LOGGER.info("Diseño generado correctamente: %s", design_url)
+    print(design_url)
+
+
+if __name__ == "__main__":
+    main()
