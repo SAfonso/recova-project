@@ -151,6 +151,7 @@ def test_migration_creates_lineup_candidates_view_and_validate_lineup_function()
 
 def test_migration_syncs_lineup_validation_states_between_gold_and_silver():
     content = read_lower(MIGRATION_LINEUP_SYNC_SQL)
+    assert "drop view if exists gold.lineup_candidates" in content
     assert "create or replace view gold.lineup_candidates as" in content
     assert "s.id as solicitud_id" in content
     assert "s.fecha_evento" in content
