@@ -6,6 +6,8 @@
 ALTER TABLE gold.comicos
   ADD COLUMN IF NOT EXISTS score_actual double precision;
 
+DROP VIEW IF EXISTS gold.lineup_candidates;
+
 CREATE OR REPLACE VIEW gold.lineup_candidates AS
 SELECT
   s.id AS solicitud_id,

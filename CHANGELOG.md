@@ -5,6 +5,15 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.14] - 2026-02-18
+
+### Fixed
+- `specs/sql/migrations/20260217_sync_lineup_validation_states.sql` ahora ejecuta `DROP VIEW IF EXISTS gold.lineup_candidates` antes del `CREATE OR REPLACE VIEW`, corrigiendo el fallo de despliegue/reset (`cannot change name of view column ...`) cuando coexistían definiciones previas de la vista con columnas distintas.
+
+### Changed
+- `backend/tests/sql/test_sql_contracts.py` amplía el contrato para exigir explícitamente el `DROP VIEW` previo en la migración de sincronización de estados.
+- Incremento de versión a `0.5.14` en `package.json`, `pyproject.toml` y `README.md`.
+
 ## [0.5.13] - 2026-02-17
 
 ### Fixed
