@@ -156,10 +156,13 @@ def test_migration_syncs_lineup_validation_states_between_gold_and_silver():
     assert "s.id as solicitud_id" in content
     assert "s.fecha_evento" in content
     assert "create or replace function gold.validate_lineup(" in content
+    assert "create temp table tmp_accepted_gold" in content
     assert "update gold.solicitudes as s" in content
-    assert "set estado = 'aceptado'" in content
+    assert "set estado = 'aprobado'" in content
+    assert "set estado = 'no_seleccionado'" in content
     assert "update silver.solicitudes as ss" in content
     assert "set status = 'aprobado'" in content
+    assert "set status = 'no_seleccionado'" in content
 
 
 def test_gold_contains_master_and_history_tables():
@@ -178,6 +181,9 @@ def test_gold_defines_expected_enum_types():
     assert "create type gold.genero_comico" not in content
     assert "create type gold.categoria_comico" in content
     assert "create type gold.estado_solicitud" in content
+    assert "'scorado'" in content
+    assert "'aprobado'" in content
+    assert "'no_seleccionado'" in content
 
 
 def test_gold_supports_lineage_bridge_with_silver():

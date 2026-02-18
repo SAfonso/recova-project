@@ -1,14 +1,15 @@
 # AI LineUp Architect (MVP) 🎭
 
 **Estado del Proyecto:** 🛠️ En Desarrollo (MVP)  
-**Versión:** 0.5.14  
+**Versión:** 0.5.15  
 **Metodología:** Spec-Driven Development (SDD)
 
 Sistema automatizado para la gestión y generación de lineups y cartelería para Open Mics de comedia.
 
-## Novedades recientes (0.5.14)
-- La migración `specs/sql/migrations/20260217_sync_lineup_validation_states.sql` ahora elimina explícitamente la vista `gold.lineup_candidates` antes de recrearla.
-- Este ajuste evita errores en `setup_db.py --reset --seed` y despliegues donde coexistían definiciones antiguas de la vista con columnas incompatibles.
+## Novedades recientes (0.5.15)
+- `gold.validate_lineup` corrige el error `relation "accepted_gold" does not exist` y sincroniza estados entre capas: `scorado -> aprobado/no_seleccionado`.
+- El scoring persiste solicitudes Gold en estado `scorado` y mantiene `score_actual` en `gold.comicos`.
+- La UI de curación prioriza candidatos en estado `scorado` (compatibilidad legacy con `pendiente`).
 
 El proyecto nace con una arquitectura **SaaS-Ready**, garantizando la privacidad de los datos entre diferentes productores mediante un modelo de datos maestro/detalle y políticas de seguridad avanzadas.
 

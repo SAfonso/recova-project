@@ -314,8 +314,14 @@ def test_persist_pending_score_marks_silver_as_scorado_without_score_final_colum
 
     engine.persist_pending_score(conn, candidate)
 
-    assert len(cursor.executed) == 3
-    silver_update_query, silver_update_params = cursor.executed[1]
+    assert len(cursor.executed) == 4
+    insert_query, _ = cursor.executed[0]
+    assert "values (%s, %s, %s, 'scorado', %s, %s)" in insert_query.lower()
+    gold_status_update_query, gold_status_update_params = cursor.executed[1]
+    assert "update gold.solicitudes" in gold_status_update_query.lower()
+    assert "set estado = 'scorado'" in gold_status_update_query.lower()
+    assert gold_status_update_params == (candidate.solicitud_id,)
+    silver_update_query, silver_update_params = cursor.executed[2]
     assert "update silver.solicitudes" in silver_update_query.lower()
     assert "status = 'scorado'" in silver_update_query.lower()
     assert "score_final" not in silver_update_query.lower()

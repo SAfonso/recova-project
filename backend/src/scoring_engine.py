@@ -195,7 +195,7 @@ def has_recent_acceptance_penalty(conn, comico_id: str) -> bool:
             WITH ultimos_shows AS (
                 SELECT DISTINCT fecha_evento
                 FROM gold.solicitudes
-                WHERE estado = 'aceptado'
+                WHERE estado IN ('aprobado', 'aceptado')
                 ORDER BY fecha_evento DESC
                 LIMIT 2
             )
@@ -204,7 +204,7 @@ def has_recent_acceptance_penalty(conn, comico_id: str) -> bool:
                 FROM gold.solicitudes sg
                 JOIN ultimos_shows us ON us.fecha_evento = sg.fecha_evento
                 WHERE sg.comico_id = %s
-                  AND sg.estado = 'aceptado'
+                  AND sg.estado IN ('aprobado', 'aceptado')
             )
             """,
             (comico_id,),
@@ -252,13 +252,13 @@ def persist_pending_score(conn, candidate: CandidateScore) -> None:
                 score_aplicado,
                 marca_temporal
             )
-            VALUES (%s, %s, %s, 'pendiente', %s, %s)
+            VALUES (%s, %s, %s, 'scorado', %s, %s)
             ON CONFLICT (id) DO UPDATE
             SET comico_id = EXCLUDED.comico_id,
                 fecha_evento = EXCLUDED.fecha_evento,
                 score_aplicado = EXCLUDED.score_aplicado,
                 marca_temporal = EXCLUDED.marca_temporal
-            WHERE gold.solicitudes.estado = 'pendiente'
+            WHERE gold.solicitudes.estado IN ('pendiente', 'scorado')
             """,
             (
                 solicitud_id,
@@ -267,6 +267,15 @@ def persist_pending_score(conn, candidate: CandidateScore) -> None:
                 float(candidate.score_final),
                 candidate.marca_temporal,
             ),
+        )
+        cursor.execute(
+            """
+            UPDATE gold.solicitudes
+            SET estado = 'scorado'
+            WHERE id = %s
+              AND estado IN ('pendiente', 'scorado')
+            """,
+            (solicitud_id,),
         )
         if candidate.solicitud_id:
             cursor.execute(
