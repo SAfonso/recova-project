@@ -8,6 +8,7 @@ import logging
 import os
 from dataclasses import dataclass
 from logging.handlers import TimedRotatingFileHandler
+from pathlib import Path
 from typing import Any
 
 import requests
@@ -16,8 +17,9 @@ from dotenv import load_dotenv
 from canva_auth_utils import exchange_code_for_tokens, refresh_access_token
 
 CANVA_AUTOFILL_URL = "https://api.canva.com/rest/v1/autofills"
-LOG_DIRECTORY = "/root/RECOVA/backend/logs"
-LOG_FILE_PATH = "/root/RECOVA/backend/logs/canva_builder.log"
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+DEFAULT_LOG_DIRECTORY = BACKEND_DIR / "logs"
+DEFAULT_LOG_FILE_PATH = DEFAULT_LOG_DIRECTORY / "canva_builder.log"
 LOGGER = logging.getLogger("canva_builder")
 
 
@@ -34,7 +36,13 @@ class PosterRequest:
 
 
 def configure_logging() -> None:
-    os.makedirs(LOG_DIRECTORY, exist_ok=True)
+    log_directory = Path(
+        os.getenv("CANVA_LOG_DIRECTORY", str(DEFAULT_LOG_DIRECTORY))
+    )
+    log_file_path = Path(
+        os.getenv("CANVA_BUILDER_LOG_FILE_PATH", str(DEFAULT_LOG_FILE_PATH))
+    )
+    log_directory.mkdir(parents=True, exist_ok=True)
 
     logger = logging.getLogger()
     logger.handlers.clear()
@@ -42,7 +50,7 @@ def configure_logging() -> None:
 
     formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
     rotating_handler = TimedRotatingFileHandler(
-        LOG_FILE_PATH,
+        str(log_file_path),
         when="midnight",
         interval=1,
         backupCount=14,
