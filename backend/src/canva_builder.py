@@ -14,7 +14,12 @@ from typing import Any
 import requests
 from dotenv import load_dotenv
 
-from canva_auth_utils import exchange_code_for_tokens, refresh_access_token
+from canva_auth_utils import (
+    CanvaAuthError,
+    exchange_code_for_tokens,
+    get_cached_access_token,
+    refresh_access_token,
+)
 
 CANVA_AUTOFILL_URL = "https://api.canva.com/rest/v1/autofills"
 BACKEND_DIR = Path(__file__).resolve().parents[1]
@@ -119,14 +124,40 @@ def build_autofill_payload(request_payload: PosterRequest) -> dict[str, Any]:
 
 
 def resolve_access_token() -> str:
+    cached_token = get_cached_access_token()
+    if cached_token:
+        LOGGER.info("Usando access token cacheado desde .env")
+        return cached_token
+
     try:
-        tokens = refresh_access_token(persist_refresh_token=True)
+        tokens = refresh_access_token(
+            persist_refresh_token=True,
+            persist_access_token=True,
+        )
         return tokens.access_token
+    except CanvaAuthError as refresh_error:
+        if refresh_error.requires_reauthorization:
+            raise RuntimeError(
+                "Refresh token de Canva inválido o revocado (invalid_grant). "
+                "Debes reautorizar manualmente: ejecuta `canva_auth_utils.py authorize` y luego `exchange`."
+            ) from refresh_error
+        LOGGER.warning("No se pudo renovar token con refresh token: %s", refresh_error)
+        if os.getenv("CANVA_AUTHORIZATION_CODE", "").strip():
+            LOGGER.info("Intentando recuperación con authorization code...")
+            tokens = exchange_code_for_tokens(
+                persist_refresh_token=True,
+                persist_access_token=True,
+            )
+            return tokens.access_token
+        raise RuntimeError("No se pudo obtener un access token válido para Canva") from refresh_error
     except Exception as refresh_error:
         LOGGER.warning("No se pudo renovar token con refresh token: %s", refresh_error)
         if os.getenv("CANVA_AUTHORIZATION_CODE", "").strip():
             LOGGER.info("Intentando recuperación con authorization code...")
-            tokens = exchange_code_for_tokens(persist_refresh_token=True)
+            tokens = exchange_code_for_tokens(
+                persist_refresh_token=True,
+                persist_access_token=True,
+            )
             return tokens.access_token
         raise RuntimeError("No se pudo obtener un access token válido para Canva") from refresh_error
 
