@@ -5,6 +5,35 @@ from datetime import datetime, timezone
 import scoring_engine as engine
 
 
+class RecordingCursor:
+    def __init__(self, fetchall_rows=None):
+        self.executed: list[tuple[str, tuple | None]] = []
+        self._fetchall_rows = list(fetchall_rows or [])
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+    def execute(self, query, params=None):
+        self.executed.append((str(query), params))
+
+    def fetchall(self):
+        return list(self._fetchall_rows)
+
+    def fetchone(self):
+        return None
+
+
+class RecordingConnection:
+    def __init__(self, cursor):
+        self._cursor = cursor
+
+    def cursor(self):
+        return self._cursor
+
+
 def test_normalize_category_aliases_to_expected_business_values():
     assert engine.normalize_category("priority") == "preferred"
     assert engine.normalize_category("restricted") == "blacklist"
@@ -250,3 +279,44 @@ def test_build_ranking_places_unknowns_only_after_fnb_and_m_buckets(monkeypatch)
 
     assert skipped == 0
     assert [candidate.comico_id for candidate in ranking] == ["f-1", "m-1", "f-2", "m-2", "m-3", "u-1"]
+
+
+def test_fetch_silver_requests_query_does_not_reference_silver_score_final():
+    cursor = RecordingCursor(fetchall_rows=[])
+    conn = RecordingConnection(cursor)
+
+    requests = engine.fetch_silver_requests(conn)
+
+    assert requests == []
+    assert len(cursor.executed) == 1
+    query = cursor.executed[0][0].lower()
+    assert "from silver.solicitudes" in query
+    assert "score_final" not in query
+
+
+def test_persist_pending_score_marks_silver_as_scorado_without_score_final_column():
+    cursor = RecordingCursor()
+    conn = RecordingConnection(cursor)
+    candidate = engine.CandidateScore(
+        nombre="Comica Test",
+        telefono="+34111111111",
+        instagram="comica_test",
+        genero="f",
+        comico_id="11111111-1111-1111-1111-111111111111",
+        categoria="preferred",
+        score_final=30,
+        marca_temporal=datetime(2026, 2, 17, 10, 0, tzinfo=timezone.utc),
+        fecha_evento=datetime(2026, 3, 10, tzinfo=timezone.utc).date(),
+        penalizado_por_recencia=False,
+        bono_bala_unica=True,
+        solicitud_id="22222222-2222-2222-2222-222222222222",
+    )
+
+    engine.persist_pending_score(conn, candidate)
+
+    assert len(cursor.executed) == 3
+    silver_update_query, silver_update_params = cursor.executed[1]
+    assert "update silver.solicitudes" in silver_update_query.lower()
+    assert "status = 'scorado'" in silver_update_query.lower()
+    assert "score_final" not in silver_update_query.lower()
+    assert silver_update_params == (candidate.solicitud_id,)

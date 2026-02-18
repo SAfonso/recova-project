@@ -19,6 +19,7 @@ SQL_SEQUENCE = [
     ROOT_DIR / "specs/sql/silver_relacional.sql",
     ROOT_DIR / "specs/sql/migrations/20260212_alter_tipo_solicitud_status.sql",
     ROOT_DIR / "specs/sql/migrations/20260217_fix_anon_update_policy_silver_comicos.sql",
+    ROOT_DIR / "specs/sql/migrations/20260217_drop_score_final_from_silver_solicitudes.sql",
     ROOT_DIR / "specs/sql/gold_relacional.sql",
     ROOT_DIR / "specs/sql/migrations/20260218_create_lineup_candidates_and_validate_lineup.sql",
     ROOT_DIR / "specs/sql/migrations/20260217_sync_lineup_validation_states.sql",

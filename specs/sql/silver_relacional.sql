@@ -280,7 +280,6 @@ create table if not exists silver.solicitudes (
   disponibilidad_ultimo_minuto boolean not null default false,
   show_cercano text,
   origen_conocimiento text,
-  score_final numeric(5,2),
   status silver.tipo_status not null default 'crudo',
   metadata_ia jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
@@ -302,11 +301,13 @@ alter table silver.solicitudes
   add column if not exists disponibilidad_ultimo_minuto boolean not null default false,
   add column if not exists show_cercano text,
   add column if not exists origen_conocimiento text,
-  add column if not exists score_final numeric(5,2),
   add column if not exists status silver.tipo_status not null default 'crudo',
   add column if not exists metadata_ia jsonb not null default '{}'::jsonb,
   add column if not exists created_at timestamptz not null default now(),
   add column if not exists updated_at timestamptz not null default now();
+
+alter table silver.solicitudes
+  drop column if exists score_final;
 
 -- Reemplazo controlado de FKs por relaciones schema-qualified correctas.
 DO $$

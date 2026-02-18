@@ -13,6 +13,10 @@ MIGRATION_RLS_SQL = (
     PROJECT_ROOT
     / "specs/sql/migrations/20260217_fix_anon_update_policy_silver_comicos.sql"
 )
+MIGRATION_DROP_SILVER_SCORE_SQL = (
+    PROJECT_ROOT
+    / "specs/sql/migrations/20260217_drop_score_final_from_silver_solicitudes.sql"
+)
 MIGRATION_LINEUP_SQL = (
     PROJECT_ROOT
     / "specs/sql/migrations/20260218_create_lineup_candidates_and_validate_lineup.sql"
@@ -33,6 +37,7 @@ def test_sql_files_exist():
     assert SEED_SQL.exists()
     assert MIGRATION_STATUS_SQL.exists()
     assert MIGRATION_RLS_SQL.exists()
+    assert MIGRATION_DROP_SILVER_SCORE_SQL.exists()
     assert MIGRATION_LINEUP_SQL.exists()
     assert MIGRATION_LINEUP_SYNC_SQL.exists()
     assert GOLD_SQL.exists()
@@ -66,6 +71,7 @@ def test_silver_contains_master_and_transactional_tables():
     assert "is_gold boolean" not in content
     assert "is_priority boolean" not in content
     assert "is_restricted boolean" not in content
+    assert "score_final numeric(5,2)" not in content
 
 
 def test_silver_enum_types_live_in_silver_schema():
@@ -122,6 +128,12 @@ def test_migration_enforces_anon_update_policy_on_silver_comicos():
     assert "for update to anon" in content
     assert "using (true)" in content
     assert "with check (true)" in content
+
+
+def test_migration_drops_score_final_from_silver_solicitudes():
+    content = read_lower(MIGRATION_DROP_SILVER_SCORE_SQL)
+    assert "alter table silver.solicitudes" in content
+    assert "drop column if exists score_final" in content
 
 
 def test_migration_creates_lineup_candidates_view_and_validate_lineup_function():

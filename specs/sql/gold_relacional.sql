@@ -93,6 +93,7 @@ create table if not exists gold.comicos (
   nombre text,
   genero text not null default 'unknown',
   categoria gold.categoria_comico not null default 'standard',
+  score_actual double precision,
   fecha_ultima_actuacion date,
 
   created_at timestamptz not null default now(),
@@ -109,7 +110,8 @@ create table if not exists gold.comicos (
 );
 
 alter table gold.comicos
-  add column if not exists genero text;
+  add column if not exists genero text,
+  add column if not exists score_actual double precision;
 
 DO $$
 DECLARE
