@@ -5,6 +5,18 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.18] - 2026-02-19
+
+### Added
+- `backend/src/canva_builder.py` incorpora `ejecutar_generacion_poster(...)` para encapsular el flujo completo de generación: resolución de token, autofill y extracción de URL final.
+- `backend/tests/unit/test_canva_builder.py` añade cobertura unitaria para validar prioridad de token fresco por refresh y fallback a token cacheado cuando el refresh falla temporalmente.
+
+### Changed
+- `backend/src/canva_builder.py` ajusta `resolve_access_token()` para intentar primero `refresh_access_token(...)` en cada ejecución del builder, alineando la generación de póster con una estrategia de token siempre fresco.
+- `backend/src/canva_builder.py` mantiene fallback robusto: token cacheado y recuperación por `authorization_code` cuando corresponde.
+- `README.md` actualiza la sección Canva para reflejar la estrategia refresh-first y los fallbacks disponibles.
+- Incremento de versión a `0.5.18` en `package.json`, `pyproject.toml` y `README.md`.
+
 ## [0.5.17] - 2026-02-18
 
 ### Added

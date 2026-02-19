@@ -1,4 +1,5 @@
 import json
+from types import SimpleNamespace
 
 import pytest
 
@@ -63,3 +64,25 @@ def test_extract_design_url_handles_nested_payload():
     payload = {"result": {"design": {"url": "https://www.canva.com/design/abc"}}}
 
     assert builder.extract_design_url(payload) == "https://www.canva.com/design/abc"
+
+
+def test_resolve_access_token_uses_fresh_token_from_refresh(monkeypatch):
+    monkeypatch.setattr(
+        builder,
+        "refresh_access_token",
+        lambda **_: SimpleNamespace(access_token="fresh_token"),
+    )
+    monkeypatch.setattr(builder, "get_cached_access_token", lambda: "cached_token")
+
+    assert builder.resolve_access_token() == "fresh_token"
+
+
+def test_resolve_access_token_falls_back_to_cached_token_if_refresh_fails(monkeypatch):
+    def _raise_refresh_error(**_):
+        raise builder.CanvaAuthError("refresh temporal", requires_reauthorization=False)
+
+    monkeypatch.setattr(builder, "refresh_access_token", _raise_refresh_error)
+    monkeypatch.setattr(builder, "get_cached_access_token", lambda: "cached_token")
+    monkeypatch.delenv("CANVA_AUTHORIZATION_CODE", raising=False)
+
+    assert builder.resolve_access_token() == "cached_token"
