@@ -124,12 +124,8 @@ def build_autofill_payload(request_payload: PosterRequest) -> dict[str, Any]:
 
 
 def resolve_access_token() -> str:
-    cached_token = get_cached_access_token()
-    if cached_token:
-        LOGGER.info("Usando access token cacheado desde .env")
-        return cached_token
-
     try:
+        LOGGER.info("Solicitando token fresco con CANVA_REFRESH_TOKEN")
         tokens = refresh_access_token(
             persist_refresh_token=True,
             persist_access_token=True,
@@ -142,6 +138,10 @@ def resolve_access_token() -> str:
                 "Debes reautorizar manualmente: ejecuta `canva_auth_utils.py authorize` y luego `exchange`."
             ) from refresh_error
         LOGGER.warning("No se pudo renovar token con refresh token: %s", refresh_error)
+        cached_token = get_cached_access_token()
+        if cached_token:
+            LOGGER.info("Usando access token cacheado como fallback")
+            return cached_token
         if os.getenv("CANVA_AUTHORIZATION_CODE", "").strip():
             LOGGER.info("Intentando recuperación con authorization code...")
             tokens = exchange_code_for_tokens(
@@ -152,6 +152,10 @@ def resolve_access_token() -> str:
         raise RuntimeError("No se pudo obtener un access token válido para Canva") from refresh_error
     except Exception as refresh_error:
         LOGGER.warning("No se pudo renovar token con refresh token: %s", refresh_error)
+        cached_token = get_cached_access_token()
+        if cached_token:
+            LOGGER.info("Usando access token cacheado como fallback")
+            return cached_token
         if os.getenv("CANVA_AUTHORIZATION_CODE", "").strip():
             LOGGER.info("Intentando recuperación con authorization code...")
             tokens = exchange_code_for_tokens(
@@ -206,6 +210,15 @@ def _build_cli() -> argparse.ArgumentParser:
     return parser
 
 
+def ejecutar_generacion_poster(request_payload: PosterRequest) -> str:
+    access_token = resolve_access_token()
+    autofill_payload = build_autofill_payload(request_payload)
+
+    LOGGER.info("Solicitando autofill a Canva para template_id=%s", os.getenv("CANVA_TEMPLATE_ID", ""))
+    response_payload = request_canva_autofill(access_token, autofill_payload)
+    return extract_design_url(response_payload)
+
+
 def main() -> None:
     load_dotenv()
     configure_logging()
@@ -214,12 +227,7 @@ def main() -> None:
     args = parser.parse_args()
 
     poster_request = parse_cli_payload(args.payload_json)
-    access_token = resolve_access_token()
-    autofill_payload = build_autofill_payload(poster_request)
-
-    LOGGER.info("Solicitando autofill a Canva para template_id=%s", os.getenv("CANVA_TEMPLATE_ID", ""))
-    response_payload = request_canva_autofill(access_token, autofill_payload)
-    design_url = extract_design_url(response_payload)
+    design_url = ejecutar_generacion_poster(poster_request)
 
     LOGGER.info("Diseño generado correctamente: %s", design_url)
     print(design_url)

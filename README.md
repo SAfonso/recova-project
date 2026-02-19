@@ -1,16 +1,16 @@
 # AI LineUp Architect (MVP) 🎭
 
 **Estado del Proyecto:** 🛠️ En Desarrollo (MVP)  
-**Versión:** 0.5.17  
+**Versión:** 0.5.18  
 **Metodología:** Spec-Driven Development (SDD)
 
 Sistema automatizado para la gestión y generación de lineups y cartelería para Open Mics de comedia.
 
-## Novedades recientes (0.5.17)
+## Novedades recientes (0.5.18)
 - `canva_auth_utils.py` ahora soporta flujo PKCE completo con comando `authorize` (genera `code_verifier` y URL de autorización).
 - OAuth de Canva endurecido con `CanvaAuthError` para identificar `invalid_grant` y forzar reautorización manual cuando procede.
 - Persistencia segura de `.env` con `dotenv.set_key` para `CANVA_REFRESH_TOKEN`, `CANVA_ACCESS_TOKEN` y `CANVA_ACCESS_TOKEN_EXPIRES_AT`.
-- `canva_builder.py` reutiliza access token cacheado antes de ejecutar refresh, reduciendo llamadas OAuth innecesarias tras reinicios cortos.
+- `canva_builder.py` fuerza renovación de token (`refresh_access_token`) al inicio de cada generación y mantiene fallback a token cacheado/`authorization_code` cuando aplica.
 
 El proyecto nace con una arquitectura **SaaS-Ready**, garantizando la privacidad de los datos entre diferentes productores mediante un modelo de datos maestro/detalle y políticas de seguridad avanzadas.
 
@@ -273,7 +273,7 @@ Se incorporan dos scripts en `backend/src` para cubrir la fase Designer:
   - Persiste automáticamente el `refresh_token` rotado en `.env` (si existe).
 - `canva_builder.py`
   - Recibe por CLI un JSON (desde n8n) con `fecha` y exactamente 5 cómicos.
-  - Obtiene un token válido (refresh automático; fallback opcional a authorization code).
+  - Obtiene token fresco al iniciar (refresh forzado); si falla, usa fallback a token cacheado y opcionalmente `authorization_code`.
   - Llama al endpoint de autofill de Canva usando `CANVA_TEMPLATE_ID`.
   - Imprime por `stdout` la URL del diseño para que n8n la capture.
 
@@ -298,7 +298,7 @@ CANVA_ENV_PATH=/workspace/recova-project/.env
 Notas:
 - `CANVA_AUTHORIZATION_CODE` puede vaciarse tras obtener el primer refresh token estable.
 - `CANVA_CODE_VERIFIER` debe ser exactamente el mismo valor usado al solicitar el `authorization_code` (PKCE).
-- `CANVA_ACCESS_TOKEN` y `CANVA_ACCESS_TOKEN_EXPIRES_AT` se persisten automáticamente tras `exchange/refresh`; el builder reutiliza ese token si sigue vigente para evitar refresh innecesario.
+- `CANVA_ACCESS_TOKEN` y `CANVA_ACCESS_TOKEN_EXPIRES_AT` se persisten automáticamente tras `exchange/refresh`; el builder los usa como fallback si el refresh no está disponible temporalmente.
 - `CANVA_FIELD_OVERRIDES_JSON` es opcional y permite mapear claves genéricas del script a los nombres reales de campos del template Canva.
 - Si no defines `CANVA_ENV_PATH`, se usa `.env` en la raíz del repo.
 
