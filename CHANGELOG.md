@@ -23,6 +23,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - `backend/src/canva_auth_utils.py` incorpora `CanvaAuthError` con metadatos (`status_code`, `error_code`, `response_body`) y flag `requires_reauthorization` para detectar flujos OAuth que requieren reautorización manual.
 - `backend/src/canva_auth_utils.py` añade el comando `authorize` para generar `code_verifier`/`code_challenge` (PKCE) y la URL de autorización de Canva de forma guiada.
 - `backend/src/canva_auth_utils.py` persiste `CANVA_ACCESS_TOKEN` y `CANVA_ACCESS_TOKEN_EXPIRES_AT`, además del refresh token, para reutilizar sesiones válidas tras reinicios cortos.
+- `backend/src/getVeri.py` y `backend/src/test.py` se añaden como scripts auxiliares de diagnóstico manual para pruebas del flujo OAuth/PKCE de Canva.
 
 ### Changed
 - `backend/src/canva_auth_utils.py` reemplaza escritura manual del `.env` por `dotenv.set_key`, reduciendo riesgo de corrupción del archivo de entorno.
