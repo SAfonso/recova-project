@@ -2,6 +2,7 @@ import json
 from types import SimpleNamespace
 
 import pytest
+import requests
 
 import canva_builder as builder
 
@@ -93,7 +94,7 @@ def test_extract_design_url_handles_nested_payload():
     assert builder.extract_design_url(payload) == "https://www.canva.com/design/abc"
 
 
-def test_wait_for_autofill_completion_polls_until_success(monkeypatch):
+def test_wait_for_autofill_completion_polls_until_success(monkeypatch, capsys):
     statuses = iter(
         [
             {"status": "in_progress"},
@@ -113,6 +114,9 @@ def test_wait_for_autofill_completion_polls_until_success(monkeypatch):
     )
 
     assert result["status"] == "success"
+    output = capsys.readouterr().out
+    assert "Esperando a Canva..." in output
+    assert "Estado: in_progress" in output
 
 
 def test_wait_for_autofill_completion_raises_on_failed(monkeypatch):
@@ -146,3 +150,27 @@ def test_resolve_access_token_falls_back_to_cached_token_if_refresh_fails(monkey
     monkeypatch.delenv("CANVA_AUTHORIZATION_CODE", raising=False)
 
     assert builder.resolve_access_token() == "cached_token"
+
+
+def test_wait_for_autofill_completion_retries_on_timeout(monkeypatch, capsys):
+    calls = iter(
+        [
+            requests.exceptions.Timeout("slow network"),
+            {"status": "success", "result": {"design": {"url": "https://www.canva.com/design/final"}}},
+        ]
+    )
+
+    def _status(*_args, **_kwargs):
+        value = next(calls)
+        if isinstance(value, Exception):
+            raise value
+        return value
+
+    monkeypatch.setattr(builder, "request_canva_autofill_status", _status)
+    monkeypatch.setattr(builder.time, "sleep", lambda _: None)
+
+    result = builder.wait_for_autofill_completion("token", {"job": {"id": "job_123"}})
+
+    assert result["status"] == "success"
+    output = capsys.readouterr().out
+    assert "Red lenta, reintentando..." in output
