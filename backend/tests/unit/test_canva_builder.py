@@ -54,16 +54,55 @@ def test_build_autofill_payload_supports_field_overrides(monkeypatch):
 
     result = builder.build_autofill_payload(request_payload)
 
-    assert result["template_id"] == "tpl_123"
-    assert result["data"]["texto_nombre_1"] == "A"
-    assert result["data"]["fecha_evento"] == "2026-02-22"
-    assert "comico_1_nombre" not in result["data"]
+    assert result["brand_template_id"] == "tpl_123"
+    assert result["dataset"]["texto_nombre_1"] == {
+        "type": "text",
+        "text_content": "A",
+    }
+    assert result["dataset"]["fecha_evento"] == {
+        "type": "text",
+        "text_content": "2026-02-22",
+    }
+    assert "comico_1_nombre" not in result["dataset"]
 
 
 def test_extract_design_url_handles_nested_payload():
     payload = {"result": {"design": {"url": "https://www.canva.com/design/abc"}}}
 
     assert builder.extract_design_url(payload) == "https://www.canva.com/design/abc"
+
+
+def test_wait_for_autofill_completion_polls_until_success(monkeypatch):
+    statuses = iter(
+        [
+            {"status": "in_progress"},
+            {"status": "success", "result": {"design": {"url": "https://www.canva.com/design/final"}}},
+        ]
+    )
+
+    monkeypatch.setattr(
+        builder,
+        "request_canva_autofill_status",
+        lambda access_token, job_id: next(statuses),
+    )
+    monkeypatch.setattr(builder.time, "sleep", lambda _: None)
+
+    result = builder.wait_for_autofill_completion(
+        "token", {"job": {"id": "job_123"}}
+    )
+
+    assert result["status"] == "success"
+
+
+def test_wait_for_autofill_completion_raises_on_failed(monkeypatch):
+    monkeypatch.setattr(
+        builder,
+        "request_canva_autofill_status",
+        lambda access_token, job_id: {"status": "failed", "error": "bad_data"},
+    )
+
+    with pytest.raises(RuntimeError, match="Autofill job falló"):
+        builder.wait_for_autofill_completion("token", {"job": {"id": "job_123"}})
 
 
 def test_resolve_access_token_uses_fresh_token_from_refresh(monkeypatch):
