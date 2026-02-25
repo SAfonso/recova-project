@@ -6,7 +6,7 @@ import pytest
 import canva_builder as builder
 
 
-def test_parse_cli_payload_accepts_fecha_and_exactly_five_comics():
+def test_parse_cli_payload_accepts_fecha_and_keeps_five_comics():
     payload = {
         "fecha": "2026-02-22",
         "comicos": [
@@ -25,13 +25,33 @@ def test_parse_cli_payload_accepts_fecha_and_exactly_five_comics():
     assert parsed.comicos[0].instagram == "a"
 
 
-def test_parse_cli_payload_rejects_if_not_five_comics():
+def test_parse_cli_payload_pads_if_less_than_five_comics():
     payload = {
         "fecha_evento": "2026-02-22",
         "comicos": [{"nombre": "A", "instagram": "@a"}],
     }
 
-    with pytest.raises(ValueError, match="exactamente 5"):
+    parsed = builder.parse_cli_payload(json.dumps(payload))
+
+    assert len(parsed.comicos) == 5
+    assert parsed.comicos[0] == builder.ComicEntry(nombre="A", instagram="a")
+    assert parsed.comicos[4] == builder.ComicEntry(nombre=" ", instagram=" ")
+
+
+def test_parse_cli_payload_rejects_if_more_than_five_comics():
+    payload = {
+        "fecha": "2026-02-22",
+        "comicos": [
+            {"nombre": "A", "instagram": "@a"},
+            {"nombre": "B", "instagram": "@b"},
+            {"nombre": "C", "instagram": "@c"},
+            {"nombre": "D", "instagram": "@d"},
+            {"nombre": "E", "instagram": "@e"},
+            {"nombre": "F", "instagram": "@f"},
+        ],
+    }
+
+    with pytest.raises(ValueError, match="como máximo 5"):
         builder.parse_cli_payload(json.dumps(payload))
 
 
@@ -55,15 +75,16 @@ def test_build_autofill_payload_supports_field_overrides(monkeypatch):
     result = builder.build_autofill_payload(request_payload)
 
     assert result["brand_template_id"] == "tpl_123"
-    assert result["dataset"]["texto_nombre_1"] == {
+    assert result["title"] == "Lineup 2026-02-22"
+    assert result["data"]["texto_nombre_1"] == {
         "type": "text",
         "text_content": "A",
     }
-    assert result["dataset"]["fecha_evento"] == {
+    assert result["data"]["fecha_evento"] == {
         "type": "text",
         "text_content": "2026-02-22",
     }
-    assert "comico_1_nombre" not in result["dataset"]
+    assert "comico_1_nombre" not in result["data"]
 
 
 def test_extract_design_url_handles_nested_payload():
