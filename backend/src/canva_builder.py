@@ -23,7 +23,8 @@ from canva_auth_utils import (
 )
 
 CANVA_AUTOFILL_URL = "https://api.canva.com/rest/v1/autofills"
-AUTOFILL_POLL_INTERVAL_SECONDS = 2
+AUTOFILL_POLL_INTERVAL_SECONDS = 5
+AUTOFILL_MAX_POLL_ATTEMPTS = 60
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_LOG_DIRECTORY = BACKEND_DIR / "logs"
 DEFAULT_LOG_FILE_PATH = DEFAULT_LOG_DIRECTORY / "canva_builder.log"
@@ -244,23 +245,45 @@ def request_canva_autofill_status(access_token: str, job_id: str) -> dict[str, A
 def wait_for_autofill_completion(access_token: str, initial_response: dict[str, Any]) -> dict[str, Any]:
     job_id = _extract_job_id(initial_response)
     LOGGER.info("Autofill job creado: %s", job_id)
+    started_at = time.monotonic()
 
-    while True:
-        status_payload = request_canva_autofill_status(access_token, job_id)
-        status = str(status_payload.get("status", "")).strip().lower()
+    for attempt in range(1, AUTOFILL_MAX_POLL_ATTEMPTS + 1):
+        elapsed_seconds = int(time.monotonic() - started_at)
+        try:
+            status_payload = request_canva_autofill_status(access_token, job_id)
+            status = str(status_payload.get("status", "")).strip().lower()
 
-        if status == "success":
-            return status_payload
-        if status == "failed":
-            raise RuntimeError(f"Autofill job falló ({job_id}): {status_payload}")
+            print(
+                "Esperando a Canva... "
+                f"(Intento {attempt}/{AUTOFILL_MAX_POLL_ATTEMPTS} - "
+                f"{elapsed_seconds}s transcurridos) - Estado: {status or 'desconocido'}"
+            )
+            if status == "success":
+                return status_payload
+            if status == "failed":
+                raise RuntimeError(f"Autofill job falló ({job_id}): {status_payload}")
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as request_error:
+            print(
+                "Red lenta, reintentando... "
+                f"(Intento {attempt}/{AUTOFILL_MAX_POLL_ATTEMPTS} - "
+                f"{elapsed_seconds}s transcurridos)"
+            )
+            LOGGER.warning(
+                "Fallo de red consultando estado del autofill %s en intento %s/%s: %s",
+                job_id,
+                attempt,
+                AUTOFILL_MAX_POLL_ATTEMPTS,
+                request_error,
+            )
 
-        LOGGER.info(
-            "Autofill job %s aún en progreso (status=%s). Reintentando en %ss...",
-            job_id,
-            status or "desconocido",
-            AUTOFILL_POLL_INTERVAL_SECONDS,
-        )
-        time.sleep(AUTOFILL_POLL_INTERVAL_SECONDS)
+        if attempt < AUTOFILL_MAX_POLL_ATTEMPTS:
+            time.sleep(AUTOFILL_POLL_INTERVAL_SECONDS)
+
+    raise RuntimeError(
+        "Timeout esperando finalización de Canva "
+        f"({job_id}) tras {AUTOFILL_MAX_POLL_ATTEMPTS} intentos "
+        f"y {int(time.monotonic() - started_at)}s"
+    )
 
 
 def extract_design_url(response_payload: dict[str, Any]) -> str:
