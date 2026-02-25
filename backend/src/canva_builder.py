@@ -96,8 +96,11 @@ def parse_cli_payload(raw_payload: str) -> PosterRequest:
             raise ValueError(f"comicos[{index}] requiere 'nombre' e 'instagram'")
         comics.append(ComicEntry(nombre=nombre, instagram=instagram))
 
-    if len(comics) != 5:
-        raise ValueError("El payload debe incluir exactamente 5 cómicos")
+    if len(comics) > 5:
+        raise ValueError("El payload debe incluir como máximo 5 cómicos")
+
+    while len(comics) < 5:
+        comics.append(ComicEntry(nombre=" ", instagram=" "))
 
     return PosterRequest(fecha=fecha, comicos=comics)
 
@@ -107,18 +110,18 @@ def build_autofill_payload(request_payload: PosterRequest) -> dict[str, Any]:
     if not template_id:
         raise RuntimeError("Falta CANVA_TEMPLATE_ID en variables de entorno")
 
-    dataset: dict[str, dict[str, str]] = {
+    data_payload: dict[str, dict[str, str]] = {
         "fecha": {
             "type": "text",
             "text_content": request_payload.fecha,
         }
     }
     for index, comico in enumerate(request_payload.comicos, start=1):
-        dataset[f"comico_{index}_nombre"] = {
+        data_payload[f"comico_{index}_nombre"] = {
             "type": "text",
             "text_content": comico.nombre,
         }
-        dataset[f"comico_{index}_instagram"] = {
+        data_payload[f"comico_{index}_instagram"] = {
             "type": "text",
             "text_content": comico.instagram,
         }
@@ -127,12 +130,13 @@ def build_autofill_payload(request_payload: PosterRequest) -> dict[str, Any]:
     if field_overrides:
         overrides = json.loads(field_overrides)
         for source_key, target_key in overrides.items():
-            if source_key in dataset and isinstance(target_key, str) and target_key.strip():
-                dataset[target_key.strip()] = dataset.pop(source_key)
+            if source_key in data_payload and isinstance(target_key, str) and target_key.strip():
+                data_payload[target_key.strip()] = data_payload.pop(source_key)
 
     return {
         "brand_template_id": template_id,
-        "dataset": dataset,
+        "title": f"Lineup {request_payload.fecha}",
+        "data": data_payload,
     }
 
 
