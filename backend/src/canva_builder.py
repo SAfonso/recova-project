@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import time
+import unicodedata
 from dataclasses import dataclass
 from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
@@ -25,6 +26,7 @@ from canva_auth_utils import (
 CANVA_AUTOFILL_URL = "https://api.canva.com/rest/v1/autofills"
 AUTOFILL_POLL_INTERVAL_SECONDS = 5
 AUTOFILL_MAX_POLL_ATTEMPTS = 60
+AUTOFILL_UNKNOWN_STATUS_MAX_ITERATIONS = 3
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_LOG_DIRECTORY = BACKEND_DIR / "logs"
 DEFAULT_LOG_FILE_PATH = DEFAULT_LOG_DIRECTORY / "canva_builder.log"
@@ -73,6 +75,25 @@ def _normalize_instagram(value: str) -> str:
     return cleaned
 
 
+def _sanitize_text(value: Any, fallback: str = " ") -> str:
+    text = str(value or "")
+    sanitized = "".join(
+        character
+        for character in text
+        if unicodedata.category(character)
+        not in {
+            "Cc",  # Control chars
+            "Cf",  # Format chars
+            "Cs",  # Surrogates
+            "Co",  # Private use
+            "Cn",  # Unassigned
+            "So",  # Symbols (incluye la mayoría de emojis)
+        }
+    )
+    sanitized = sanitized.strip()
+    return sanitized if sanitized else fallback
+
+
 def parse_cli_payload(raw_payload: str) -> PosterRequest:
     try:
         payload = json.loads(raw_payload)
@@ -114,17 +135,17 @@ def build_autofill_payload(request_payload: PosterRequest) -> dict[str, Any]:
     data_payload: dict[str, dict[str, str]] = {
         "fecha": {
             "type": "text",
-            "text": request_payload.fecha,
+            "text": _sanitize_text(request_payload.fecha),
         }
     }
     for index, comico in enumerate(request_payload.comicos, start=1):
         data_payload[f"comico_{index}_nombre"] = {
             "type": "text",
-            "text": comico.nombre,
+            "text": _sanitize_text(comico.nombre),
         }
         data_payload[f"comico_{index}_instagram"] = {
             "type": "text",
-            "text": comico.instagram,
+            "text": _sanitize_text(comico.instagram),
         }
 
     field_overrides = os.getenv("CANVA_FIELD_OVERRIDES_JSON", "").strip()
@@ -136,7 +157,6 @@ def build_autofill_payload(request_payload: PosterRequest) -> dict[str, Any]:
 
     return {
         "brand_template_id": template_id,
-        "title": f"Lineup {request_payload.fecha}",
         "data": data_payload,
     }
 
@@ -187,8 +207,11 @@ def resolve_access_token() -> str:
 def request_canva_autofill(access_token: str, payload: dict[str, Any]) -> dict[str, Any]:
     headers = {
         "Authorization": f"Bearer {access_token}",
+        "User-Agent": "recova-canva-builder/1.0",
         "Content-Type": "application/json",
+        "Accept": "application/json",
     }
+    print(json.dumps(payload, indent=2, ensure_ascii=False))
     response = requests.post(
         CANVA_AUTOFILL_URL,
         headers=headers,
@@ -220,7 +243,9 @@ def _extract_job_id(response_payload: dict[str, Any]) -> str:
 def request_canva_autofill_status(access_token: str, job_id: str) -> dict[str, Any]:
     headers = {
         "Authorization": f"Bearer {access_token}",
+        "User-Agent": "recova-canva-builder/1.0",
         "Content-Type": "application/json",
+        "Accept": "application/json",
     }
     response = requests.get(
         f"{CANVA_AUTOFILL_URL}/{job_id}",
@@ -246,6 +271,7 @@ def wait_for_autofill_completion(access_token: str, initial_response: dict[str, 
     job_id = _extract_job_id(initial_response)
     LOGGER.info("Autofill job creado: %s", job_id)
     started_at = time.monotonic()
+    unknown_status_count = 0
 
     for attempt in range(1, AUTOFILL_MAX_POLL_ATTEMPTS + 1):
         elapsed_seconds = int(time.monotonic() - started_at)
@@ -258,6 +284,17 @@ def wait_for_autofill_completion(access_token: str, initial_response: dict[str, 
                 f"(Intento {attempt}/{AUTOFILL_MAX_POLL_ATTEMPTS} - "
                 f"{elapsed_seconds}s transcurridos) - Estado: {status or 'desconocido'}"
             )
+            if status in {"", "desconocido", "unknown", "none", "null"}:
+                unknown_status_count += 1
+                if unknown_status_count > AUTOFILL_UNKNOWN_STATUS_MAX_ITERATIONS:
+                    raise RuntimeError(
+                        "Canva devolvió estado desconocido/nulo durante más de "
+                        f"{AUTOFILL_UNKNOWN_STATUS_MAX_ITERATIONS} iteraciones "
+                        f"para el job_id={job_id}. Revisa los logs de Canva."
+                    )
+            else:
+                unknown_status_count = 0
+
             if status == "success":
                 return status_payload
             if status == "failed":
