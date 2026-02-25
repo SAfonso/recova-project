@@ -113,17 +113,17 @@ def build_autofill_payload(request_payload: PosterRequest) -> dict[str, Any]:
     data_payload: dict[str, dict[str, str]] = {
         "fecha": {
             "type": "text",
-            "text_content": request_payload.fecha,
+            "text": request_payload.fecha,
         }
     }
     for index, comico in enumerate(request_payload.comicos, start=1):
         data_payload[f"comico_{index}_nombre"] = {
             "type": "text",
-            "text_content": comico.nombre,
+            "text": comico.nombre,
         }
         data_payload[f"comico_{index}_instagram"] = {
             "type": "text",
-            "text_content": comico.instagram,
+            "text": comico.instagram,
         }
 
     field_overrides = os.getenv("CANVA_FIELD_OVERRIDES_JSON", "").strip()
