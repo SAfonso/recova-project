@@ -76,22 +76,102 @@ def test_build_autofill_payload_supports_field_overrides(monkeypatch):
     result = builder.build_autofill_payload(request_payload)
 
     assert result["brand_template_id"] == "tpl_123"
-    assert result["title"] == "Lineup 2026-02-22"
+    assert "title" not in result
     assert result["data"]["texto_nombre_1"] == {
         "type": "text",
-        "text_content": "A",
+        "text": "A",
     }
     assert result["data"]["fecha_evento"] == {
         "type": "text",
-        "text_content": "2026-02-22",
+        "text": "2026-02-22",
     }
     assert "comico_1_nombre" not in result["data"]
+
+
+def test_build_autofill_payload_sanitizes_and_uses_fallback(monkeypatch):
+    monkeypatch.setenv("CANVA_TEMPLATE_ID", "tpl_123")
+    monkeypatch.delenv("CANVA_FIELD_OVERRIDES_JSON", raising=False)
+
+    request_payload = builder.PosterRequest(
+        fecha="2026-02-22 😀",
+        comicos=[
+            builder.ComicEntry(nombre="😀", instagram="  "),
+            builder.ComicEntry(nombre="B", instagram="@b"),
+            builder.ComicEntry(nombre="C", instagram="c"),
+            builder.ComicEntry(nombre="D", instagram="d"),
+            builder.ComicEntry(nombre="E", instagram="e"),
+        ],
+    )
+
+    result = builder.build_autofill_payload(request_payload)
+
+    assert result["data"]["fecha"]["text"] == "2026-02-22"
+    assert result["data"]["comico_1_nombre"]["text"] == " "
+    assert result["data"]["comico_1_instagram"]["text"] == " "
 
 
 def test_extract_design_url_handles_nested_payload():
     payload = {"result": {"design": {"url": "https://www.canva.com/design/abc"}}}
 
     assert builder.extract_design_url(payload) == "https://www.canva.com/design/abc"
+
+
+def test_request_canva_autofill_sends_required_headers(monkeypatch):
+    captured = {}
+
+    class _Response:
+        status_code = 201
+
+        @staticmethod
+        def json():
+            return {"job": {"id": "job_123"}}
+
+        text = "ok"
+
+    def _post(url, headers, json, timeout):
+        captured["url"] = url
+        captured["headers"] = headers
+        captured["json"] = json
+        captured["timeout"] = timeout
+        return _Response()
+
+    monkeypatch.setattr(builder.requests, "post", _post)
+
+    payload = {"brand_template_id": "tpl", "data": {"fecha": {"type": "text", "text": "hoy"}}}
+    response = builder.request_canva_autofill("token", payload)
+
+    assert response["job"]["id"] == "job_123"
+    assert captured["url"] == builder.CANVA_AUTOFILL_URL
+    assert captured["headers"]["User-Agent"] == "recova-canva-builder/1.0"
+    assert captured["headers"]["Content-Type"] == "application/json"
+
+
+def test_request_canva_autofill_status_sends_required_headers(monkeypatch):
+    captured = {}
+
+    class _Response:
+        status_code = 200
+
+        @staticmethod
+        def json():
+            return {"status": "in_progress"}
+
+        text = "ok"
+
+    def _get(url, headers, timeout):
+        captured["url"] = url
+        captured["headers"] = headers
+        captured["timeout"] = timeout
+        return _Response()
+
+    monkeypatch.setattr(builder.requests, "get", _get)
+
+    response = builder.request_canva_autofill_status("token", "job_123")
+
+    assert response["status"] == "in_progress"
+    assert captured["url"] == f"{builder.CANVA_AUTOFILL_URL}/job_123"
+    assert captured["headers"]["User-Agent"] == "recova-canva-builder/1.0"
+    assert captured["headers"]["Content-Type"] == "application/json"
 
 
 def test_wait_for_autofill_completion_polls_until_success(monkeypatch, capsys):
@@ -127,6 +207,18 @@ def test_wait_for_autofill_completion_raises_on_failed(monkeypatch):
     )
 
     with pytest.raises(RuntimeError, match="Autofill job falló"):
+        builder.wait_for_autofill_completion("token", {"job": {"id": "job_123"}})
+
+
+def test_wait_for_autofill_completion_aborts_after_unknown_status_threshold(monkeypatch):
+    monkeypatch.setattr(
+        builder,
+        "request_canva_autofill_status",
+        lambda access_token, job_id: {"status": ""},
+    )
+    monkeypatch.setattr(builder.time, "sleep", lambda _: None)
+
+    with pytest.raises(RuntimeError, match="job_id=job_123"):
         builder.wait_for_autofill_completion("token", {"job": {"id": "job_123"}})
 
 
