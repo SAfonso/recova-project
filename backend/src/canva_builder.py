@@ -6,6 +6,7 @@ import argparse
 import json
 import logging
 import os
+import time
 from dataclasses import dataclass
 from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
@@ -22,6 +23,7 @@ from canva_auth_utils import (
 )
 
 CANVA_AUTOFILL_URL = "https://api.canva.com/rest/v1/autofills"
+AUTOFILL_POLL_INTERVAL_SECONDS = 2
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_LOG_DIRECTORY = BACKEND_DIR / "logs"
 DEFAULT_LOG_FILE_PATH = DEFAULT_LOG_DIRECTORY / "canva_builder.log"
@@ -105,21 +107,32 @@ def build_autofill_payload(request_payload: PosterRequest) -> dict[str, Any]:
     if not template_id:
         raise RuntimeError("Falta CANVA_TEMPLATE_ID en variables de entorno")
 
-    data: dict[str, str] = {"fecha": request_payload.fecha}
+    dataset: dict[str, dict[str, str]] = {
+        "fecha": {
+            "type": "text",
+            "text_content": request_payload.fecha,
+        }
+    }
     for index, comico in enumerate(request_payload.comicos, start=1):
-        data[f"comico_{index}_nombre"] = comico.nombre
-        data[f"comico_{index}_instagram"] = comico.instagram
+        dataset[f"comico_{index}_nombre"] = {
+            "type": "text",
+            "text_content": comico.nombre,
+        }
+        dataset[f"comico_{index}_instagram"] = {
+            "type": "text",
+            "text_content": comico.instagram,
+        }
 
     field_overrides = os.getenv("CANVA_FIELD_OVERRIDES_JSON", "").strip()
     if field_overrides:
         overrides = json.loads(field_overrides)
         for source_key, target_key in overrides.items():
-            if source_key in data and isinstance(target_key, str) and target_key.strip():
-                data[target_key.strip()] = data.pop(source_key)
+            if source_key in dataset and isinstance(target_key, str) and target_key.strip():
+                dataset[target_key.strip()] = dataset.pop(source_key)
 
     return {
-        "template_id": template_id,
-        "data": data,
+        "brand_template_id": template_id,
+        "dataset": dataset,
     }
 
 
@@ -185,6 +198,67 @@ def request_canva_autofill(access_token: str, payload: dict[str, Any]) -> dict[s
     return response.json()
 
 
+def _extract_job_id(response_payload: dict[str, Any]) -> str:
+    candidates = [
+        (response_payload.get("job") or {}).get("id"),
+        response_payload.get("job_id"),
+        response_payload.get("id"),
+    ]
+    for candidate in candidates:
+        if isinstance(candidate, str) and candidate.strip():
+            return candidate.strip()
+    raise RuntimeError(
+        f"No se pudo extraer job.id de la respuesta inicial de Canva: {response_payload}"
+    )
+
+
+def request_canva_autofill_status(access_token: str, job_id: str) -> dict[str, Any]:
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+    }
+    response = requests.get(
+        f"{CANVA_AUTOFILL_URL}/{job_id}",
+        headers=headers,
+        timeout=45,
+    )
+
+    if response.status_code != 200:
+        LOGGER.error(
+            "Error consultando estado de autofill (%s): %s - %s",
+            job_id,
+            response.status_code,
+            response.text,
+        )
+        raise RuntimeError(
+            f"Canva estado autofill falló ({job_id}): {response.status_code} {response.text}"
+        )
+
+    return response.json()
+
+
+def wait_for_autofill_completion(access_token: str, initial_response: dict[str, Any]) -> dict[str, Any]:
+    job_id = _extract_job_id(initial_response)
+    LOGGER.info("Autofill job creado: %s", job_id)
+
+    while True:
+        status_payload = request_canva_autofill_status(access_token, job_id)
+        status = str(status_payload.get("status", "")).strip().lower()
+
+        if status == "success":
+            return status_payload
+        if status == "failed":
+            raise RuntimeError(f"Autofill job falló ({job_id}): {status_payload}")
+
+        LOGGER.info(
+            "Autofill job %s aún en progreso (status=%s). Reintentando en %ss...",
+            job_id,
+            status or "desconocido",
+            AUTOFILL_POLL_INTERVAL_SECONDS,
+        )
+        time.sleep(AUTOFILL_POLL_INTERVAL_SECONDS)
+
+
 def extract_design_url(response_payload: dict[str, Any]) -> str:
     candidates = [
         response_payload.get("design_url"),
@@ -214,9 +288,13 @@ def ejecutar_generacion_poster(request_payload: PosterRequest) -> str:
     access_token = resolve_access_token()
     autofill_payload = build_autofill_payload(request_payload)
 
-    LOGGER.info("Solicitando autofill a Canva para template_id=%s", os.getenv("CANVA_TEMPLATE_ID", ""))
-    response_payload = request_canva_autofill(access_token, autofill_payload)
-    return extract_design_url(response_payload)
+    LOGGER.info(
+        "Solicitando autofill a Canva para brand_template_id=%s",
+        os.getenv("CANVA_TEMPLATE_ID", ""),
+    )
+    initial_response = request_canva_autofill(access_token, autofill_payload)
+    completed_payload = wait_for_autofill_completion(access_token, initial_response)
+    return extract_design_url(completed_payload)
 
 
 def main() -> None:
