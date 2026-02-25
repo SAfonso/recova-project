@@ -44,3 +44,7 @@ Thumbs.db
 !/data/.gitkeep
 /backups/*
 !/backups/.gitkeep
+
+# --- Scripts locales de diagnóstico (Canva) ---
+backend/src/test.py
+backend/src/getVeri.py

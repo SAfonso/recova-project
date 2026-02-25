@@ -265,9 +265,10 @@ Referencia extendida: `docs/webhook-listener-n8n-ingesta.md`
 
 ## 🎨 Generación de Cartelería (Canva API)
 
-Se incorporan dos scripts en `backend/src` para cubrir la fase Designer:
+Se incorporan scripts en `backend/src` para cubrir la fase Designer:
 
 - `canva_auth_utils.py`
+  - `authorize`: genera `code_verifier`/`code_challenge` (PKCE) y devuelve la URL de autorización.
   - `exchange`: canjea `authorization_code` por `access_token` + `refresh_token`.
   - `refresh`: renueva `access_token` usando `CANVA_REFRESH_TOKEN`.
   - Persiste automáticamente el `refresh_token` rotado en `.env` (si existe).
@@ -276,6 +277,15 @@ Se incorporan dos scripts en `backend/src` para cubrir la fase Designer:
   - Obtiene token fresco al iniciar (refresh forzado); si falla, usa fallback a token cacheado y opcionalmente `authorization_code`.
   - Llama al endpoint de autofill de Canva usando `CANVA_TEMPLATE_ID`.
   - Imprime por `stdout` la URL del diseño para que n8n la capture.
+- `getVeri.py` y `test.py`
+  - Scripts auxiliares de diagnóstico/manuales usados durante troubleshooting de OAuth con Canva.
+  - Uso recomendado solo para pruebas locales controladas (no forman parte del flujo n8n/producción).
+
+### Logs de Canva (backend)
+
+- `backend/logs/canva_auth.log` (rotativo diario) para eventos de `canva_auth_utils.py`.
+- `backend/logs/canva_builder.log` (rotativo diario) para ejecuciones de `canva_builder.py`.
+- Se pueden sobrescribir rutas con `CANVA_LOG_DIRECTORY`, `CANVA_AUTH_LOG_FILE_PATH` y `CANVA_BUILDER_LOG_FILE_PATH`.
 
 ### Variables necesarias en `.env`
 
