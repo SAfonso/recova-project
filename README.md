@@ -1,12 +1,14 @@
 # AI LineUp Architect (MVP) 🎭
 
 **Estado del Proyecto:** 🛠️ En Desarrollo (MVP)  
-**Versión:** 0.5.29  
+**Versión:** 0.5.30  
 **Metodología:** Spec-Driven Development (SDD)
 
 Sistema automatizado para la gestión y generación de lineups y cartelería para Open Mics de comedia.
 
-## Novedades recientes (0.5.29)
+## Novedades recientes (0.5.30)
+- Se implementa `backend/src/app.py` con API Flask de producción (`POST /render-lineup`) que valida payload SDD §2.2, ejecuta `PlaywrightRenderer` y devuelve `public_url` + objeto rico `mcp`.
+- Se documentan comandos de despliegue con Gunicorn (4 workers) y gestión de proceso con PM2 (`recova-renderer`).
 - `PlaywrightRenderer.render(payload)` ahora devuelve estrictamente el JSON de éxito/error definido en la spec §3.1/§3.2, incluyendo `storage.storage_url` real de Supabase y sin campos extra fuera de contrato.
 - El renderer elimina el PNG temporal local tras una subida satisfactoria al bucket `posters`, evitando acumulación de archivos en disco (`/root/RECOVA`).
 - La plantilla `backend/src/templates/lineup_v1.html` se rediseña con estilo **Dark Premium** (Bebas Neue + Montserrat, gradientes neón y tipografía de alto impacto) para el primer render productivo.
@@ -135,6 +137,19 @@ graph LR
 4. 🥈 Los datos curados se escriben en **Silver** para trazabilidad transaccional y preparación de scoring.
 5. 🥇 El scoring engine consume Silver, calcula prioridad y persiste resultados en **Gold**.
 6. 📤 El flujo continúa con notificaciones/acciones posteriores (aprobación host, generación de cartel y distribución).
+
+## 🧩 API de Producción de Render (Flask)
+
+Endpoint disponible:
+- `POST /render-lineup`
+
+Comando recomendado con Gunicorn (4 workers):
+- `./.venv/bin/gunicorn -w 4 -b 0.0.0.0:8000 backend.src.app:app`
+
+Comando para gestionar Gunicorn con PM2 (`recova-renderer`):
+- `pm2 start "./.venv/bin/gunicorn -w 4 -b 0.0.0.0:8000 backend.src.app:app" --name recova-renderer`
+
+Referencia detallada: `docs/render-api-produccion.md`
 
 ## 🚀 Objetivos del MVP
 - Mantener ingesta cruda en `bronze.solicitudes` y curación transaccional en `silver`.
