@@ -1,16 +1,16 @@
 # AI LineUp Architect (MVP) 🎭
 
 **Estado del Proyecto:** 🛠️ En Desarrollo (MVP)  
-**Versión:** 0.5.18  
+**Versión:** 0.5.23  
 **Metodología:** Spec-Driven Development (SDD)
 
 Sistema automatizado para la gestión y generación de lineups y cartelería para Open Mics de comedia.
 
-## Novedades recientes (0.5.18)
-- `canva_auth_utils.py` ahora soporta flujo PKCE completo con comando `authorize` (genera `code_verifier` y URL de autorización).
-- OAuth de Canva endurecido con `CanvaAuthError` para identificar `invalid_grant` y forzar reautorización manual cuando procede.
-- Persistencia segura de `.env` con `dotenv.set_key` para `CANVA_REFRESH_TOKEN`, `CANVA_ACCESS_TOKEN` y `CANVA_ACCESS_TOKEN_EXPIRES_AT`.
-- `canva_builder.py` fuerza renovación de token (`refresh_access_token`) al inicio de cada generación y mantiene fallback a token cacheado/`authorization_code` cuando aplica.
+## Novedades recientes (0.5.23)
+- `canva_builder.py` usa flujo de autofill asíncrono (crea job, consulta estado por `job_id` y extrae la URL al finalizar).
+- El payload a Canva se alinea con `brand_template_id` + `data` y campos de texto `{ "type": "text", "text": "..." }`.
+- El builder acepta de `1` a `5` cómicos, rellena hasta `5` con placeholders y sanitiza texto (control chars/emojis) antes de enviar a Canva.
+- Polling endurecido: reintentos ante timeouts de red, límite de intentos, guardia de estados desconocidos y umbral final `AUTOFILL_UNKNOWN_STATUS_MAX_ITERATIONS = 12`.
 
 El proyecto nace con una arquitectura **SaaS-Ready**, garantizando la privacidad de los datos entre diferentes productores mediante un modelo de datos maestro/detalle y políticas de seguridad avanzadas.
 
@@ -273,10 +273,11 @@ Se incorporan scripts en `backend/src` para cubrir la fase Designer:
   - `refresh`: renueva `access_token` usando `CANVA_REFRESH_TOKEN`.
   - Persiste automáticamente el `refresh_token` rotado en `.env` (si existe).
 - `canva_builder.py`
-  - Recibe por CLI un JSON (desde n8n) con `fecha` y exactamente 5 cómicos.
+  - Recibe por CLI un JSON (desde n8n) con `fecha` y entre 1 y 5 cómicos; rellena hasta 5 con placeholders para el template.
   - Obtiene token fresco al iniciar (refresh forzado); si falla, usa fallback a token cacheado y opcionalmente `authorization_code`.
-  - Llama al endpoint de autofill de Canva usando `CANVA_TEMPLATE_ID`.
-  - Imprime por `stdout` la URL del diseño para que n8n la capture.
+  - Construye payload `brand_template_id` + `data` con campos de texto tipados (`type/text`) y sanitización básica.
+  - Llama al endpoint de autofill de Canva, consulta el estado del `job_id` hasta completarse y luego extrae la URL del diseño.
+  - Imprime trazas de progreso y la URL final (última línea de `stdout`).
 - `getVeri.py` y `test.py`
   - Scripts auxiliares de diagnóstico/manuales usados durante troubleshooting de OAuth con Canva.
   - Uso recomendado solo para pruebas locales controladas (no forman parte del flujo n8n/producción).
@@ -286,6 +287,7 @@ Se incorporan scripts en `backend/src` para cubrir la fase Designer:
 - `backend/logs/canva_auth.log` (rotativo diario) para eventos de `canva_auth_utils.py`.
 - `backend/logs/canva_builder.log` (rotativo diario) para ejecuciones de `canva_builder.py`.
 - Se pueden sobrescribir rutas con `CANVA_LOG_DIRECTORY`, `CANVA_AUTH_LOG_FILE_PATH` y `CANVA_BUILDER_LOG_FILE_PATH`.
+- Referencia técnica extendida del proceso Designer: `docs/canva-oauth-pkce-builder.md`.
 
 ### Variables necesarias en `.env`
 
@@ -311,6 +313,7 @@ Notas:
 - `CANVA_ACCESS_TOKEN` y `CANVA_ACCESS_TOKEN_EXPIRES_AT` se persisten automáticamente tras `exchange/refresh`; el builder los usa como fallback si el refresh no está disponible temporalmente.
 - `CANVA_FIELD_OVERRIDES_JSON` es opcional y permite mapear claves genéricas del script a los nombres reales de campos del template Canva.
 - Si no defines `CANVA_ENV_PATH`, se usa `.env` en la raíz del repo.
+- El builder actual puede imprimir por `stdout` el payload y estados de polling antes de la URL final; si una integración necesita solo la URL, debe capturar la última línea.
 
 ### Uso rápido
 
@@ -334,7 +337,7 @@ python backend/src/canva_auth_utils.py refresh
 python backend/src/canva_builder.py '{"fecha":"2026-02-22","comicos":[{"nombre":"A","instagram":"@a"},{"nombre":"B","instagram":"@b"},{"nombre":"C","instagram":"@c"},{"nombre":"D","instagram":"@d"},{"nombre":"E","instagram":"@e"}]}'
 ```
 
-Respuesta esperada: URL del diseño en Canva por salida estándar (`stdout`).
+Respuesta esperada: la última línea de `stdout` contiene la URL del diseño en Canva (el script puede imprimir antes trazas de payload/progreso).
 
 ## 🚚 Deploy Automatizado (Rama `dev`)
 El workflow `.github/workflows/deploy.yml` despliega al VPS por SSH en cada push a `dev`:
