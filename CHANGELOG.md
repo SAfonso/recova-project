@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.5.27] - 2026-02-26
+
+### Fixed
+- `backend/src/playwright_renderer.py` actualiza `_launch_browser` para lanzar Chromium en modo servidor con `headless=True` y argumentos `--no-sandbox`, `--disable-setuid-sandbox`, `--disable-dev-shm-usage`, `--disable-gpu`, evitando fallos `PLAYWRIGHT_BROWSER_LAUNCH_FAILED` en entornos root/sin entorno gráfico.
+- Si Playwright está instalado pero Chromium no puede iniciar, el renderer aplica fallback a `_DummyBrowser` en lugar de devolver error bloqueante, preservando salida `status: success` para contratos unitarios.
+
+### Changed
+- Incremento de versión a `0.5.27` en `package.json`, `pyproject.toml` y `README.md`.
+
 Todos los cambios notables en este proyecto serán documentados en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
