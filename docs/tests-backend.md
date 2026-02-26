@@ -25,3 +25,6 @@
 
 ## Nota practica
 Si `python3 -m pytest` falla por modulo no encontrado, usa el Python del entorno virtual con `./.venv/bin/python`.
+
+9. Ejecutar verificación de limpieza local post-upload del renderer:
+   - `./.venv/bin/python -m pytest -q backend/tests/unit/test_playwright_renderer.py::test_temp_file_is_deleted_after_upload`
