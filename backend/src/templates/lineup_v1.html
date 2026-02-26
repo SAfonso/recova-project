@@ -7,45 +7,61 @@
     <style>
       :root {
         color-scheme: dark;
+        --neon-cyan: #48f5ff;
+        --neon-pink: #ff3bc1;
+        --neon-violet: #8a5bff;
+        --text-main: #f7f8ff;
+        --text-muted: #bac0e8;
       }
-      * {
-        box-sizing: border-box;
-      }
+      * { box-sizing: border-box; }
       body {
         margin: 0;
         min-height: 100vh;
-        font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
-        background: radial-gradient(circle at top, #1c1f2a 0%, #0a0c14 60%, #05060a 100%);
-        color: #f5f7ff;
+        font-family: Montserrat, "Segoe UI", Arial, sans-serif;
+        color: var(--text-main);
         display: flex;
         align-items: center;
         justify-content: center;
+        background:
+          radial-gradient(circle at 10% 15%, rgba(72, 245, 255, 0.22), transparent 45%),
+          radial-gradient(circle at 90% 80%, rgba(255, 59, 193, 0.18), transparent 45%),
+          linear-gradient(140deg, #060710 0%, #0f1230 45%, #1d0f3a 100%);
       }
       .poster {
         width: 100%;
         height: 100vh;
-        padding: 56px;
+        padding: 56px 62px;
         display: grid;
         grid-template-rows: auto auto 1fr;
-        gap: 20px;
+        gap: 18px;
+        background: linear-gradient(180deg, rgba(9, 11, 27, 0.58), rgba(4, 5, 14, 0.82));
       }
       .subtitle {
         text-transform: uppercase;
-        letter-spacing: 0.12em;
-        font-size: 14px;
-        color: #b0b7d8;
+        letter-spacing: 0.16em;
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--text-muted);
       }
       h1 {
         margin: 0;
-        font-size: 64px;
-        font-weight: 800;
+        font-family: "Bebas Neue", Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+        font-size: 124px;
+        letter-spacing: 0.04em;
+        line-height: 0.9;
+        color: var(--text-main);
+        text-shadow:
+          0 0 10px rgba(72, 245, 255, 0.45),
+          0 0 24px rgba(255, 59, 193, 0.35);
       }
       .meta {
+        margin-top: 6px;
         display: flex;
-        gap: 16px;
-        color: #d8defd;
-        font-size: 20px;
+        gap: 14px;
+        font-size: 22px;
+        font-weight: 600;
       }
+      .meta span:last-child { color: #dde2ff; }
       .slots {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -53,26 +69,33 @@
         align-content: start;
       }
       .slot {
-        padding: 18px 20px;
-        background: rgba(26, 30, 45, 0.8);
-        border: 1px solid rgba(183, 193, 236, 0.2);
+        padding: 16px 18px;
         border-radius: 14px;
+        border: 1px solid rgba(138, 91, 255, 0.32);
+        background: linear-gradient(135deg, rgba(24, 16, 56, 0.78), rgba(15, 23, 53, 0.88));
+        box-shadow:
+          inset 0 0 0 1px rgba(72, 245, 255, 0.16),
+          0 6px 20px rgba(0, 0, 0, 0.35);
       }
       .slot .order {
-        font-size: 13px;
-        letter-spacing: 0.08em;
+        font-size: 12px;
+        font-weight: 700;
         text-transform: uppercase;
-        color: #8e98c1;
+        letter-spacing: 0.1em;
+        color: #a9b5ff;
       }
       .slot .name {
-        margin-top: 6px;
-        font-size: 29px;
-        font-weight: 700;
+        margin-top: 4px;
+        font-family: "Bebas Neue", Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+        font-size: 40px;
+        letter-spacing: 0.03em;
+        line-height: 0.95;
       }
       .slot .instagram {
         margin-top: 4px;
-        font-size: 18px;
-        color: #9db2ff;
+        font-size: 17px;
+        font-weight: 600;
+        color: var(--neon-cyan);
       }
     </style>
   </head>
@@ -88,7 +111,6 @@
           {% endif %}
         </div>
       </div>
-
       <section class="slots">
         {% for comic in lineup_slots %}
         <article class="slot">

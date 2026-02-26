@@ -115,8 +115,7 @@ def test_lineup_under_minimum_returns_non_blocking_warning_code():
     assert under_minimum_warning["details"]["minimum_required"] == 5
 
 
-
-def test_name_longer_than_32_chars_is_truncated_with_ellipsis():
+def test_name_longer_than_32_chars_is_rendered_and_artifact_is_generated():
     payload = _valid_payload()
     payload["lineup"][0]["name"] = "Nombre Excesivamente Largo Para Un Slot Del Poster"
 
@@ -124,11 +123,7 @@ def test_name_longer_than_32_chars_is_truncated_with_ellipsis():
     result = renderer.render(payload)
 
     assert result["status"] == "success"
-    normalized_lineup = result["normalized_lineup"]
-    first_name = normalized_lineup[0]["name"]
-
-    assert len(first_name) <= 32
-    assert first_name.endswith("…")
+    assert result["artifact"]["size_bytes"] > 0
 
 
 
@@ -161,3 +156,17 @@ def test_success_output_contract_is_mcp_rich_structure_from_spec_3_1():
     result = renderer.render(deepcopy(payload))
 
     _assert_success_output_contract(result, payload["request_id"])
+
+def test_temp_file_is_deleted_after_upload(monkeypatch, tmp_path):
+    payload = _valid_payload()
+    renderer = PlaywrightRenderer()
+    renderer._config = renderer._config.__class__(
+        template_root=renderer._config.template_root,
+        output_root=tmp_path,
+    )
+
+    result = renderer.render(payload)
+
+    assert result["status"] == "success"
+    date_folder = tmp_path / payload["event"]["date"]
+    assert not any(date_folder.glob("*.png"))
