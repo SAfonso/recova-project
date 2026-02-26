@@ -1,12 +1,14 @@
 # AI LineUp Architect (MVP) 🎭
 
 **Estado del Proyecto:** 🛠️ En Desarrollo (MVP)  
-**Versión:** 0.5.27  
+**Versión:** 0.5.28  
 **Metodología:** Spec-Driven Development (SDD)
 
 Sistema automatizado para la gestión y generación de lineups y cartelería para Open Mics de comedia.
 
-## Novedades recientes (0.5.27)
+## Novedades recientes (0.5.28)
+- `PlaywrightRenderer` sube automáticamente el PNG a Supabase Storage (`bucket: posters`) con ruta `YYYY-MM-DD/lineup_{request_id}.png` y devuelve `public_url` en el contrato de éxito.
+- Se añade test de integración `backend/tests/integration/test_supabase_upload.py` que valida subida de archivo pequeño y verificación HTTP `200` sobre la URL pública.
 - `PlaywrightRenderer._launch_browser` fuerza `headless=True` y añade flags de servidor (`--no-sandbox`, `--disable-setuid-sandbox`, `--disable-dev-shm-usage`, `--disable-gpu`) con fallback seguro a dummy browser cuando Chromium no arranca en entornos root/headless.
 - Se implementa `backend/src/playwright_renderer.py` con `PlaywrightRenderer.render(payload)` usando Jinja2 + Playwright (con fallback local), validación de contrato v1, warnings estructurados y salida rica compatible con MCP.
 - Se añade la plantilla base `backend/src/templates/lineup_v1.html` (dark/minimal) con placeholders para fecha y hasta 8 slots (nombre + instagram).

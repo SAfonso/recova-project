@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.28] - 2026-02-26
+
+### Added
+- `backend/tests/integration/test_supabase_upload.py` con prueba de integración para Supabase Storage: sube un PNG pequeño al bucket `posters`, valida la convención de ruta `YYYY-MM-DD/lineup_{request_id}.png` y comprueba respuesta HTTP `200` de la `public_url`.
+
+### Changed
+- `backend/src/playwright_renderer.py` incorpora upload a Supabase Storage con `storage3` usando `SUPABASE_URL` y `SUPABASE_KEY` desde entorno, guarda en bucket `posters`, retorna `public_url` en `storage` y añade métrica `timing.upload_ms`.
+- `specs/playwright_renderer_spec.md` extiende el contrato de output para incluir proceso de upload a Supabase (`bucket`, naming convention, `public_url` obligatorio).
+- `backend/tests/unit/test_playwright_renderer.py` actualiza contrato de éxito para incluir campos de storage Supabase (`bucket`, `public_url`) y timing de upload.
+- `README.md` y `docs/tests-backend.md` documentan la integración de upload a Supabase Storage y el nuevo comando de test de integración.
+- Incremento de versión a `0.5.28` en `package.json`, `pyproject.toml` y `README.md`.
+
 ## [0.5.27] - 2026-02-26
 
 ### Fixed
