@@ -113,9 +113,11 @@ El workflow debe:
   "request_id": "string-uuid",
   "render_id": "string-uuid",
   "storage": {
-    "provider": "local|s3|supabase",
-    "path": "renders/2026-02-26/render_id.png",
-    "storage_url": "https://.../render_id.png",
+    "provider": "supabase",
+    "bucket": "posters",
+    "path": "YYYY-MM-DD/lineup_{request_id}.png",
+    "storage_url": "https://.../storage/v1/object/public/posters/YYYY-MM-DD/lineup_{request_id}.png",
+    "public_url": "https://.../storage/v1/object/public/posters/YYYY-MM-DD/lineup_{request_id}.png",
     "public": true
   },
   "artifact": {
@@ -131,7 +133,8 @@ El workflow debe:
     "execution_time_ms": 1320,
     "browser_launch_ms": 210,
     "html_injection_ms": 120,
-    "screenshot_ms": 760
+    "screenshot_ms": 760,
+    "upload_ms": 180
   },
   "warnings": [],
   "meta": {
@@ -142,6 +145,14 @@ El workflow debe:
   }
 }
 ```
+
+### 3.1.1 Proceso de Upload (Supabase Storage)
+- El artefacto PNG se sube al bucket **`posters`** en Supabase Storage.
+- Convención de nombre obligatoria: `YYYY-MM-DD/lineup_{request_id}.png`.
+- Las credenciales de subida se obtienen exclusivamente de variables de entorno:
+  - `SUPABASE_URL`
+  - `SUPABASE_KEY`
+- `public_url` es obligatorio en respuestas de éxito y debe apuntar al objeto público generado en el bucket.
 
 ## 3.2 Output de error
 
