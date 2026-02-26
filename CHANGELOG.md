@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.5.29] - 2026-02-26
+
+### Changed
+- `backend/src/playwright_renderer.py` ajusta el contrato de salida para devolver únicamente el JSON exacto de la spec (§3.1/§3.2), mantiene upload automático a Supabase Storage (`posters`) y expone `storage_url`/`public_url` reales.
+- `backend/src/playwright_renderer.py` elimina el artefacto PNG temporal del disco tras una subida satisfactoria para evitar acumulación en el servidor.
+- `backend/src/templates/lineup_v1.html` se actualiza al estilo visual **Dark Premium** (Bebas Neue, Montserrat y gradientes neón).
+- `backend/tests/unit/test_playwright_renderer.py` actualiza expectativas de contrato de salida y añade prueba de limpieza post-upload de archivos temporales.
+- `README.md` y `docs/tests-backend.md` documentan el cierre del flujo render+upload+cleanup y las nuevas comprobaciones.
+- Incremento de versión a `0.5.29` en `package.json`, `pyproject.toml` y `README.md`.
+
 ## [0.5.28] - 2026-02-26
 
 ### Added

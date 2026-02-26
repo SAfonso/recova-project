@@ -1,12 +1,16 @@
 # AI LineUp Architect (MVP) 🎭
 
 **Estado del Proyecto:** 🛠️ En Desarrollo (MVP)  
-**Versión:** 0.5.28  
+**Versión:** 0.5.29  
 **Metodología:** Spec-Driven Development (SDD)
 
 Sistema automatizado para la gestión y generación de lineups y cartelería para Open Mics de comedia.
 
-## Novedades recientes (0.5.28)
+## Novedades recientes (0.5.29)
+- `PlaywrightRenderer.render(payload)` ahora devuelve estrictamente el JSON de éxito/error definido en la spec §3.1/§3.2, incluyendo `storage.storage_url` real de Supabase y sin campos extra fuera de contrato.
+- El renderer elimina el PNG temporal local tras una subida satisfactoria al bucket `posters`, evitando acumulación de archivos en disco (`/root/RECOVA`).
+- La plantilla `backend/src/templates/lineup_v1.html` se rediseña con estilo **Dark Premium** (Bebas Neue + Montserrat, gradientes neón y tipografía de alto impacto) para el primer render productivo.
+- Se amplía la suite unitaria del renderer para validar limpieza de artefactos temporales post-upload.
 - `PlaywrightRenderer` sube automáticamente el PNG a Supabase Storage (`bucket: posters`) con ruta `YYYY-MM-DD/lineup_{request_id}.png` y devuelve `public_url` en el contrato de éxito.
 - Se añade test de integración `backend/tests/integration/test_supabase_upload.py` que valida subida de archivo pequeño y verificación HTTP `200` sobre la URL pública.
 - `PlaywrightRenderer._launch_browser` fuerza `headless=True` y añade flags de servidor (`--no-sandbox`, `--disable-setuid-sandbox`, `--disable-dev-shm-usage`, `--disable-gpu`) con fallback seguro a dummy browser cuando Chromium no arranca en entornos root/headless.
