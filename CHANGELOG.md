@@ -5,6 +5,55 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.23] - 2026-02-26
+
+### Changed
+- `backend/src/canva_builder.py` incrementa `AUTOFILL_UNKNOWN_STATUS_MAX_ITERATIONS` hasta `12` para tolerar mejor respuestas transitorias con estado vacío/desconocido durante el polling del autofill de Canva.
+- `README.md` y `docs/canva-oauth-pkce-builder.md` se actualizan para reflejar el flujo asíncrono real del builder (payload `brand_template_id/data`, polling por `job_id`, sanitización y stdout con trazas + URL final).
+- Incremento de versión a `0.5.23` en `package.json`, `pyproject.toml` y `README.md`.
+
+## [0.5.22] - 2026-02-25
+
+### Added
+- `backend/src/canva_builder.py` incorpora `_sanitize_text(...)` para limpiar caracteres de control/formato/símbolos (incluyendo la mayoría de emojis) y usar fallback seguro (`" "`) en campos de autofill vacíos.
+- `backend/tests/unit/test_canva_builder.py` añade cobertura para sanitización/fallback de campos, validación de headers en `POST/GET` de Canva y abortado por exceso de estados desconocidos en el polling.
+
+### Changed
+- `backend/src/canva_builder.py` endurece el payload de Canva eliminando `title` y manteniendo el contrato con `brand_template_id` + `data`.
+- `backend/src/canva_builder.py` añade headers explícitos (`User-Agent`, `Accept`) en requests de autofill y consulta de estado.
+- `backend/src/canva_builder.py` refuerza el polling con contador de estados desconocidos/nulos y error explícito si supera el umbral configurado.
+
+## [0.5.21] - 2026-02-25
+
+### Added
+- `backend/src/canva_builder.py` añade límite de polling (`AUTOFILL_MAX_POLL_ATTEMPTS`) y mensajes de progreso por `stdout` con intento/tiempo transcurrido durante la espera del autofill.
+- `backend/src/canva_builder.py` reintenta el polling ante `Timeout`/`ConnectionError` mostrando aviso de red lenta y registrando `warning` en logs.
+- `backend/tests/unit/test_canva_builder.py` amplía cobertura para validar feedback de progreso y reintentos ante timeout en el polling.
+
+### Changed
+- `backend/src/canva_builder.py` ajusta `AUTOFILL_POLL_INTERVAL_SECONDS` de `2` a `5` segundos y añade timeout final con mensaje de contexto (`job_id`, intentos, tiempo acumulado).
+
+## [0.5.20] - 2026-02-25
+
+### Fixed
+- `backend/src/canva_builder.py` corrige la estructura del payload de autofill de Canva usando `brand_template_id` y `data` (en lugar de claves intermedias incompatibles), manteniendo overrides por `CANVA_FIELD_OVERRIDES_JSON`.
+- `backend/src/canva_builder.py` corrige la clave de campos de texto del payload a `text` (en lugar de `text_content`) para compatibilidad con el contrato del endpoint de autofill.
+
+### Changed
+- `backend/src/canva_builder.py` permite recibir de `1` a `5` cómicos y completa automáticamente hasta `5` con placeholders (`" "`) para cumplir el template fijo.
+- `backend/tests/unit/test_canva_builder.py` actualiza expectativas del contrato de payload (`brand_template_id`, `data`, `text`) y añade cobertura para padding y rechazo de payloads con más de 5 cómicos.
+
+## [0.5.19] - 2026-02-25
+
+### Added
+- `backend/src/canva_builder.py` introduce soporte de autofill asíncrono con `_extract_job_id(...)`, `request_canva_autofill_status(...)` y `wait_for_autofill_completion(...)` para consultar el estado del job hasta completarse.
+- `backend/tests/unit/test_canva_builder.py` añade pruebas de polling asíncrono (éxito y fallo) para el flujo de autofill.
+- `docs/canva-oauth-pkce-builder.md` y `docs/curacion-lineup-validacion-estados-gold-silver.md` se incorporan como documentación técnica de procesos recientes no centralizados en `README.md`.
+- `backend/logs/canva_auth.log.2026-02-19` se versiona como traza de diagnóstico de errores/ajustes del flujo OAuth de Canva.
+
+### Changed
+- `backend/src/canva_builder.py` deja de asumir respuesta síncrona con URL final inmediata y encapsula la generación esperando la finalización del job de Canva antes de extraer la URL.
+
 ## [0.5.18] - 2026-02-19
 
 ### Added
