@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import os
 import re
 import time
 import uuid
@@ -13,11 +14,13 @@ from pathlib import Path
 from typing import Any
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
+from storage3 import create_client
 
 _SCHEMA_VERSION = "1.0"
 _TEMPLATE_REGISTRY = {
     "lineup_default_v1": "lineup_v1.html",
 }
+_STORAGE_BUCKET = "posters"
 
 # PNG 1x1 transparente para fallback local cuando Playwright no está disponible.
 _FALLBACK_PNG_BYTES = base64.b64decode(
@@ -180,6 +183,24 @@ class PlaywrightRenderer:
         output_path.write_bytes(png_bytes)
         screenshot_ms = self._to_ms(time.perf_counter() - screenshot_start)
 
+        upload_start = time.perf_counter()
+        try:
+            storage_path, public_url = self._upload_to_supabase(
+                png_bytes=png_bytes,
+                event_date=payload["event"]["date"],
+                request_id=payload["request_id"],
+            )
+        except Exception as exc:
+            return self._error_output(
+                code="STORAGE_UPLOAD_FAILED",
+                message=f"Falló la subida a Supabase Storage: {exc}",
+                request_id=payload["request_id"],
+                stage="upload",
+                retryable=True,
+                started_at=started_at,
+            )
+        upload_ms = self._to_ms(time.perf_counter() - upload_start)
+
         execution_time_ms = self._to_ms(time.perf_counter() - started_at)
         checksum = hashlib.sha256(png_bytes).hexdigest()
 
@@ -188,10 +209,12 @@ class PlaywrightRenderer:
             "request_id": payload["request_id"],
             "render_id": render_id,
             "storage": {
-                "provider": "local",
-                "path": str(output_path.relative_to(self._config.output_root.parent)),
-                "storage_url": output_path.resolve().as_uri(),
-                "public": False,
+                "provider": "supabase",
+                "bucket": _STORAGE_BUCKET,
+                "path": storage_path,
+                "storage_url": public_url,
+                "public_url": public_url,
+                "public": True,
             },
             "artifact": {
                 "format": "png",
@@ -207,6 +230,7 @@ class PlaywrightRenderer:
                 "browser_launch_ms": browser_launch_ms,
                 "html_injection_ms": html_injection_ms,
                 "screenshot_ms": screenshot_ms,
+                "upload_ms": upload_ms,
             },
             "warnings": warnings,
             "meta": {
@@ -263,6 +287,30 @@ class PlaywrightRenderer:
             event_venue=payload["event"].get("venue") or "",
             lineup_slots=slots,
         )
+
+    def _upload_to_supabase(self, png_bytes: bytes, event_date: str, request_id: str) -> tuple[str, str]:
+        supabase_url = os.getenv("SUPABASE_URL")
+        supabase_key = os.getenv("SUPABASE_KEY")
+        if not supabase_url or not supabase_key:
+            raise RuntimeError("Faltan SUPABASE_URL y/o SUPABASE_KEY en variables de entorno.")
+
+        storage_path = f"{event_date}/lineup_{request_id}.png"
+        storage = create_client(
+            url=f"{supabase_url}/storage/v1",
+            headers={
+                "Authorization": f"Bearer {supabase_key}",
+                "apikey": supabase_key,
+            },
+            is_async=False,
+            timeout=20,
+        )
+        storage.from_(_STORAGE_BUCKET).upload(
+            path=storage_path,
+            file=png_bytes,
+            file_options={"content-type": "image/png", "upsert": "true"},
+        )
+        public_url = storage.from_(_STORAGE_BUCKET).get_public_url(storage_path)
+        return storage_path, public_url
 
     def _normalize_lineup(self, lineup: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
         normalized: list[dict[str, Any]] = []

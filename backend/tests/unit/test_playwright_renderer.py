@@ -3,9 +3,20 @@ from __future__ import annotations
 import uuid
 from copy import deepcopy
 
+import pytest
 
 from playwright_renderer import PlaywrightRenderer
 
+
+@pytest.fixture(autouse=True)
+def _stub_supabase_upload(monkeypatch):
+    def _upload(*_args, **_kwargs):
+        return (
+            "2026-02-26/lineup_stub.png",
+            "https://example.supabase.co/storage/v1/object/public/posters/2026-02-26/lineup_stub.png",
+        )
+
+    monkeypatch.setattr(PlaywrightRenderer, "_upload_to_supabase", _upload)
 
 
 def _valid_payload() -> dict:
@@ -53,7 +64,7 @@ def _assert_success_output_contract(result: dict, request_id: str) -> None:
     assert isinstance(result["render_id"], str) and result["render_id"]
 
     storage = result["storage"]
-    assert set(["provider", "path", "storage_url", "public"]).issubset(storage)
+    assert set(["provider", "bucket", "path", "storage_url", "public_url", "public"]).issubset(storage)
 
     artifact = result["artifact"]
     assert artifact["format"] == "png"
@@ -63,7 +74,7 @@ def _assert_success_output_contract(result: dict, request_id: str) -> None:
 
     timing = result["timing"]
     assert set(
-        ["execution_time_ms", "browser_launch_ms", "html_injection_ms", "screenshot_ms"]
+        ["execution_time_ms", "browser_launch_ms", "html_injection_ms", "screenshot_ms", "upload_ms"]
     ).issubset(timing)
 
     assert isinstance(result["warnings"], list)
