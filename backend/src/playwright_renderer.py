@@ -201,6 +201,12 @@ class PlaywrightRenderer:
             )
         upload_ms = self._to_ms(time.perf_counter() - upload_start)
 
+        try:
+            if output_path.exists():
+                output_path.unlink()
+        except OSError:
+            pass
+
         execution_time_ms = self._to_ms(time.perf_counter() - started_at)
         checksum = hashlib.sha256(png_bytes).hexdigest()
 
@@ -239,7 +245,6 @@ class PlaywrightRenderer:
                 "engine": "playwright-chromium",
                 "engine_version": self._engine_version(),
             },
-            "normalized_lineup": normalized_lineup,
         }
 
     def _launch_browser(self) -> Any:
