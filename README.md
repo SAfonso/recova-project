@@ -1,17 +1,18 @@
 # AI LineUp Architect (MVP) 🎭
 
 **Estado del Proyecto:** 🛠️ En Desarrollo (MVP)  
-**Versión:** 0.5.24  
+**Versión:** 0.5.25  
 **Metodología:** Spec-Driven Development (SDD)
 
 Sistema automatizado para la gestión y generación de lineups y cartelería para Open Mics de comedia.
 
-## Novedades recientes (0.5.24)
+## Novedades recientes (0.5.25)
 - Los workflows exportados de n8n se versionan en `workflows/n8n/` y se han saneado para eliminar secretos/hosts hardcodeados en nodos HTTP.
 - `workflows/n8n/*.json` ahora referencian variables de entorno de n8n (`$env.SUPABASE_URL`, `$env.SUPABASE_KEY`, `$env.WEBHOOK_API_KEY`, `$env.N8N_BACKEND_*_URL`).
 - Se añade spec SDD para este cambio (`specs/workflows/n8n_workflow_secret_externalization.md`) y documentación operativa (`docs/n8n-workflows-secretos-entorno.md`).
 - Se añade test de contrato `backend/tests/unit/test_n8n_workflows_security.py` para prevenir regresiones con secretos hardcodeados.
 - Se incorpora la especificación SDD del nuevo renderer local con Playwright en `specs/playwright_renderer_spec.md`, incluyendo contrato de input/output, invariantes y manejo de errores para reemplazar Canva.
+- Se añade la suite inicial de tests unitarios `backend/tests/unit/test_playwright_renderer.py` para fijar por contrato (SDD) el input/output del renderer Playwright antes de implementar el generador.
 
 El proyecto nace con una arquitectura **SaaS-Ready**, garantizando la privacidad de los datos entre diferentes productores mediante un modelo de datos maestro/detalle y políticas de seguridad avanzadas.
 
