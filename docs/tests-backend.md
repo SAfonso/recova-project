@@ -20,6 +20,8 @@
    - `./.venv/bin/python -m pytest -q backend/tests/unit/test_setup_db.py::test_verify_enums_uses_expected_refs`
 7. Ejecutar la suite SDD del renderer Playwright:
    - `./.venv/bin/python -m pytest -q backend/tests/unit/test_playwright_renderer.py`
+8. Ejecutar test de integración de upload a Supabase Storage:
+   - `./.venv/bin/python -m pytest -q backend/tests/integration/test_supabase_upload.py`
 
 ## Nota practica
 Si `python3 -m pytest` falla por modulo no encontrado, usa el Python del entorno virtual con `./.venv/bin/python`.
