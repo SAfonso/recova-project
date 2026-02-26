@@ -11,6 +11,7 @@ Sistema automatizado para la gestión y generación de lineups y cartelería par
 - `workflows/n8n/*.json` ahora referencian variables de entorno de n8n (`$env.SUPABASE_URL`, `$env.SUPABASE_KEY`, `$env.WEBHOOK_API_KEY`, `$env.N8N_BACKEND_*_URL`).
 - Se añade spec SDD para este cambio (`specs/workflows/n8n_workflow_secret_externalization.md`) y documentación operativa (`docs/n8n-workflows-secretos-entorno.md`).
 - Se añade test de contrato `backend/tests/unit/test_n8n_workflows_security.py` para prevenir regresiones con secretos hardcodeados.
+- Se incorpora la especificación SDD del nuevo renderer local con Playwright en `specs/playwright_renderer_spec.md`, incluyendo contrato de input/output, invariantes y manejo de errores para reemplazar Canva.
 
 El proyecto nace con una arquitectura **SaaS-Ready**, garantizando la privacidad de los datos entre diferentes productores mediante un modelo de datos maestro/detalle y políticas de seguridad avanzadas.
 
