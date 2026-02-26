@@ -7,61 +7,67 @@
     <style>
       :root {
         color-scheme: dark;
-        --neon-cyan: #48f5ff;
-        --neon-pink: #ff3bc1;
-        --neon-violet: #8a5bff;
-        --text-main: #f7f8ff;
-        --text-muted: #bac0e8;
+        --bg-0: #040409;
+        --bg-1: #101127;
+        --bg-2: #241038;
+        --accent-cyan: #53ebff;
+        --accent-pink: #ff4fb9;
+        --accent-purple: #a78bff;
+        --text-main: #f8f9ff;
+        --text-soft: #d4dbff;
+        --text-muted: #98a4df;
       }
       * { box-sizing: border-box; }
       body {
         margin: 0;
-        min-height: 100vh;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
         font-family: Montserrat, "Segoe UI", Arial, sans-serif;
         color: var(--text-main);
-        display: flex;
-        align-items: center;
-        justify-content: center;
         background:
-          radial-gradient(circle at 10% 15%, rgba(72, 245, 255, 0.22), transparent 45%),
-          radial-gradient(circle at 90% 80%, rgba(255, 59, 193, 0.18), transparent 45%),
-          linear-gradient(140deg, #060710 0%, #0f1230 45%, #1d0f3a 100%);
+          radial-gradient(circle at 14% 18%, rgba(83, 235, 255, 0.22), transparent 44%),
+          radial-gradient(circle at 90% 82%, rgba(255, 79, 185, 0.2), transparent 44%),
+          linear-gradient(140deg, var(--bg-0) 0%, var(--bg-1) 48%, var(--bg-2) 100%);
       }
       .poster {
         width: 100%;
-        height: 100vh;
-        padding: 56px 62px;
+        height: 100%;
         display: grid;
         grid-template-rows: auto auto 1fr;
-        gap: 18px;
-        background: linear-gradient(180deg, rgba(9, 11, 27, 0.58), rgba(4, 5, 14, 0.82));
+        gap: 20px;
+        padding: 64px 66px 58px;
+        background: linear-gradient(180deg, rgba(7, 8, 20, 0.5), rgba(4, 4, 12, 0.85));
       }
       .subtitle {
         text-transform: uppercase;
-        letter-spacing: 0.16em;
         font-size: 16px;
         font-weight: 700;
+        letter-spacing: 0.18em;
         color: var(--text-muted);
       }
       h1 {
         margin: 0;
         font-family: "Bebas Neue", Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
-        font-size: 124px;
-        letter-spacing: 0.04em;
-        line-height: 0.9;
-        color: var(--text-main);
+        font-size: 132px;
+        letter-spacing: 0.05em;
+        line-height: 0.88;
         text-shadow:
-          0 0 10px rgba(72, 245, 255, 0.45),
-          0 0 24px rgba(255, 59, 193, 0.35);
+          0 0 14px rgba(83, 235, 255, 0.38),
+          0 0 36px rgba(255, 79, 185, 0.3);
       }
       .meta {
-        margin-top: 6px;
+        margin-top: 8px;
         display: flex;
-        gap: 14px;
-        font-size: 22px;
+        gap: 12px;
+        align-items: center;
+        color: var(--text-soft);
+        font-size: 24px;
         font-weight: 600;
       }
-      .meta span:last-child { color: #dde2ff; }
+      .meta .dot {
+        color: rgba(167, 139, 255, 0.9);
+      }
       .slots {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -69,48 +75,52 @@
         align-content: start;
       }
       .slot {
-        padding: 16px 18px;
+        min-height: 128px;
         border-radius: 14px;
-        border: 1px solid rgba(138, 91, 255, 0.32);
-        background: linear-gradient(135deg, rgba(24, 16, 56, 0.78), rgba(15, 23, 53, 0.88));
+        padding: 15px 18px;
+        border: 1px solid rgba(167, 139, 255, 0.3);
+        background: linear-gradient(145deg, rgba(34, 20, 63, 0.82), rgba(12, 22, 50, 0.9));
         box-shadow:
-          inset 0 0 0 1px rgba(72, 245, 255, 0.16),
-          0 6px 20px rgba(0, 0, 0, 0.35);
+          inset 0 0 0 1px rgba(83, 235, 255, 0.14),
+          0 10px 26px rgba(2, 4, 18, 0.5);
       }
-      .slot .order {
+      .order {
         font-size: 12px;
         font-weight: 700;
+        letter-spacing: 0.11em;
         text-transform: uppercase;
-        letter-spacing: 0.1em;
-        color: #a9b5ff;
+        color: #aeb8f8;
       }
-      .slot .name {
-        margin-top: 4px;
+      .name {
+        margin-top: 6px;
         font-family: "Bebas Neue", Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
-        font-size: 40px;
-        letter-spacing: 0.03em;
+        font-size: 42px;
         line-height: 0.95;
+        letter-spacing: 0.03em;
+        color: var(--text-main);
+        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
       }
-      .slot .instagram {
-        margin-top: 4px;
+      .instagram {
+        margin-top: 6px;
         font-size: 17px;
-        font-weight: 600;
-        color: var(--neon-cyan);
+        font-weight: 700;
+        color: var(--accent-cyan);
       }
     </style>
   </head>
   <body>
     <main class="poster">
       <div class="subtitle">{{ event_title }}</div>
-      <div>
+      <section>
         <h1>LINEUP</h1>
         <div class="meta">
           <span>{{ event_date }}</span>
           {% if event_venue %}
-          <span>· {{ event_venue }}</span>
+          <span class="dot">•</span>
+          <span>{{ event_venue }}</span>
           {% endif %}
         </div>
-      </div>
+      </section>
       <section class="slots">
         {% for comic in lineup_slots %}
         <article class="slot">
