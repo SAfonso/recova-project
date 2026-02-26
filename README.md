@@ -1,15 +1,16 @@
 # AI LineUp Architect (MVP) 🎭
 
 **Estado del Proyecto:** 🛠️ En Desarrollo (MVP)  
-**Versión:** 0.5.26  
+**Versión:** 0.5.27  
 **Metodología:** Spec-Driven Development (SDD)
 
 Sistema automatizado para la gestión y generación de lineups y cartelería para Open Mics de comedia.
 
-## Novedades recientes (0.5.26)
+## Novedades recientes (0.5.27)
+- `PlaywrightRenderer._launch_browser` fuerza `headless=True` y añade flags de servidor (`--no-sandbox`, `--disable-setuid-sandbox`, `--disable-dev-shm-usage`, `--disable-gpu`) con fallback seguro a dummy browser cuando Chromium no arranca en entornos root/headless.
 - Se implementa `backend/src/playwright_renderer.py` con `PlaywrightRenderer.render(payload)` usando Jinja2 + Playwright (con fallback local), validación de contrato v1, warnings estructurados y salida rica compatible con MCP.
 - Se añade la plantilla base `backend/src/templates/lineup_v1.html` (dark/minimal) con placeholders para fecha y hasta 8 slots (nombre + instagram).
-- Se actualizan dependencias backend para soportar renderizado local (`jinja2`, `playwright`) y se incrementa versión a `0.5.26` en `package.json`, `pyproject.toml` y `README.md`.
+- Se actualizan dependencias backend para soportar renderizado local (`jinja2`, `playwright`) y se incrementa versión a `0.5.27` en `package.json`, `pyproject.toml` y `README.md`.
 - Los workflows exportados de n8n se versionan en `workflows/n8n/` y se han saneado para eliminar secretos/hosts hardcodeados en nodos HTTP.
 - `workflows/n8n/*.json` ahora referencian variables de entorno de n8n (`$env.SUPABASE_URL`, `$env.SUPABASE_KEY`, `$env.WEBHOOK_API_KEY`, `$env.N8N_BACKEND_*_URL`).
 - Se añade spec SDD para este cambio (`specs/workflows/n8n_workflow_secret_externalization.md`) y documentación operativa (`docs/n8n-workflows-secretos-entorno.md`).
