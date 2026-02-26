@@ -18,6 +18,8 @@
    - `./.venv/bin/python -m pytest -q backend/tests/unit/test_setup_db.py`
 6. Ejecutar un test puntual:
    - `./.venv/bin/python -m pytest -q backend/tests/unit/test_setup_db.py::test_verify_enums_uses_expected_refs`
+7. Ejecutar la suite SDD del renderer Playwright:
+   - `./.venv/bin/python -m pytest -q backend/tests/unit/test_playwright_renderer.py`
 
 ## Nota practica
 Si `python3 -m pytest` falla por modulo no encontrado, usa el Python del entorno virtual con `./.venv/bin/python`.
