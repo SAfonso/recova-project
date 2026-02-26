@@ -7,6 +7,17 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 
 ## [Unreleased]
 
+## [0.5.26] - 2026-02-26
+
+### Added
+- `backend/src/playwright_renderer.py` con implementación de `PlaywrightRenderer` basada en SDD: validación de payload v1, normalización/truncado (`name<=32`, `instagram<=30`), warning `LINEUP_UNDER_MINIMUM`, render de HTML con Jinja2 y captura con Playwright (fallback local cuando no hay runtime).
+- `backend/src/templates/lineup_v1.html` como plantilla base minimalista en tema oscuro con placeholders para fecha y hasta 8 slots de cómicos (nombre + instagram).
+
+### Changed
+- `README.md` documenta el renderer local Playwright/Jinja2, novedades de la versión y actualización de estado de release.
+- `requirements.txt` y `pyproject.toml` incorporan `jinja2` y `playwright` para soportar el motor de renderizado local.
+- Incremento de versión a `0.5.26` en `package.json`, `pyproject.toml` y `README.md`.
+
 ## [0.5.25] - 2026-02-26
 
 ### Added
