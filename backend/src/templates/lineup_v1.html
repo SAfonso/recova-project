@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ event_title }}</title>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
+        background: radial-gradient(circle at top, #1c1f2a 0%, #0a0c14 60%, #05060a 100%);
+        color: #f5f7ff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .poster {
+        width: 100%;
+        height: 100vh;
+        padding: 56px;
+        display: grid;
+        grid-template-rows: auto auto 1fr;
+        gap: 20px;
+      }
+      .subtitle {
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        font-size: 14px;
+        color: #b0b7d8;
+      }
+      h1 {
+        margin: 0;
+        font-size: 64px;
+        font-weight: 800;
+      }
+      .meta {
+        display: flex;
+        gap: 16px;
+        color: #d8defd;
+        font-size: 20px;
+      }
+      .slots {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        align-content: start;
+      }
+      .slot {
+        padding: 18px 20px;
+        background: rgba(26, 30, 45, 0.8);
+        border: 1px solid rgba(183, 193, 236, 0.2);
+        border-radius: 14px;
+      }
+      .slot .order {
+        font-size: 13px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #8e98c1;
+      }
+      .slot .name {
+        margin-top: 6px;
+        font-size: 29px;
+        font-weight: 700;
+      }
+      .slot .instagram {
+        margin-top: 4px;
+        font-size: 18px;
+        color: #9db2ff;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="poster">
+      <div class="subtitle">{{ event_title }}</div>
+      <div>
+        <h1>LINEUP</h1>
+        <div class="meta">
+          <span>{{ event_date }}</span>
+          {% if event_venue %}
+          <span>· {{ event_venue }}</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <section class="slots">
+        {% for comic in lineup_slots %}
+        <article class="slot">
+          <div class="order">Slot {{ comic.order }}</div>
+          <div class="name">{{ comic.name or "Próximamente" }}</div>
+          <div class="instagram">{{ "@" + comic.instagram if comic.instagram else "" }}</div>
+        </article>
+        {% endfor %}
+      </section>
+    </main>
+  </body>
+</html>
