@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.30] - 2026-02-26
+
+### Added
+- `backend/src/app.py` implementa la API Flask de producción con `POST /render-lineup`, validación de payload según SDD §2.2 y respuesta de éxito con `public_url` + objeto `mcp`.
+- `backend/tests/unit/test_app.py` añade cobertura para éxito, validación de instagram no limpio y mapeo HTTP `502` para `STORAGE_UPLOAD_FAILED`.
+- `docs/render-api-produccion.md` documenta contrato de endpoint, flujo render+upload y comandos de despliegue en Gunicorn/PM2.
+
+### Changed
+- `backend/src/templates/lineup_v1.html` refuerza el diseño **Dark Premium** (Bebas Neue, gradientes oscuros y mejor legibilidad de slots).
+- `README.md` y `docs/tests-backend.md` incorporan documentación de la nueva API de render y sus comandos de validación.
+- Incremento de versión a `0.5.30` en `package.json`, `pyproject.toml` y `README.md`.
+
 ## [0.5.29] - 2026-02-26
 
 ### Changed
