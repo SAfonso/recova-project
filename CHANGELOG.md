@@ -7,8 +7,16 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 
 ## [Unreleased]
 
+## [0.5.25] - 2026-02-26
+
 ### Added
-- `specs/playwright_renderer_spec.md` con la especificación SDD del motor de renderizado local con Playwright para sustituir Canva, incluyendo análisis del payload actual de `workflows/n8n/LineUp.json`, contrato de input/output, invariantes y catálogo de errores HTTP/dominio.
+- `backend/tests/unit/test_playwright_renderer.py` con una suite SDD-first que fija el contrato del renderer Playwright: validación de payload v1 (spec §2.2), warning `LINEUP_UNDER_MINIMUM`, truncado de nombres >32 caracteres y output de éxito MCP-ready (spec §3.1).
+
+### Changed
+- `backend/tests/unit/test_playwright_renderer.py` fuerza import explícito de `PlaywrightRenderer` y pruebas de contrato sobre `render(...)` para mantener el enfoque test-first previo a la implementación del generador.
+- `README.md` actualiza versión y novedades recientes para incluir la nueva suite de tests del renderer Playwright.
+- `docs/tests-backend.md` incorpora un ejemplo explícito para ejecutar la suite `test_playwright_renderer.py`.
+- Incremento de versión a `0.5.25` en `package.json`, `pyproject.toml` y `README.md`.
 
 ## [0.5.24] - 2026-02-26
 
