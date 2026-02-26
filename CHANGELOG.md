@@ -5,6 +5,22 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.24] - 2026-02-26
+
+### Added
+- `specs/workflows/n8n_workflow_secret_externalization.md` como especificación SDD para externalizar secretos y hosts en exports de n8n, con criterios de aceptación y trazabilidad.
+- `docs/n8n-workflows-secretos-entorno.md` con guía operativa para configurar variables en n8n, exportar workflows sin credenciales y validar el cambio.
+- `backend/tests/unit/test_n8n_workflows_security.py` con contrato automático para detectar secretos/hosts hardcodeados y exigir referencias `{{$env...}}` en `workflows/n8n/*.json`.
+- `.env.example` con placeholders mínimos para las variables usadas por los workflows de n8n (`SUPABASE_*`, `WEBHOOK_API_KEY`, `N8N_BACKEND_*_URL`).
+
+### Changed
+- `workflows/n8n/Ingesta-Solicitudes.json` sustituye URL de `/ingest`, `X-API-KEY`, URLs REST de Supabase y headers `apikey`/`Authorization` por expresiones `{{$env...}}`.
+- `workflows/n8n/LineUp.json` sustituye URL REST de Supabase y headers `apikey`/`Authorization` por `SUPABASE_URL` y `SUPABASE_KEY`.
+- `workflows/n8n/Scoring & Draft.json` sustituye la URL del backend de scoring por `{{$env.N8N_BACKEND_SCORING_URL}}`.
+- `.env` añade `N8N_BACKEND_INGEST_URL` y `N8N_BACKEND_SCORING_URL` para parametrizar endpoints del backend consumidos por n8n.
+- `README.md` documenta el directorio `workflows/n8n/`, la política de secretos para exports de n8n y la trazabilidad SDD asociada.
+- Incremento de versión a `0.5.24` en `package.json`, `pyproject.toml` y `README.md`.
+
 ## [0.5.23] - 2026-02-26
 
 ### Changed

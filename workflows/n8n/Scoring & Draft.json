@@ -1,0 +1,112 @@
+{
+  "name": "Scoring & Draft",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 12
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "ef754ef2-b14d-4f0b-8e38-da7023a3e342",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.N8N_BACKEND_SCORING_URL }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        176,
+        0
+      ],
+      "id": "c490e427-d52a-41d0-ad64-de468329f942",
+      "name": "HTTP Request",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "xeFbWFliVrTlLKuk",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "4088898",
+        "text": "\"¡Hola Sergio! El sistema de LineUps está conectado\" recova-project.vercel.app",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        368,
+        0
+      ],
+      "id": "d7ecd09d-6e92-47a9-ac40-6597dca26668",
+      "name": "Send a text message",
+      "webhookId": "4fda7ba3-420f-448b-a68b-11c5eb08a529",
+      "credentials": {
+        "telegramApi": {
+          "id": "6Ab7xKZYHk0wK6KP",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "fafe12bf-6486-4aa1-827e-9665b67d25aa",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0a875fbb3d2fbb10ab816e54655a603076a1de35a069a813489d324e1ea27d6a"
+  },
+  "id": "DbGmkvy9A8IIvZhK",
+  "tags": []
+}
