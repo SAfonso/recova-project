@@ -1,16 +1,16 @@
 # AI LineUp Architect (MVP) 🎭
 
 **Estado del Proyecto:** 🛠️ En Desarrollo (MVP)  
-**Versión:** 0.5.23  
+**Versión:** 0.5.24  
 **Metodología:** Spec-Driven Development (SDD)
 
 Sistema automatizado para la gestión y generación de lineups y cartelería para Open Mics de comedia.
 
-## Novedades recientes (0.5.23)
-- `canva_builder.py` usa flujo de autofill asíncrono (crea job, consulta estado por `job_id` y extrae la URL al finalizar).
-- El payload a Canva se alinea con `brand_template_id` + `data` y campos de texto `{ "type": "text", "text": "..." }`.
-- El builder acepta de `1` a `5` cómicos, rellena hasta `5` con placeholders y sanitiza texto (control chars/emojis) antes de enviar a Canva.
-- Polling endurecido: reintentos ante timeouts de red, límite de intentos, guardia de estados desconocidos y umbral final `AUTOFILL_UNKNOWN_STATUS_MAX_ITERATIONS = 12`.
+## Novedades recientes (0.5.24)
+- Los workflows exportados de n8n se versionan en `workflows/n8n/` y se han saneado para eliminar secretos/hosts hardcodeados en nodos HTTP.
+- `workflows/n8n/*.json` ahora referencian variables de entorno de n8n (`$env.SUPABASE_URL`, `$env.SUPABASE_KEY`, `$env.WEBHOOK_API_KEY`, `$env.N8N_BACKEND_*_URL`).
+- Se añade spec SDD para este cambio (`specs/workflows/n8n_workflow_secret_externalization.md`) y documentación operativa (`docs/n8n-workflows-secretos-entorno.md`).
+- Se añade test de contrato `backend/tests/unit/test_n8n_workflows_security.py` para prevenir regresiones con secretos hardcodeados.
 
 El proyecto nace con una arquitectura **SaaS-Ready**, garantizando la privacidad de los datos entre diferentes productores mediante un modelo de datos maestro/detalle y políticas de seguridad avanzadas.
 
@@ -262,6 +262,26 @@ curl -X POST http://localhost:5000/ingest \
 
 Referencia extendida: `docs/webhook-listener-n8n-ingesta.md`
 
+## 🔐 Workflows n8n (Exports Versionados)
+Los JSON exportados de n8n deben vivir en `workflows/n8n/` y cumplir la regla SDD de no versionar secretos ni hosts sensibles hardcodeados.
+
+Reglas operativas:
+- Usar expresiones `{{$env...}}` en nodos HTTP para `apikey`, `Authorization`, `X-API-KEY` y URLs de backend.
+- Componer endpoints REST de Supabase desde `SUPABASE_URL` (ej. `{{$env.SUPABASE_URL + '/rest/v1/...'}}`).
+- Configurar esas variables en el entorno del proceso de n8n (Docker/Coolify/PM2), no solo en el `.env` del repo.
+
+Variables usadas por los workflows actuales:
+- `SUPABASE_URL`
+- `SUPABASE_KEY`
+- `WEBHOOK_API_KEY`
+- `N8N_BACKEND_INGEST_URL`
+- `N8N_BACKEND_SCORING_URL`
+
+Trazabilidad SDD:
+- Spec: `specs/workflows/n8n_workflow_secret_externalization.md`
+- Doc operativa: `docs/n8n-workflows-secretos-entorno.md`
+- Test de contrato: `backend/tests/unit/test_n8n_workflows_security.py`
+
 
 ## 🎨 Generación de Cartelería (Canva API)
 
@@ -362,9 +382,12 @@ El workflow `.github/workflows/deploy.yml` despliega al VPS por SSH en cada push
 │   └── deploy.yml
 ├── backups/              # Volcados temporales de seguridad (Local CSV) [GIT IGNORED]
 ├── specs/                # Fuente de verdad (Source of Truth)
-│   └── sql/              # Esquemas, Migraciones y Seed Data
-│       └── gold_relacional.sql
+│   ├── sql/              # Esquemas, Migraciones y Seed Data
+│   │   └── gold_relacional.sql
+│   └── workflows/        # Specs funcionales/operativas (n8n, integraciones)
 ├── workflows/            # Planos de automatización (n8n)
+│   ├── main_pipeline.json
+│   └── n8n/              # Exports versionados de workflows activos
 ├── .env                  # Variables críticas (DB_URL, Drive_ID, etc.)
 ├── setup_db.py           # Herramienta de despliegue, reset y backups de BD
 ├── package.json          # Versión del proyecto (SemVer)

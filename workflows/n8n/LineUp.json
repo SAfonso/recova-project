@@ -1,0 +1,119 @@
+{
+  "name": "LineUp",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generar-poster-lineup",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "b6e17ec0-5021-473e-a1a9-c661f487be62",
+      "name": "Webhook",
+      "webhookId": "9282d6dc-a7d3-4d22-bcbe-4b9936a2054f"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SUPABASE_URL + '/rest/v1/lineup_candidates' }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "fecha_evento",
+              "value": "=eq.{{ $json.body.fecha }}"
+            },
+            {
+              "name": "estado",
+              "value": "=eq.aprobado"
+            },
+            {
+              "name": "select",
+              "value": "nombre,instagram"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.SUPABASE_KEY }}"
+            },
+            {
+              "name": "Accept-Profile",
+              "value": "gold"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        208,
+        0
+      ],
+      "id": "2fc9db60-4ad0-45cf-96b9-16c2e8b3e315",
+      "name": "HTTP Request3",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\n// Creamos un solo objeto con los 5 nombres\nreturn {\n  fecha: items[0].json.fecha_evento,\n  nombre_1: items[0]?.json.nombre || \"-\",\n  nombre_2: items[1]?.json.nombre || \"-\",\n  nombre_3: items[2]?.json.nombre || \"-\",\n  nombre_4: items[3]?.json.nombre || \"-\",\n  nombre_5: items[4]?.json.nombre || \"-\"\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "06dacea3-e632-470c-afa8-951c71de132d",
+      "name": "Code in JavaScript"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request3": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "1a3bf511-6fca-4836-95d3-22d184a468b6",
+  "meta": {
+    "instanceId": "0a875fbb3d2fbb10ab816e54655a603076a1de35a069a813489d324e1ea27d6a"
+  },
+  "id": "D9rZBKXdVsr3kOTR",
+  "tags": []
+}
