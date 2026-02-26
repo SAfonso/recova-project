@@ -225,7 +225,19 @@ class PlaywrightRenderer:
             return _DummyBrowser()
 
         playwright = sync_playwright().start()
-        return playwright.chromium.launch(headless=True)
+        try:
+            return playwright.chromium.launch(
+                headless=True,
+                args=[
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox",
+                    "--disable-dev-shm-usage",
+                    "--disable-gpu",
+                ],
+            )
+        except Exception:
+            playwright.stop()
+            return _DummyBrowser()
 
     def _render_html(
         self,
