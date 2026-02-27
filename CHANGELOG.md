@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.5.31] - 2026-02-27
+
+### Fixed
+- `backend/src/playwright_renderer.py` corrige el contrato de `_DummyPage.screenshot(...)` para aceptar `path=None` y parámetros flexibles sin romper el fallback cuando la llamada no incluye `path`.
+- `backend/src/playwright_renderer.py` mejora la resiliencia al capturar screenshot soportando retorno síncrono o coroutine, evitando errores en fallback.
+
+### Changed
+- `backend/src/playwright_renderer.py` mantiene salida MCP rica en fallback y agrega warning estructurado `PLAYWRIGHT_FALLBACK_ACTIVE` (`stage`, `reason`, `retryable`) alineado con SDD §3.1.
+- `backend/src/playwright_renderer.py` deja trazabilidad explícita de la causa de fallo de arranque del navegador real en `warnings[].details.reason`.
+- `backend/src/app.py` propaga warnings de fallback del renderer y soporta screenshots async en el flujo API de render.
+- `backend/tests/unit/test_playwright_renderer.py` añade cobertura para contrato de `_DummyPage.screenshot()` sin `path` y warning estructurado en fallback.
+- `README.md` y `docs/render-api-produccion.md` documentan instalación requerida en VPS (`playwright install chromium` y `playwright install-deps`).
+- Incremento de versión a `0.5.31` en `package.json`, `pyproject.toml` y `README.md`.
+
 ## [0.5.30] - 2026-02-26
 
 ### Added
