@@ -104,6 +104,31 @@
           "name": "Header Auth account 2"
         }
       }
+    },
+    {
+      "parameters": {
+        "operation": "sendPhoto",
+        "chatId": "4088898",
+        "file": "={{ $json.mcp.storage.public_url }}",
+        "additionalFields": {
+          "caption": "=✅ ¡Cartel Generado!  \n📅 Fecha: {{ $('Code in JavaScript').item.json.fecha_evento }}"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        832,
+        0
+      ],
+      "id": "3e85b5d5-b012-44bb-b448-5598452031e8",
+      "name": "Send a photo message",
+      "webhookId": "06f3ab03-4e79-4372-b1e0-7e4dcfde6574",
+      "credentials": {
+        "telegramApi": {
+          "id": "6Ab7xKZYHk0wK6KP",
+          "name": "Telegram account"
+        }
+      }
     }
   ],
   "pinData": {},
@@ -140,6 +165,17 @@
           }
         ]
       ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Send a photo message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
@@ -147,8 +183,9 @@
     "executionOrder": "v1",
     "availableInMCP": false
   },
-  "versionId": "7e7b219b-1ca5-4212-b7ab-05aa277ac33d",
+  "versionId": "0872be25-6459-4aed-8da4-4571bf8033ff",
   "meta": {
+    "templateCredsSetupCompleted": true,
     "instanceId": "0a875fbb3d2fbb10ab816e54655a603076a1de35a069a813489d324e1ea27d6a"
   },
   "id": "D9rZBKXdVsr3kOTR",
