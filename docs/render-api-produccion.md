@@ -44,6 +44,8 @@ La API valida antes de renderizar:
 Gunicorn con 4 workers:
 
 ```bash
+playwright install chromium
+playwright install-deps
 ./.venv/bin/gunicorn -w 4 -b 0.0.0.0:8000 backend.src.app:app
 ```
 
@@ -52,3 +54,7 @@ PM2 gestionando Gunicorn:
 ```bash
 pm2 start "./.venv/bin/gunicorn -w 4 -b 0.0.0.0:8000 backend.src.app:app" --name recova-renderer
 ```
+
+
+## Modo fallback y warnings (SDD §3.1)
+Si Chromium no arranca, el renderer mantiene `status: success` y devuelve warning estructurado `PLAYWRIGHT_FALLBACK_ACTIVE` en `warnings[]`, incluyendo `details.stage`, `details.reason` y `retryable` para debug operativo en VPS.

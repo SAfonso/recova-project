@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import hashlib
+import inspect
 import os
 import re
 import time
@@ -44,14 +46,8 @@ class _DummyPage:
     def set_content(self, _html: str, timeout: int) -> None:  # noqa: ARG002
         return None
 
-    def screenshot(
-        self,
-        path: str,
-        type: str = "png",  # noqa: A002
-        full_page: bool = True,  # noqa: FBT001, FBT002
-        timeout: int = 15000,
-    ) -> bytes:
-        return _FALLBACK_PNG_BYTES
+    async def screenshot(self, path: str | None = None, **kwargs: Any) -> bytes:  # noqa: ARG002
+        return b"dummy_content"
 
 
 class _DummyBrowser:
@@ -76,6 +72,7 @@ class PlaywrightRenderer:
             trim_blocks=True,
             lstrip_blocks=True,
         )
+        self._last_browser_warning: dict[str, Any] | None = None
 
     def render(self, payload: dict[str, Any]) -> dict[str, Any]:
         started_at = time.perf_counter()
@@ -128,6 +125,9 @@ class PlaywrightRenderer:
                 started_at=started_at,
             )
         browser_launch_ms = self._to_ms(time.perf_counter() - browser_launch_start)
+        launch_warning = self._consume_browser_warning()
+        if launch_warning is not None:
+            warnings.append(launch_warning)
 
         html_injection_start = time.perf_counter()
         try:
@@ -159,12 +159,13 @@ class PlaywrightRenderer:
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         try:
-            png_bytes = page.screenshot(
+            screenshot_result = page.screenshot(
                 path=str(output_path),
                 type="png",
                 full_page=True,
                 timeout=int(payload["render"]["timeout_ms"]),
             )
+            png_bytes = self._resolve_screenshot_bytes(screenshot_result)
             if not png_bytes:
                 png_bytes = _FALLBACK_PNG_BYTES
         except Exception as exc:
@@ -248,9 +249,19 @@ class PlaywrightRenderer:
         }
 
     def _launch_browser(self) -> Any:
+        self._last_browser_warning = None
         try:
             from playwright.sync_api import sync_playwright
-        except Exception:
+        except Exception as exc:
+            self._last_browser_warning = {
+                "code": "PLAYWRIGHT_FALLBACK_ACTIVE",
+                "message": "Render ejecutado en modo fallback por runtime de Playwright no disponible.",
+                "details": {
+                    "stage": "browser_launch",
+                    "reason": str(exc),
+                    "retryable": True,
+                },
+            }
             return _DummyBrowser()
 
         try:
@@ -265,8 +276,37 @@ class PlaywrightRenderer:
                     "--font-render-hinting=none",
                 ],
             )
-        except Exception:
+        except Exception as exc:
+            self._last_browser_warning = {
+                "code": "PLAYWRIGHT_FALLBACK_ACTIVE",
+                "message": "Render ejecutado en modo fallback por fallo al iniciar Chromium.",
+                "details": {
+                    "stage": "browser_launch",
+                    "reason": str(exc),
+                    "retryable": True,
+                },
+            }
             return _DummyBrowser()
+
+    def _consume_browser_warning(self) -> dict[str, Any] | None:
+        warning = self._last_browser_warning
+        self._last_browser_warning = None
+        return warning
+
+    @staticmethod
+    def _resolve_screenshot_bytes(screenshot_result: Any) -> bytes:
+        if not inspect.isawaitable(screenshot_result):
+            return screenshot_result
+
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.run(screenshot_result)
+
+        from concurrent.futures import ThreadPoolExecutor
+
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            return executor.submit(asyncio.run, screenshot_result).result()
 
     def _render_html(
         self,

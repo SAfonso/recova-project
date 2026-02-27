@@ -5,7 +5,7 @@ from copy import deepcopy
 
 import pytest
 
-from playwright_renderer import PlaywrightRenderer
+from playwright_renderer import PlaywrightRenderer, _DummyPage, _DummyBrowser
 
 
 @pytest.fixture(autouse=True)
@@ -170,3 +170,39 @@ def test_temp_file_is_deleted_after_upload(monkeypatch, tmp_path):
     assert result["status"] == "success"
     date_folder = tmp_path / payload["event"]["date"]
     assert not any(date_folder.glob("*.png"))
+
+
+def test_dummy_page_screenshot_accepts_missing_path_argument():
+    page = _DummyPage()
+
+    png_bytes = PlaywrightRenderer._resolve_screenshot_bytes(page.screenshot())
+
+    assert png_bytes == b"dummy_content"
+
+
+def test_fallback_browser_keeps_success_contract_and_adds_structured_warning(monkeypatch):
+    payload = _valid_payload()
+
+    def _fallback_launch(self):
+        self._last_browser_warning = {
+            "code": "PLAYWRIGHT_FALLBACK_ACTIVE",
+            "message": "Render ejecutado en modo fallback por fallo al iniciar Chromium.",
+            "details": {
+                "stage": "browser_launch",
+                "reason": "no memory left",
+                "retryable": True,
+            },
+        }
+        return _DummyBrowser()
+
+    monkeypatch.setattr(PlaywrightRenderer, "_launch_browser", _fallback_launch)
+
+    renderer = PlaywrightRenderer()
+    result = renderer.render(payload)
+
+    assert result["status"] == "success"
+    fallback_warning = next(
+        warning for warning in result["warnings"] if warning["code"] == "PLAYWRIGHT_FALLBACK_ACTIVE"
+    )
+    assert fallback_warning["details"]["stage"] == "browser_launch"
+    assert fallback_warning["details"]["reason"] == "no memory left"
