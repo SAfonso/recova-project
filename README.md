@@ -1,425 +1,174 @@
-# AI LineUp Architect (MVP) 🎭
+# AI LineUp Architect 🎭
 
-**Estado del Proyecto:** 🛠️ En Desarrollo (MVP)  
-**Versión:** 0.5.30  
+**Estado del Proyecto:** 🛠️ En desarrollo activo  
+**Versión:** `0.5.30`  
 **Metodología:** Spec-Driven Development (SDD)
 
-Sistema automatizado para la gestión y generación de lineups y cartelería para Open Mics de comedia.
+Sistema para ingesta, curación y generación automática de cartel de Open Mics, con trazabilidad completa desde formularios hasta artefacto final publicado.
 
-## Novedades recientes (0.5.30)
-- Se implementa `backend/src/app.py` con API Flask de producción (`POST /render-lineup`) que valida payload SDD §2.2, ejecuta `PlaywrightRenderer` y devuelve `public_url` + objeto rico `mcp`.
-- Se documentan comandos de despliegue con Gunicorn (4 workers) y gestión de proceso con PM2 (`recova-renderer`).
-- `PlaywrightRenderer.render(payload)` ahora devuelve estrictamente el JSON de éxito/error definido en la spec §3.1/§3.2, incluyendo `storage.storage_url` real de Supabase y sin campos extra fuera de contrato.
-- El renderer elimina el PNG temporal local tras una subida satisfactoria al bucket `posters`, evitando acumulación de archivos en disco (`/root/RECOVA`).
-- La plantilla `backend/src/templates/lineup_v1.html` se rediseña con estilo **Dark Premium** (Bebas Neue + Montserrat, gradientes neón y tipografía de alto impacto) para el primer render productivo.
-- Se amplía la suite unitaria del renderer para validar limpieza de artefactos temporales post-upload.
-- `PlaywrightRenderer` sube automáticamente el PNG a Supabase Storage (`bucket: posters`) con ruta `YYYY-MM-DD/lineup_{request_id}.png` y devuelve `public_url` en el contrato de éxito.
-- Se añade test de integración `backend/tests/integration/test_supabase_upload.py` que valida subida de archivo pequeño y verificación HTTP `200` sobre la URL pública.
-- `PlaywrightRenderer._launch_browser` fuerza `headless=True` y añade flags de servidor (`--no-sandbox`, `--disable-setuid-sandbox`, `--disable-dev-shm-usage`, `--disable-gpu`) con fallback seguro a dummy browser cuando Chromium no arranca en entornos root/headless.
-- Se implementa `backend/src/playwright_renderer.py` con `PlaywrightRenderer.render(payload)` usando Jinja2 + Playwright (con fallback local), validación de contrato v1, warnings estructurados y salida rica compatible con MCP.
-- Se añade la plantilla base `backend/src/templates/lineup_v1.html` (dark/minimal) con placeholders para fecha y hasta 8 slots (nombre + instagram).
-- Se actualizan dependencias backend para soportar renderizado local (`jinja2`, `playwright`) y se incrementa versión a `0.5.27` en `package.json`, `pyproject.toml` y `README.md`.
-- Los workflows exportados de n8n se versionan en `workflows/n8n/` y se han saneado para eliminar secretos/hosts hardcodeados en nodos HTTP.
-- `workflows/n8n/*.json` ahora referencian variables de entorno de n8n (`$env.SUPABASE_URL`, `$env.SUPABASE_KEY`, `$env.WEBHOOK_API_KEY`, `$env.N8N_BACKEND_*_URL`).
-- Se añade spec SDD para este cambio (`specs/workflows/n8n_workflow_secret_externalization.md`) y documentación operativa (`docs/n8n-workflows-secretos-entorno.md`).
-- Se añade test de contrato `backend/tests/unit/test_n8n_workflows_security.py` para prevenir regresiones con secretos hardcodeados.
-- Se incorpora la especificación SDD del nuevo renderer local con Playwright en `specs/playwright_renderer_spec.md`, incluyendo contrato de input/output, invariantes y manejo de errores para reemplazar Canva.
-- Se añade la suite inicial de tests unitarios `backend/tests/unit/test_playwright_renderer.py` para fijar por contrato (SDD) el input/output del renderer Playwright antes de implementar el generador.
+## 1. Fuente de verdad técnica (v0.5.30)
 
-El proyecto nace con una arquitectura **SaaS-Ready**, garantizando la privacidad de los datos entre diferentes productores mediante un modelo de datos maestro/detalle y políticas de seguridad avanzadas.
+En esta versión se consolidan los siguientes cambios estructurales:
 
-## 📝 Visión del Proyecto
-El objetivo de este MVP es automatizar el ciclo de vida semanal de un Open Mic, reduciendo la carga administrativa del organizador y utilizando IA para optimizar la selección de cómicos y la creación de activos visuales.
+- **Deprecación de Canva:** la integración con Canva API queda retirada del flujo productivo.
+- **Motor de diseño propio:** el render final se realiza con `PlaywrightRenderer`.
+- **Desacople por puertos (SDD):**
+  - **Webhook Ingesta (Flask):** `:5000`
+  - **Renderer API (Flask + Gunicorn):** `:5050`
+- **Infraestructura objetivo:** ejecución directa en **VPS Ubuntu** con **PM2** para persistencia de procesos.
+- **Salida de render:** PNG subido al bucket `posters` de Supabase Storage, devolviendo `public_url`.
 
-## 🌳 Estrategia de Ramas (Git Flow)
-
-Para mantener la estabilidad del proyecto, seguimos una estructura de ramificación sencilla pero rigurosa:
-
-* **`main`**: Contiene exclusivamente código estable, probado y listo para producción (versiones cerradas).
-* **`dev`**: Rama principal de desarrollo. Todas las nuevas funcionalidades, correcciones y experimentos se integran aquí antes de pasar a `main`.
-
-> **Regla de oro:** Nunca se realizan commits directos en `main`. Todo cambio debe pasar primero por `dev` y ser validado.
-
-
-## 🔄 Flujo de Trabajo (Lifecycle)
-1. **Ingesta:** Procesamiento de solicitudes recibidas a través de Google Forms.
-2. **Curación:** Selección asistida por IA del lineup semanal basada en el historial y criterios de puntuación.
-3. **Generación:** Creación automática del cartel del evento en Canva mediante su API.
-4. **Histórico:** Actualización automática de la base de datos tras la validación del host.
+## 2. Arquitectura de sistema
 
 ```mermaid
-graph LR
-    subgraph Entrada
-        A[Google Forms]
-    end
+flowchart LR
+    A[Google Forms] --> B[n8n Orquestador]
 
-    subgraph Orquestacion_n8n
-        B{n8n Workflow}
-    end
+    B --> C[Webhook Ingesta\nFlask :5000]
+    C --> D[(Supabase\nBronze/Silver/Gold)]
 
-    subgraph Backend_Railway
-        C[Ingestion Engine]
-        D[Scoring Engine]
-        E[Canva Builder]
-    end
+    B --> E[App de Curación\nReact en Vercel]
+    E --> D
 
-    subgraph IA
-        G[Gemini 1.5]
-    end
+    B --> F[Renderer API\nFlask + Gunicorn :5050]
+    F --> G[PlaywrightRenderer]
+    G --> H[(Supabase Storage\nBucket posters)]
+    H --> I[public_url PNG]
 
-    subgraph Almacenamiento_Supabase
-        F[(Base de Datos)]
-        RLS((Seguridad RLS))
-    end
-
-    subgraph Salida_Comunicacion
-        H[WhatsApp Bot]
-        I[Canva API]
-    end
-
-    %% Flujo de Ingesta
-    A --> B
-    B <--> C
-    C <--> F
-
-    %% Flujo de Scoring y Validación
-    B <--> D
-    D <--> G
-    D <--> F
-    F --- RLS
-    
-    %% Flujo de Bot y Canva
-    D --> H
-    H -->|Aprobación| B
-    B --> E
-    E --> I
-    I -->|Imagen Cartel| H
-    H --> J((Cómicos & RRSS))
-
-    style B fill:#f96,stroke:#333
-    style G fill:#4285F4,color:#fff
-    style F fill:#3ecf8e,color:#fff
-    style H fill:#25D366,color:#fff
+    I --> B
 ```
 
-## 🧱 Stack Tecnológico e Infraestructura (MVP Actual)
+## 3. Stack tecnológico e infraestructura
 
-### 🖥️ Servidor y Despliegue (Self-Hosted)
-
-| Componente | Implementación | Rol en el sistema |
+| Capa | Tecnología | Rol en el sistema |
 |---|---|---|
-| 🌐 VPS | Servidor propio vinculado al dominio **machango.org** | Punto central de ejecución y exposición de servicios del MVP. |
-| 🧊 Coolify | Gestor de aplicaciones y contenedores | Estandariza despliegues, reinicios, variables de entorno y operación continua. |
-| 🔄 n8n | Instalado en el VPS (nativo/contenedor) | Orquestación event-driven de flujos, webhooks y automatizaciones en tiempo real. |
+| Hosting | VPS Ubuntu | Entorno principal de ejecución en producción. |
+| Orquestación | n8n | Coordinación de flujos (ingesta, validación y render). |
+| Ingesta API | Flask (`backend/src/webhook_listener.py`) | Endpoint webhook para normalización y paso Bronze → Silver en `:5000`. |
+| Render API | Flask + Gunicorn (`backend/src/app.py`) | Endpoint `POST /render-lineup` en `:5050`. |
+| Motor de Cartelería | Playwright + Jinja2 (`PlaywrightRenderer`) | Generación del PNG final en runtime local. |
+| Persistencia de procesos | PM2 | Gestión de procesos `webhook-ingesta` y `recova-renderer`. |
+| Base de datos | Supabase PostgreSQL | Capas `bronze`, `silver`, `gold` para trazabilidad y scoring. |
+| Almacenamiento de artefactos | Supabase Storage (`posters`) | Hosting del cartel final y emisión de `public_url`. |
+| Curación operativa | React en Vercel | Validación manual del lineup antes de render final. |
 
-### 🗄️ Base de Datos (Cloud)
+## 4. APIs de producción
 
-| Capa | Tecnología | Propósito |
-|---|---|---|
-| 🥉 Bronze | Supabase PostgreSQL (`bronze.solicitudes`) | Almacenamiento RAW e inmutable de ingesta (trazabilidad total). |
-| 🥈 Silver | Supabase PostgreSQL (`silver.*`) | Datos normalizados y relacionales para operación, scoring y reporting. |
-| 🥇 Gold | Supabase PostgreSQL (`gold.*`) | Perfiles enriquecidos e histórico de solicitudes con score aplicado para decisiones de lineup. |
+### 4.1 Webhook de ingesta (`:5000`)
 
-> Supabase se mantiene como motor principal PostgreSQL en la nube, mientras la lógica operativa del MVP vive en infraestructura self-hosted.
+- Endpoint principal de disparo:
+  - `POST /ingest`
+- Uso típico:
+  - n8n recibe trigger y envía payload al webhook.
+  - El servicio procesa reglas de normalización y persiste en Supabase.
 
-### 🔌 Herramientas Externas e Integraciones
+Ejemplo local:
 
-- ☁️ **Google Cloud Platform (OAuth2):** autenticación y permisos para integración con **Google Sheets** y **Google Drive**.
-- 🐍 **Python 3.10+:** ejecución de los motores de **ingesta, limpieza y scoring** de negocio.
-- 🧠 **OpenAI API (Preparado):** capa lista para curación y validación de lenguaje natural en comentarios/contexto.
-- 🎨 **Canva API:** generación automatizada del cartel final cuando el estado del lineup queda aprobado.
-
-### 🔁 Flujo de Datos (Resumen Operativo)
-
-1. 📥 Una nueva fila o evento en **Google Sheets** dispara un trigger en **n8n**.
-2. ⚙️ **n8n**, ejecutándose en el VPS bajo la operación de **Coolify**, activa el script local de **Python**.
-3. 🥉 El script persiste la entrada RAW en **Bronze** y aplica normalización/reglas de negocio.
-4. 🥈 Los datos curados se escriben en **Silver** para trazabilidad transaccional y preparación de scoring.
-5. 🥇 El scoring engine consume Silver, calcula prioridad y persiste resultados en **Gold**.
-6. 📤 El flujo continúa con notificaciones/acciones posteriores (aprobación host, generación de cartel y distribución).
-
-## 🧩 API de Producción de Render (Flask)
-
-Endpoint disponible:
-- `POST /render-lineup`
-
-Comando recomendado con Gunicorn (4 workers):
-- `./.venv/bin/gunicorn -w 4 -b 0.0.0.0:8000 backend.src.app:app`
-
-Comando para gestionar Gunicorn con PM2 (`recova-renderer`):
-- `pm2 start "./.venv/bin/gunicorn -w 4 -b 0.0.0.0:8000 backend.src.app:app" --name recova-renderer`
-
-Referencia detallada: `docs/render-api-produccion.md`
-
-## 🚀 Objetivos del MVP
-- Mantener ingesta cruda en `bronze.solicitudes` y curación transaccional en `silver`.
-- Automatizar el cálculo de puntos (categoría, recencia y disponibilidad) desde Silver hacia Gold.
-- Generar el póster final sin intervención manual en el diseño.
-- Mantener un registro histórico fiable de quién actúa en cada show.
-
-## 🛠️ Herramientas de Infraestructura (Novedad)
-Para mantener la integridad de la base de datos en Supabase, el proyecto incluye:
-- **`setup_db.py`**: Script de automatización que gestiona:
-    - **Backup Preventivo:** Exportación a CSV en `/backups` antes de cualquier cambio destructivo.
-    - **Evolución de Esquema:** Ejecución secuencial de SQL por capas (`bronze` -> `silver` -> migraciones -> `gold`).
-    - **Seeding:** Inyección de datos de prueba alineados al linaje `bronze -> silver`.
-- **`specs/sql/gold_relacional.sql`**: Define la capa Gold (perfiles + historial de scoring), incluyendo RLS/policies para `service_role`.
-
-## 🗃️ Modelo de Datos (Bronze/Silver/Gold)
-- **`bronze.solicitudes`**:
-  - Única tabla en Bronze.
-  - Conserva campos crudos del formulario (`*_raw`) y `raw_data_extra` (`jsonb`).
-- **`silver.comicos`**:
-  - Maestro de identidad única por `instagram` normalizado (minúsculas y sin `@`).
-  - Incluye `genero` (`text`) con valor por defecto `unknown`.
-- **`silver.proveedores`**:
-  - Maestro de Open Mics / organizadores.
-- **`silver.solicitudes`**:
-  - Tabla transaccional con FKs a `silver.comicos` y `silver.proveedores`.
-  - Trazabilidad obligatoria mediante `bronze_id` (`FK -> bronze.solicitudes(id)`).
-- **`gold.comicos`**:
-  - Maestro enriquecido para scoring (género, categoría, fecha de última actuación).
-  - Conserva identificadores normalizados (`telefono`, `instagram`) y linaje por `id`.
-- **`gold.solicitudes`**:
-  - Histórico operativo de solicitudes con `estado`, `score_aplicado` y `marca_temporal`.
-  - FK a `gold.comicos(id)` para reglas de recencia y selección.
-- **`gold.vw_linaje_silver_a_gold`**:
-  - Vista de cruce Silver -> Gold por telefono/instagram para resolver linaje.
-- **Tipos y seguridad**:
-  - Enums en `silver`: `silver.tipo_categoria`, `silver.tipo_status`.
-  - Enums en `gold`: `gold.categoria_comico`, `gold.estado_solicitud`.
-  - RLS habilitado en Bronze, Silver y Gold para `service_role`.
-
-## ⚙️ Operación Local (DB)
-1. Configura `DATABASE_URL` en `.env`.
-2. Ejecuta por consola (recomendado con entorno virtual del proyecto):
-   - `./.venv/bin/python setup_db.py`
-3. Opciones disponibles:
-   - Solo esquema: `./.venv/bin/python setup_db.py`
-   - Esquema + seed: `./.venv/bin/python setup_db.py --seed`
-   - Reset + esquema: `./.venv/bin/python setup_db.py --reset`
-   - Reset + esquema + seed: `./.venv/bin/python setup_db.py --reset --seed`
-4. Alternativa si no usas `.venv`:
-   - `python3 setup_db.py [--reset] [--seed]`
-
-Comportamiento actual de flags:
-- `--reset`: genera backup CSV de tablas objetivo en `backups/`, elimina esquemas `gold`/`silver`/`bronze` y reaplica SQL.
-- `--seed`: ejecuta `specs/sql/seed_data.sql` después de aplicar el esquema.
-- `--reset --seed`: combinación completa (backup + reset + esquema + seed).
-
-## 🧪 Ejecución de Tests
-Los tests del backend viven en `backend/tests` y se ejecutan con `pytest`.
-
-1. Suite completa:
-   - `./.venv/bin/python -m pytest -q`
-2. Con detalle:
-   - `./.venv/bin/python -m pytest -v`
-3. Solo unit tests:
-   - `./.venv/bin/python -m pytest -q backend/tests/unit`
-4. Solo contratos SQL:
-   - `./.venv/bin/python -m pytest -q backend/tests/sql`
-5. Archivo específico:
-   - `./.venv/bin/python -m pytest -q backend/tests/unit/test_scoring_engine.py`
-6. Caso puntual:
-   - `./.venv/bin/python -m pytest -q backend/tests/sql/test_sql_contracts.py::test_gold_supports_lineage_bridge_with_silver`
-
-Referencia extendida: `docs/tests-backend.md`
-
-## 💻 Frontend (Vite + React + Tailwind)
-La interfaz web vive en `frontend/` y usa `@supabase/supabase-js` con `db.schema = 'gold'` por defecto.
-
-Configuración:
-1. En `frontend/`, copia `.env.example` a `.env`.
-2. Define:
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_ANON_KEY`
-   - `VITE_N8N_WEBHOOK_URL` (URL absoluta `http/https` del webhook de n8n)
-
-Desarrollo local:
-- `cd frontend`
-- `npm install`
-- `npm run dev`
-
-Build:
-- `cd frontend`
-- `npm run build`
-
-## 🔁 Flujo de Ingesta Bronze -> Silver
-El ingestion engine (`backend/src/bronze_to_silver_ingestion.py`) prepara el linaje operativo:
-1. Lee registros pendientes en `bronze.solicitudes`.
-2. Normaliza `instagram_raw`.
-3. Hace upsert en `silver.comicos`.
-4. Inserta en `silver.solicitudes` con `bronze_id`, `comico_id` y `proveedor_id`.
-
-## 🧮 Motor de Scoring (Silver -> Gold)
-El scoring engine (`backend/src/scoring_engine.py`) transforma solicitudes curadas en ranking operativo.
-
-- Entrada: solicitudes ordenadas por `marca_temporal` (cola Silver).
-- Reglas base:
-  - Bono por categoría (`gold`: +12, `preferred`: +10, `standard`: +0).
-  - Penalización por recencia de aceptación en los dos últimos shows (`-100`).
-  - Bono por "bala única" cuando el cómico solo reporta una fecha (`+20`).
-- Salida:
-  - Inserción de registros `pendiente` con `score_aplicado` en historial Gold.
-  - Resumen JSON con `filas_procesadas`, `filas_insertadas_gold`, `filas_descartadas_blacklist` y `top_10_sugeridos`.
-  - `build_ranking` aplica intercalado por género con prioridad F/NB -> M -> Unknown y deduplicación por `comico_id` para evitar candidatos repetidos.
-- Logging: archivo rotativo diario en `/root/RECOVA/backend/logs/scoring_engine.log` (retención 14 días).
-
-Ejecución local:
-- `./.venv/bin/python backend/src/scoring_engine.py`
-- dummy test integrado: `SCORING_ENGINE_DUMMY_TEST=true ./.venv/bin/python backend/src/scoring_engine.py`
-
-## 🌐 Webhook Listener (n8n -> Ingesta)
-Se añadió un listener HTTP en Flask para que n8n dispare la ingesta Bronze -> Silver.
-
-- Archivo: `backend/src/triggers/webhook_listener.py`
-- Endpoint: `POST /ingest`
-- Seguridad: header `X-API-KEY` validado contra `WEBHOOK_API_KEY`
-- Acción: ejecuta `backend/src/bronze_to_silver_ingestion.py` vía `subprocess.run`
-
-Ejecución local:
-- `./.venv/bin/python backend/src/triggers/webhook_listener.py`
-- alternativa: `python3 backend/src/triggers/webhook_listener.py`
-
-Ejemplo de llamada:
 ```bash
 curl -X POST http://localhost:5000/ingest \
-  -H "X-API-KEY: TU_WEBHOOK_API_KEY"
+  -H "Content-Type: application/json" \
+  -d '{"trigger":"n8n"}'
 ```
 
-Referencia extendida: `docs/webhook-listener-n8n-ingesta.md`
+### 4.2 Renderer API (`:5050`)
 
-## 🔐 Workflows n8n (Exports Versionados)
-Los JSON exportados de n8n deben vivir en `workflows/n8n/` y cumplir la regla SDD de no versionar secretos ni hosts sensibles hardcodeados.
+- Endpoint productivo:
+  - `POST /render-lineup`
+- Contrato:
+  - Valida payload según spec SDD de renderer.
+  - Renderiza PNG con `PlaywrightRenderer`.
+  - Sube archivo a Supabase Storage (`posters`).
+  - Responde con `public_url` y metadatos del render.
 
-Reglas operativas:
-- Usar expresiones `{{$env...}}` en nodos HTTP para `apikey`, `Authorization`, `X-API-KEY` y URLs de backend.
-- Componer endpoints REST de Supabase desde `SUPABASE_URL` (ej. `{{$env.SUPABASE_URL + '/rest/v1/...'}}`).
-- Configurar esas variables en el entorno del proceso de n8n (Docker/Coolify/PM2), no solo en el `.env` del repo.
+#### Ejecución recomendada con Gunicorn (producción)
 
-Variables usadas por los workflows actuales:
-- `SUPABASE_URL`
-- `SUPABASE_KEY`
-- `WEBHOOK_API_KEY`
-- `N8N_BACKEND_INGEST_URL`
-- `N8N_BACKEND_SCORING_URL`
-
-Trazabilidad SDD:
-- Spec: `specs/workflows/n8n_workflow_secret_externalization.md`
-- Doc operativa: `docs/n8n-workflows-secretos-entorno.md`
-- Test de contrato: `backend/tests/unit/test_n8n_workflows_security.py`
-
-
-## 🎨 Generación de Cartelería (Canva API)
-
-Se incorporan scripts en `backend/src` para cubrir la fase Designer:
-
-- `canva_auth_utils.py`
-  - `authorize`: genera `code_verifier`/`code_challenge` (PKCE) y devuelve la URL de autorización.
-  - `exchange`: canjea `authorization_code` por `access_token` + `refresh_token`.
-  - `refresh`: renueva `access_token` usando `CANVA_REFRESH_TOKEN`.
-  - Persiste automáticamente el `refresh_token` rotado en `.env` (si existe).
-- `canva_builder.py`
-  - Recibe por CLI un JSON (desde n8n) con `fecha` y entre 1 y 5 cómicos; rellena hasta 5 con placeholders para el template.
-  - Obtiene token fresco al iniciar (refresh forzado); si falla, usa fallback a token cacheado y opcionalmente `authorization_code`.
-  - Construye payload `brand_template_id` + `data` con campos de texto tipados (`type/text`) y sanitización básica.
-  - Llama al endpoint de autofill de Canva, consulta el estado del `job_id` hasta completarse y luego extrae la URL del diseño.
-  - Imprime trazas de progreso y la URL final (última línea de `stdout`).
-- `getVeri.py` y `test.py`
-  - Scripts auxiliares de diagnóstico/manuales usados durante troubleshooting de OAuth con Canva.
-  - Uso recomendado solo para pruebas locales controladas (no forman parte del flujo n8n/producción).
-
-### Logs de Canva (backend)
-
-- `backend/logs/canva_auth.log` (rotativo diario) para eventos de `canva_auth_utils.py`.
-- `backend/logs/canva_builder.log` (rotativo diario) para ejecuciones de `canva_builder.py`.
-- Se pueden sobrescribir rutas con `CANVA_LOG_DIRECTORY`, `CANVA_AUTH_LOG_FILE_PATH` y `CANVA_BUILDER_LOG_FILE_PATH`.
-- Referencia técnica extendida del proceso Designer: `docs/canva-oauth-pkce-builder.md`.
-
-### Variables necesarias en `.env`
-
-Añade estas variables al entorno del backend:
-
-```dotenv
-CANVA_CLIENT_ID=tu_client_id
-CANVA_CLIENT_SECRET=tu_client_secret
-CANVA_REDIRECT_URI=https://n8n.tu-dominio/rest/oauth2-callback
-CANVA_AUTHORIZATION_CODE=solo_para_bootstrap_inicial_opcional
-CANVA_CODE_VERIFIER=pkce_code_verifier_del_exchange
-CANVA_REFRESH_TOKEN=refresh_token_vigente
-CANVA_ACCESS_TOKEN=access_token_cacheado
-CANVA_ACCESS_TOKEN_EXPIRES_AT=1771457314
-CANVA_TEMPLATE_ID=tpl_xxxxxxxxx
-CANVA_FIELD_OVERRIDES_JSON={"fecha":"fecha_evento","comico_1_nombre":"nombre_1"}
-CANVA_ENV_PATH=/workspace/recova-project/.env
-```
-
-Notas:
-- `CANVA_AUTHORIZATION_CODE` puede vaciarse tras obtener el primer refresh token estable.
-- `CANVA_CODE_VERIFIER` debe ser exactamente el mismo valor usado al solicitar el `authorization_code` (PKCE).
-- `CANVA_ACCESS_TOKEN` y `CANVA_ACCESS_TOKEN_EXPIRES_AT` se persisten automáticamente tras `exchange/refresh`; el builder los usa como fallback si el refresh no está disponible temporalmente.
-- `CANVA_FIELD_OVERRIDES_JSON` es opcional y permite mapear claves genéricas del script a los nombres reales de campos del template Canva.
-- Si no defines `CANVA_ENV_PATH`, se usa `.env` en la raíz del repo.
-- El builder actual puede imprimir por `stdout` el payload y estados de polling antes de la URL final; si una integración necesita solo la URL, debe capturar la última línea.
-
-### Uso rápido
-
-1) Generar URL de autorización + `code_verifier` (PKCE):
 ```bash
-python backend/src/canva_auth_utils.py authorize
+./.venv/bin/gunicorn -w 4 -b 0.0.0.0:5050 backend.src.app:app
 ```
 
-2) Bootstrap de tokens (una vez, tras obtener `code` del callback):
+#### Gestión con PM2
+
 ```bash
-python backend/src/canva_auth_utils.py exchange --code "<code_del_callback>" --code-verifier "<code_verifier>"
+pm2 start "./.venv/bin/gunicorn -w 4 -b 0.0.0.0:5050 backend.src.app:app" --name recova-renderer
+pm2 start "./.venv/bin/python backend/src/webhook_listener.py" --name webhook-ingesta
 ```
 
-3) Renovación manual (diagnóstico):
+## 5. Almacenamiento de carteles (Supabase Storage)
+
+Flujo de salida de cartelería:
+
+1. Renderer genera PNG temporal local.
+2. El archivo se sube al bucket `posters`.
+3. Se publica URL accesible (`public_url`).
+4. Se elimina el temporal local tras upload exitoso.
+
+Ruta lógica esperada del archivo:
+
+- `YYYY-MM-DD/lineup_{request_id}.png`
+
+## 6. Modelo de datos y pipeline
+
+- **Bronze:** ingesta cruda de formularios.
+- **Silver:** datos normalizados y consistentes para operación.
+- **Gold:** capa de scoring/histórico para selección de lineup.
+
+Resumen del pipeline:
+
+1. n8n recibe trigger externo.
+2. n8n invoca Webhook Ingesta (`:5000`).
+3. La curación operativa se realiza desde la app React en Vercel.
+4. n8n solicita render final a Renderer API (`:5050`).
+5. El PNG queda en `posters` y se devuelve `public_url`.
+
+## 7. Operación y desarrollo
+
+### 7.1 Preparación
+
 ```bash
-python backend/src/canva_auth_utils.py refresh
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
-4) Ejecución del builder con payload de n8n:
+### 7.2 Base de datos (setup)
+
 ```bash
-python backend/src/canva_builder.py '{"fecha":"2026-02-22","comicos":[{"nombre":"A","instagram":"@a"},{"nombre":"B","instagram":"@b"},{"nombre":"C","instagram":"@c"},{"nombre":"D","instagram":"@d"},{"nombre":"E","instagram":"@e"}]}'
+./.venv/bin/python setup_db.py
+./.venv/bin/python setup_db.py --seed
+./.venv/bin/python setup_db.py --reset --seed
 ```
 
-Respuesta esperada: la última línea de `stdout` contiene la URL del diseño en Canva (el script puede imprimir antes trazas de payload/progreso).
+### 7.3 Tests
 
-## 🚚 Deploy Automatizado (Rama `dev`)
-El workflow `.github/workflows/deploy.yml` despliega al VPS por SSH en cada push a `dev`:
-1. `git pull origin dev`
-2. `pip install -r requirements.txt`
-3. ejecución de la suite `backend/tests` en servidor (gate previo)
-4. reinicio/start de PM2 para `webhook-ingesta` solo si el test es exitoso
+```bash
+./.venv/bin/python -m pytest -q
+./.venv/bin/python -m pytest -q backend/tests/unit
+./.venv/bin/python -m pytest -q backend/tests/integration
+```
 
-## 🏗️ Estructura del Proyecto (Refactorizada)
+## 8. Estructura del repositorio (alto nivel)
+
 ```text
-/
-├── backend/              # Lógica de negocio en Python
-│   ├── src/              # Ingestion, Scoring, Canva Builder y triggers
-│   │   ├── scoring_engine.py
-│   │   └── triggers/     # Webhook listener para disparar ingesta
-│   └── tests/            # Suite pytest (unit + contratos SQL)
-│       ├── unit/test_scoring_engine.py
-│       └── sql/test_sql_contracts.py
-├── frontend/             # App web (Vite + React + Tailwind)
-│   └── src/
-├── .github/workflows/    # CI/CD
-│   └── deploy.yml
-├── backups/              # Volcados temporales de seguridad (Local CSV) [GIT IGNORED]
-├── specs/                # Fuente de verdad (Source of Truth)
-│   ├── sql/              # Esquemas, Migraciones y Seed Data
-│   │   └── gold_relacional.sql
-│   └── workflows/        # Specs funcionales/operativas (n8n, integraciones)
-├── workflows/            # Planos de automatización (n8n)
-│   ├── main_pipeline.json
-│   └── n8n/              # Exports versionados de workflows activos
-├── .env                  # Variables críticas (DB_URL, Drive_ID, etc.)
-├── setup_db.py           # Herramienta de despliegue, reset y backups de BD
-├── package.json          # Versión del proyecto (SemVer)
-└── README.md             # Esta documentación
+backend/
+  src/
+    app.py
+    webhook_listener.py
+    playwright_renderer.py
+    templates/
+  tests/
+frontend/
+workflows/n8n/
+specs/
+docs/
 ```
+
+## 9. Referencias internas recomendadas
+
+- `specs/playwright_renderer_spec.md`
+- `docs/render-api-produccion.md`
+- `docs/webhook-listener-n8n-ingesta.md`
+- `docs/tests-backend.md`
 
 ---
-*Este proyecto se desarrolla con un enfoque progresivo, priorizando la automatización del flujo crítico antes de añadir capas de complejidad adicional.*
+
+Este README define el estado operativo objetivo de la versión `0.5.30` y debe tratarse como referencia principal para decisiones de implementación y despliegue.
