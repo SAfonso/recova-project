@@ -1,12 +1,12 @@
 # AI LineUp Architect 🎭
 
 **Estado del Proyecto:** 🛠️ En desarrollo activo  
-**Versión:** `0.5.30`  
+**Versión:** `0.5.31`  
 **Metodología:** Spec-Driven Development (SDD)
 
 Sistema para ingesta, curación y generación automática de cartel de Open Mics, con trazabilidad completa desde formularios hasta artefacto final publicado.
 
-## 1. Fuente de verdad técnica (v0.5.30)
+## 1. Fuente de verdad técnica (v0.5.31)
 
 En esta versión se consolidan los siguientes cambios estructurales:
 
@@ -128,7 +128,11 @@ Resumen del pipeline:
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+playwright install chromium
+playwright install-deps
 ```
+
+> Nota VPS/producción: instalar Chromium y dependencias del sistema evita el fallback local de render y mejora la trazabilidad de errores reales de arranque del navegador.
 
 ### 7.2 Base de datos (setup)
 
@@ -171,4 +175,4 @@ docs/
 
 ---
 
-Este README define el estado operativo objetivo de la versión `0.5.30` y debe tratarse como referencia principal para decisiones de implementación y despliegue.
+Este README define el estado operativo objetivo de la versión `0.5.31` y debe tratarse como referencia principal para decisiones de implementación y despliegue.

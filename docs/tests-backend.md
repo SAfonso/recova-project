@@ -31,3 +31,11 @@ Si `python3 -m pytest` falla por modulo no encontrado, usa el Python del entorno
 
 10. Ejecutar tests de la API Flask de render:
    - `./.venv/bin/python -m pytest -q backend/tests/unit/test_app.py`
+
+
+## Requisito de entorno para renderer en VPS
+Antes de validar tests o ejecutar render en producción:
+- `playwright install chromium`
+- `playwright install-deps`
+
+Esto reduce fallos de arranque de navegador real y evita depender del fallback local.

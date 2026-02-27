@@ -118,6 +118,9 @@ def _render_with_set_content(renderer: PlaywrightRenderer, payload: dict[str, An
     browser_launch_start = time.perf_counter()
     browser = renderer._launch_browser()  # noqa: SLF001
     browser_launch_ms = renderer._to_ms(time.perf_counter() - browser_launch_start)  # noqa: SLF001
+    launch_warning = renderer._consume_browser_warning()  # noqa: SLF001
+    if launch_warning is not None:
+        warnings.append(launch_warning)
 
     html_injection_start = time.perf_counter()
     try:
@@ -144,11 +147,12 @@ def _render_with_set_content(renderer: PlaywrightRenderer, payload: dict[str, An
 
     screenshot_start = time.perf_counter()
     try:
-        png_bytes = page.screenshot(
+        screenshot_result = page.screenshot(
             type="png",
             full_page=True,
             timeout=int(payload["render"]["timeout_ms"]),
         )
+        png_bytes = renderer._resolve_screenshot_bytes(screenshot_result)  # noqa: SLF001
     except Exception as exc:
         browser.close()
         return renderer._error_output(  # noqa: SLF001
