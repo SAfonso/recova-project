@@ -1,15 +1,17 @@
 # AI LineUp Architect 🎭
 
 **Estado del Proyecto:** 🛠️ En desarrollo activo  
-**Versión:** `0.5.31`  
+**Versión:** `0.5.32`  
 **Metodología:** Spec-Driven Development (SDD)
 
 Sistema para ingesta, curación y generación automática de cartel de Open Mics, con trazabilidad completa desde formularios hasta artefacto final publicado.
 
-## 1. Fuente de verdad técnica (v0.5.31)
+## 1. Fuente de verdad técnica (v0.5.32)
 
 En esta versión se consolidan los siguientes cambios estructurales:
 
+- **Hardening de workflows n8n:** `workflows/n8n/LineUp.json` elimina credenciales/hosts hardcodeados y usa variables de entorno (`$env`) para Supabase y renderer.
+- **Nueva variable de entorno para render en n8n:** `N8N_BACKEND_RENDER_URL` documentada en `.env.example`.
 - **Deprecación de Canva:** la integración con Canva API queda retirada del flujo productivo.
 - **Motor de diseño propio:** el render final se realiza con `PlaywrightRenderer`.
 - **Desacople por puertos (SDD):**
