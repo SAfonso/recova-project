@@ -19,7 +19,7 @@
     },
     {
       "parameters": {
-        "url": "https://cggciltvpffitognpnae.supabase.co/rest/v1/lineup_candidates",
+        "url": "={{ $env.SUPABASE_URL + '/rest/v1/lineup_candidates' }}",
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
@@ -42,11 +42,11 @@
           "parameters": [
             {
               "name": "apikey",
-              "value": "sb_publishable_mekjOqPzBe4QTu0LOgpcTw_lede-occ"
+              "value": "={{ $env.SUPABASE_KEY }}"
             },
             {
               "name": "Authorization",
-              "value": "Bearer sb_publishable_mekjOqPzBe4QTu0LOgpcTw_lede-occ"
+              "value": "={{ 'Bearer ' + $env.SUPABASE_KEY }}"
             },
             {
               "name": "Accept-Profile",
@@ -82,7 +82,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://46.225.120.243:5050/render-lineup",
+        "url": "={{ $env.N8N_BACKEND_RENDER_URL }}",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,

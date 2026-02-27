@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.5.32] - 2026-02-27
+
+### Changed
+- `workflows/n8n/LineUp.json` elimina hardcodes de Supabase y renderer en nodos HTTP, pasando a variables de entorno (`$env.SUPABASE_URL`, `$env.SUPABASE_KEY`, `$env.N8N_BACKEND_RENDER_URL`).
+- `workflows/n8n/LineUp.json` actualiza `metadata.version` del payload enviado al renderer a `0.5.32`.
+- `.env.example` incorpora `N8N_BACKEND_RENDER_URL` como variable requerida para ejecutar el flujo de render desde n8n.
+- `README.md` actualiza la sección de fuente de verdad técnica con el hardening de secretos en workflows n8n.
+- Incremento de versión a `0.5.32` en `package.json`, `pyproject.toml` y `README.md`.
+
 ## [0.5.31] - 2026-02-27
 
 ### Fixed
