@@ -45,3 +45,6 @@ Esto reduce fallos de arranque de navegador real y evita depender del fallback l
 
 12. Ejecutar la suite TDD de inyección Data Binder (slots + FitText + privacidad):
    - `./.venv/bin/python -m pytest -q backend/tests/mcp/test_data_binder.py`
+
+13. Ejecutar la suite de integración del orquestador MCP (TDD asíncrono):
+   - `./.venv/bin/python -m pytest -q backend/tests/mcp/test_server_integration.py`
