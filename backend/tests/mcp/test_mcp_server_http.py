@@ -6,6 +6,11 @@ from pathlib import Path
 import httpx
 import pytest
 
+try:
+    import pytest_asyncio
+except ModuleNotFoundError:  # pragma: no cover - entorno local sin plugin
+    pytest_asyncio = pytest
+
 from backend.src import mcp_server
 
 pytestmark = pytest.mark.asyncio
@@ -25,7 +30,7 @@ def mcp_app():
     return mcp_server.app
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def http_client(mcp_app):
     transport = httpx.ASGITransport(app=mcp_app)
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
@@ -132,3 +137,13 @@ async def test_mcp_lock_concurrency(
         "start:qa-concurrency-b",
         "end:qa-concurrency-b",
     ]
+
+
+async def test_render_invalid_payload(http_client: httpx.AsyncClient) -> None:
+    response = await http_client.post("/tools/render_lineup", json={"lineup": "bad-payload"})
+
+    assert response.status_code in {200, 422}
+    if response.status_code == 200:
+        body = response.json()
+        assert body["status"] == "error"
+        assert body["output"]["error_code"] == "ERR_RENDER_ENGINE_CRASH"

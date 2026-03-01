@@ -57,3 +57,12 @@ Esto reduce fallos de arranque de navegador real y evita depender del fallback l
 16. Ejecutar integración HTTP del servidor MCP (`/healthz`, `/tools/render_lineup`, lock secuencial):
    - `./.venv/bin/python -m pytest -q backend/tests/mcp/test_mcp_server_http.py`
 
+
+17. Ejecutar unit tests core de inyección visual (FitText + slots ocultos):
+   - `./.venv/bin/python -m pytest -q backend/tests/core/test_data_binder.py`
+
+18. Ejecutar unit tests core de seguridad (URL hardening + Magic Bytes):
+   - `./.venv/bin/python -m pytest -q backend/tests/core/test_security.py`
+
+19. Ejecutar la integración HTTP MCP con payload inválido controlado:
+   - `./.venv/bin/python -m pytest -q backend/tests/mcp/test_mcp_server_http.py::test_render_invalid_payload`
