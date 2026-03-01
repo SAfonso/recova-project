@@ -96,6 +96,23 @@ Override permitido por contrato:
 - Con override activo, `trace.logs` debe registrar `CAPACITY_OVERRIDE_ACTIVE`.
 - Advertencia normativa: no se garantiza integridad estética al forzar override; la responsabilidad recae en el Host.
 
+
+## Motor de inyección visual e integridad de layout (Sección 13)
+
+La Sección 13 de la SDD formaliza el comportamiento del renderer como motor visual agnóstico con tres invariantes operativos:
+
+1. **Data-to-DOM estricto**
+   - `lineup[n].name` se inyecta exclusivamente en `.slot-(n+1) .name`.
+   - `lineup[n].instagram` queda explícitamente fuera del DOM del cartel (dato no visual).
+   - `metadata.date_text` y `metadata.venue` solo se inyectan en sus selectores únicos de plantilla.
+2. **FitText Engine post-inyección**
+   - Tras bind de datos, Playwright evalúa cada `.name` comparando `scrollWidth` vs `clientWidth`.
+   - Si hay overflow, reduce `font-size` en iteraciones de `2px` hasta encajar o alcanzar `min-font-size` declarado en `manifest.json`.
+   - Todo ajuste tipográfico se registra en `trace.logs` para auditoría estética.
+3. **Single Responsibility de salida**
+   - El renderer devuelve únicamente `output.public_url` del artefacto visual y `trace`.
+   - No genera captions ni textos para redes.
+
 ## Estado
 
 - **Implementación:** pendiente (spec-first).
