@@ -1,3 +1,16 @@
+## [0.5.43] - 2026-03-01
+
+### Added
+- `backend/src/mcp_server.py` migra a modo HTTP y levanta `uvicorn` en `127.0.0.1:8000` con endpoint REST `POST /tools/render_lineup`, healthcheck `GET /healthz` y montaje opcional de transporte MCP streamable en `/mcp` cuando existe `mcp[http]`.
+- `backend/src/mcp_server.py` incorpora logging de tráfico HTTP en `backend/logs/mcp_render.log` registrando `path` y `event_id` por request para observabilidad en n8n.
+- `ecosystem.config.js` define proceso PM2 `recova-mcp-http` usando `./.venv/bin/python -m backend.src.mcp_server`.
+
+### Changed
+- `backend/src/mcp_server.py` endurece el cierre de Playwright cerrando `BrowserContext` y `Browser` en bloque `finally` para evitar procesos zombie de Chromium.
+- `requirements.txt` y `pyproject.toml` añaden dependencias de operación HTTP (`fastapi`, `uvicorn`, `mcp[http]`).
+- `README.md`, `docs/render-api-produccion.md` y `docs/mcp-agnostic-renderer-spec.md` documentan el despliegue HTTP/PM2 y la trazabilidad de requests.
+- Incremento de versión a `0.5.43` en `README.md`, `pyproject.toml` y `package.json`.
+
 ## [0.5.42] - 2026-03-01
 
 ### Added
