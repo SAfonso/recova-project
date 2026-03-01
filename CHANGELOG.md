@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.40] - 2026-03-01
+
+### Added
+- `backend/src/core/data_binder.py` implementa `generate_injection_script(lineup, max_slots=8)` y alias `generate_injection_js(...)` para cumplir SDD §13: binding exclusivo de nombres por `.slot-n .name`, ocultación de slots vacíos y ajuste FitText por overflow hasta mínimo `12px`.
+
+### Changed
+- `backend/src/core/data_binder.py` añade señal de sincronización `window.renderReady = true` al final del ajuste tipográfico para coordinación con Playwright.
+- `README.md` actualiza la fuente de verdad técnica a `v0.5.40` e incorpora el estado de implementación del Data Binder DOM-safe.
+- `docs/mcp-agnostic-renderer-spec.md` alinea Sección 13 con reducción de `1px`, mínimo `12px` y señal de listo para render.
+- `docs/tests-backend.md` documenta el comando dedicado `backend/tests/mcp/test_data_binder.py`.
+- Incremento de versión a `0.5.40` en `package.json` y `pyproject.toml`; actualización de `frontend/package.json` a `0.1.6`.
+
 ## [0.5.39] - 2026-03-01
 
 ### Added
