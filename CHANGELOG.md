@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.5.35] - 2026-03-01
+
+### Added
+- `specs/mcp_agnostic_renderer_spec.md` incorpora la **Sección 9** con jerarquía de resiliencia de 2 niveles: `Active Mode` por intent y fallback local obligatorio a `backend/src/templates/catalog/fallback/`.
+- `specs/mcp_agnostic_renderer_spec.md` añade trazabilidad normativa de fallback con registro obligatorio `SYSTEM_FALLBACK_TRIGGERED` en `trace.warnings`.
+- `specs/mcp_agnostic_renderer_spec.md` incorpora la **Sección 10** de ciclo de vida de persistencia con lógica de archivo condicional al bucket `design-archive` para `vision_generated` y política explícita de no-archivo para `template_catalog`.
+- `specs/mcp_agnostic_renderer_spec.md` incorpora la **Sección 11** de hidratación/recovery aceptando `intent.recovery_event_id` para re-render de carteles históricos generados por Vision.
+
+### Changed
+- `docs/mcp-agnostic-renderer-spec.md` documenta la operación de resiliencia, persistencia eficiente y recuperación desde archivo histórico.
+- `README.md` actualiza la fuente de verdad técnica a `v0.5.35` con los nuevos invariantes de fallback, archivo condicional y purga efímera del VPS.
+- Incremento de versión a `0.5.35` en `package.json`, `pyproject.toml` y `README.md`.
+
 ## [0.5.34] - 2026-03-01
 
 ### Added
