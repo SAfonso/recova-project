@@ -1,15 +1,36 @@
 # AI LineUp Architect 🎭
 
 **Estado del Proyecto:** 🛠️ En desarrollo activo
-**Versión:** `0.5.39`
+**Versión:** `0.5.48`
 **Metodología:** Spec-Driven Development (SDD)
 
 Sistema para ingesta, curación y generación automática de cartel de Open Mics, con trazabilidad completa desde formularios hasta artefacto final publicado.
 
-## 1. Fuente de verdad técnica (v0.5.39)
+## 1. Fuente de verdad técnica (v0.5.47)
 
 En esta versión se consolidan los siguientes cambios estructurales:
 
+
+- **Blindaje defensivo del Data Binder:** `backend/src/core/data_binder.py` valida payloads no-lista devolviendo un JS seguro (`window.renderReady = true;`), tolera entradas no dict en `_extract_name` y mantiene mapeo estable para lineups extensos (mapea hasta 8 slots sin romper con 0..20 artistas).
+- **Validación HTTP robusta en endpoint MCP:** `POST /tools/render_lineup` ahora devuelve error controlado `422` para payloads inválidos (`event_id` ausente o `lineup` no lista) en lugar de permitir rutas de error 500.
+- **Cobertura reforzada en tests core/mcp:** nuevas pruebas de `data_binder` para lineup vacío, lineup con strings y lineup de 10 personas; pruebas de `security` con `unittest.mock.patch('requests.get')` para cabecera EXE (`MZ`), PNG real, timeout y URL prohibida localhost.
+- **Política de protocolo en seguridad de referencias:** `backend/src/core/security.py` permite únicamente `http/https` y conserva bloqueo explícito de hosts locales/privados (localhost, loopback y RFC1918).
+
+- **Blindaje de infraestructura de tests (`pytest-asyncio`):** nuevo `pytest.ini` con `asyncio_mode = auto` y `asyncio_default_test_loop_scope = function` para compatibilidad con pytest v9 sin warnings de loop scope.
+- **Refactor HTTP MCP sin puertos reales:** `backend/tests/mcp/test_mcp_server_http.py` usa `@pytest_asyncio.fixture` y `httpx.ASGITransport(app=app)` para probar FastAPI in-process, incluyendo cobertura para payload inválido (`test_render_invalid_payload`).
+- **Cobertura core `data_binder` y `security`:** nuevas suites en `backend/tests/core/test_data_binder.py` y `backend/tests/core/test_security.py` para validar FitText, ocultación de slots no usados, hardening de URLs locales/privadas y validación de Magic Bytes contra archivos falsos.
+- **Hardening SSRF en seguridad de render:** `backend/src/core/security.py` bloquea explícitamente hosts locales/privados (`localhost`, loopback, rangos RFC1918/link-local/reservados) antes de abrir requests externas.
+- **Nueva suite QA del refactor render/MCP:** se agregan pruebas asíncronas en `backend/tests/core/test_render.py` (éxito, timeout y flags `--no-sandbox`) y en `backend/tests/mcp/test_mcp_server_http.py` (healthcheck HTTP, contrato `POST /tools/render_lineup` y verificación de lock de concurrencia vía peticiones simultáneas con `httpx`).
+- **Higiene de artefactos temporales:** los nuevos tests eliminan PNG generados en `/tmp` al finalizar cada ejecución para mantener limpio el VPS.
+- **Motor Playwright desacoplado:** nuevo módulo `backend/src/core/render.py` centraliza `capture_screenshot(...)` como única integración con Playwright (flags root `--no-sandbox` + `--disable-dev-shm-usage`, espera `window.renderReady === true` y cierre garantizado en `finally`).
+- **MCP Renderer en modo HTTP para n8n:** `backend/src/mcp_server.py` ahora expone servidor HTTP en `127.0.0.1:5050` (`uvicorn`), endpoint REST `POST /tools/render_lineup`, healthcheck `GET /healthz` y montaje opcional de `FastMCP streamable HTTP` en `/mcp` cuando la librería `mcp[http]` está disponible.
+- **Trazabilidad de tráfico de n8n:** middleware HTTP registra cada request y `event_id` en `backend/logs/mcp_render.log`.
+- **Hardening de cierre Playwright:** el flujo de render usa cierre garantizado de `BrowserContext` y `Browser` en bloque `finally` para evitar procesos zombie de Chromium.
+- **Operación PM2 del MCP HTTP:** nuevo `ecosystem.config.js` con comando `./.venv/bin/python -m backend.src.mcp_server` para ejecución persistente en VPS.
+
+- **Servidor MCP de render (implementado):** `backend/src/mcp_server.py` expone `render_lineup` con lock global de concurrencia, gate de seguridad para `reference_image_url`, fallback automático a plantilla `active`, render Playwright con `--no-sandbox` + `--disable-dev-shm-usage`, espera `window.renderReady` y salida PNG en `/tmp/render_{event_id}.png` con trazabilidad de recuperación.
+- **Suite de integración MCP Server (TDD asíncrono):** nueva batería en `backend/tests/mcp/test_server_integration.py` para contrato de orquestación end-to-end (éxito, recuperación por fallo de seguridad, lock de concurrencia y caja negra de metadatos sensibles) usando `pytest-asyncio` y `unittest.mock` para evitar navegador real.
+- **Implementación del Data Binder (SDD §13):** `backend/src/core/data_binder.py` incorpora `generate_injection_script(lineup, max_slots)` (alias `generate_injection_js`) con inyección exclusiva de `name` por selector `.slot-n .name`, ocultación de slots vacíos con `style.display = 'none'`, FitText en pasos de `1px` hasta `12px` mínimo y señal final `window.renderReady = true` para sincronización Playwright.
 - **TDD de capa de seguridad MCP:** se incorpora `backend/tests/mcp/test_security.py` para validar HTTPS-only, bloqueo de wrappers (Google Drive/Dropbox), inspección de Magic Bytes (PNG/JPEG/WebP) y manejo de timeout de red con recuperación no bloqueante (`USE_ACTIVE_TEMPLATE`).
 - **Nueva capa MCP Agnostic Renderer (spec-first):** se define el contrato agnóstico de entrada/salida, trazabilidad y modos `template_catalog`/`vision_generated` en `specs/mcp_agnostic_renderer_spec.md` como Fuente de Verdad previa a implementación.
 - **Security Gate para imágenes de referencia:** `reference_image_url` exige pre-fetch de 32 bytes + inspección de Magic Bytes (PNG/JPEG/WebP), rechazo `ERR_INVALID_FILE_TYPE` y política de origen `Direct Link Only`/Supabase con bloqueo de wrappers HTML (`ERR_ACCESS_DENIED_OR_NOT_DIRECT_LINK`).

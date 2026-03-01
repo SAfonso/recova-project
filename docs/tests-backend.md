@@ -42,3 +42,30 @@ Antes de validar tests o ejecutar render en producción:
 - `playwright install-deps`
 
 Esto reduce fallos de arranque de navegador real y evita depender del fallback local.
+
+12. Ejecutar la suite TDD de inyección Data Binder (slots + FitText + privacidad):
+   - `./.venv/bin/python -m pytest -q backend/tests/mcp/test_data_binder.py`
+
+13. Ejecutar la suite de integración del orquestador MCP (TDD asíncrono):
+   - `./.venv/bin/python -m pytest -q backend/tests/mcp/test_server_integration.py`
+
+14. Ejecutar solo la validación de lock de concurrencia MCP:
+   - `./.venv/bin/python -m pytest -q backend/tests/mcp/test_server_integration.py::test_concurrency_lock`
+15. Ejecutar unit tests del motor `core/render.py` (éxito, timeout y flags de Chromium):
+   - `./.venv/bin/python -m pytest -q backend/tests/core/test_render.py`
+
+16. Ejecutar integración HTTP del servidor MCP (`/healthz`, `/tools/render_lineup`, lock secuencial):
+   - `./.venv/bin/python -m pytest -q backend/tests/mcp/test_mcp_server_http.py`
+
+
+17. Ejecutar unit tests core de inyección visual (FitText + slots ocultos):
+   - `./.venv/bin/python -m pytest -q backend/tests/core/test_data_binder.py`
+
+18. Ejecutar unit tests core de seguridad (URL hardening + Magic Bytes):
+   - `./.venv/bin/python -m pytest -q backend/tests/core/test_security.py`
+
+19. Ejecutar la integración HTTP MCP con payload inválido controlado:
+   - `./.venv/bin/python -m pytest -q backend/tests/mcp/test_mcp_server_http.py::test_render_invalid_payload`
+
+20. Ejecutar cobertura enfocada en core y visualizar líneas Missing:
+   - `./.venv/bin/python -m pytest --cov=backend/src --cov-report=term-missing backend/tests/core backend/tests/mcp`

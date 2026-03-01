@@ -8,6 +8,17 @@ La especificación normativa (Source of Truth) está en:
 
 - `specs/mcp_agnostic_renderer_spec.md`
 
+## Exposición HTTP para n8n
+
+La operación en VPS expone `backend/src/mcp_server.py` en modo HTTP en `127.0.0.1:5050` con:
+
+> Nota v0.5.45: el acceso a Playwright se encapsula en `backend/src/core/render.py` (`capture_screenshot`), manteniendo `mcp_server.py` como capa de orquestación.
+
+- `POST /tools/render_lineup` para consumo REST directo desde n8n.
+- `GET /healthz` para sonda de disponibilidad.
+- `POST /mcp` cuando está disponible `mcp[http]` (transporte streamable MCP).
+- Logging por request en `backend/logs/mcp_render.log` incluyendo `event_id` para trazabilidad.
+
 ## Qué cambia para integraciones
 
 1. **Contrato de entrada único**
@@ -107,8 +118,9 @@ La Sección 13 de la SDD formaliza el comportamiento del renderer como motor vis
    - `metadata.date_text` y `metadata.venue` solo se inyectan en sus selectores únicos de plantilla.
 2. **FitText Engine post-inyección**
    - Tras bind de datos, Playwright evalúa cada `.name` comparando `scrollWidth` vs `clientWidth`.
-   - Si hay overflow, reduce `font-size` en iteraciones de `2px` hasta encajar o alcanzar `min-font-size` declarado en `manifest.json`.
+   - Si hay overflow, reduce `font-size` en iteraciones de `1px` hasta encajar o alcanzar `12px` como mínimo de seguridad de layout.
    - Todo ajuste tipográfico se registra en `trace.logs` para auditoría estética.
+  - Señal de fin de ajuste: al terminar, el script debe fijar `window.renderReady = true` para que Playwright sincronice el snapshot/render final.
 3. **Single Responsibility de salida**
    - El renderer devuelve únicamente `output.public_url` del artefacto visual y `trace`.
    - No genera captions ni textos para redes.
