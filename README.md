@@ -1,12 +1,12 @@
 # AI LineUp Architect 🎭
 
 **Estado del Proyecto:** 🛠️ En desarrollo activo
-**Versión:** `0.5.37`
+**Versión:** `0.5.38`
 **Metodología:** Spec-Driven Development (SDD)
 
 Sistema para ingesta, curación y generación automática de cartel de Open Mics, con trazabilidad completa desde formularios hasta artefacto final publicado.
 
-## 1. Fuente de verdad técnica (v0.5.37)
+## 1. Fuente de verdad técnica (v0.5.38)
 
 En esta versión se consolidan los siguientes cambios estructurales:
 
@@ -18,6 +18,7 @@ En esta versión se consolidan los siguientes cambios estructurales:
 - **Contrato técnico del `manifest.json`:** campos obligatorios `template_id`, `version`, `display_name`, `canvas.width/height`, `capabilities.min_slots/max_slots` y `font_strategy` (Google Fonts por `@import`).
 - **Pre-vuelo de capacidad con override auditado:** validación `len(lineup)` vs `manifest.capabilities.max_slots`, error `TEMPLATE_CAPACITY_EXCEEDED`, soporte de `intent.force_capacity_override` y log obligatorio `CAPACITY_OVERRIDE_ACTIVE` con advertencia de riesgo estético bajo responsabilidad del Host.
 - **Sección 13 del SDD (inyección visual + FitText + output mínimo):** se formaliza el binding estricto `lineup[n].name -> .slot-(n+1) .name`, la exclusión visual de `lineup[n].instagram`, el auto-ajuste tipográfico por overflow (`scrollWidth` vs `clientWidth`, paso 2px hasta `min-font-size` del `manifest.json`) y la responsabilidad única de salida (`public_url` + `trace`).
+- **Sección 14 del SDD (Fallo No Bloqueante):** se formaliza política `HTTP 200 OK` para render exitoso (incluyendo recuperación), matriz obligatoria de auto-recuperación (`ERR_CONTRACT_INVALID`, `ERR_INVALID_FILE_TYPE`, `ERR_NOT_DIRECT_LINK`, `ERR_CAPACITY_EXCEEDED`), trazabilidad `trace.status = recovered_with_warnings` + `trace.recovery_notes` y abortos reales acotados a `ERR_RENDER_ENGINE_CRASH` / `ERR_STORAGE_UNREACHABLE`.
 - **Hardening de workflows n8n:** `workflows/n8n/LineUp.json` elimina credenciales/hosts hardcodeados y usa variables de entorno (`$env`) para Supabase y renderer.
 - **Nueva variable de entorno para render en n8n:** `N8N_BACKEND_RENDER_URL` documentada en `.env.example`.
 - **Deprecación de Canva:** la integración con Canva API queda retirada del flujo productivo.
