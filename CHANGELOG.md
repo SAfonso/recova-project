@@ -1,3 +1,12 @@
+## [0.5.44] - 2026-03-01
+
+### Changed
+- `backend/src/mcp_server.py` actualiza el puerto por defecto del servidor HTTP MCP a `5050` (incluyendo `MCP_PORT` fallback), manteniendo `POST /tools/render_lineup` para integración con n8n y emitiendo log de arranque `[RECOVA-RENDER] Servidor escuchando en http://127.0.0.1:5050.`.
+- `backend/src/mcp_server.py` endurece el lanzamiento de Chromium en entorno root agregando `--disable-dev-shm-usage` junto a `--no-sandbox`.
+- `backend/src/mcp_server.py` asegura liberación explícita de recursos Playwright cerrando `Page`, `BrowserContext` y `Browser` tras cada render para evitar procesos activos de Chromium.
+- `README.md`, `docs/render-api-produccion.md` y `docs/mcp-agnostic-renderer-spec.md` documentan el nuevo puerto operativo `5050` y el log de arranque esperado.
+- Incremento de versión a `0.5.44` en `README.md`, `pyproject.toml` y `package.json`.
+
 ## [0.5.43] - 2026-03-01
 
 ### Added
