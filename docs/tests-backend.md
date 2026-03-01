@@ -51,3 +51,9 @@ Esto reduce fallos de arranque de navegador real y evita depender del fallback l
 
 14. Ejecutar solo la validación de lock de concurrencia MCP:
    - `./.venv/bin/python -m pytest -q backend/tests/mcp/test_server_integration.py::test_concurrency_lock`
+15. Ejecutar unit tests del motor `core/render.py` (éxito, timeout y flags de Chromium):
+   - `./.venv/bin/python -m pytest -q backend/tests/core/test_render.py`
+
+16. Ejecutar integración HTTP del servidor MCP (`/healthz`, `/tools/render_lineup`, lock secuencial):
+   - `./.venv/bin/python -m pytest -q backend/tests/mcp/test_mcp_server_http.py`
+

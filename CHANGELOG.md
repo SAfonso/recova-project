@@ -1,3 +1,14 @@
+## [0.5.46] - 2026-03-01
+
+### Added
+- `backend/tests/core/test_render.py` añade suite unitaria asíncrona para `capture_screenshot(...)`: flujo exitoso con HTML mínimo + `window.renderReady`, manejo de timeout cuando no se marca `renderReady` y verificación explícita del flag `--no-sandbox` al lanzar Chromium.
+- `backend/tests/mcp/test_mcp_server_http.py` incorpora suite de integración HTTP con `httpx` para `GET /healthz`, contrato `POST /tools/render_lineup` y serialización de peticiones concurrentes mediante `render_lock`.
+
+### Changed
+- `docs/tests-backend.md` documenta los nuevos comandos de ejecución para las suites QA del motor de render y del servidor MCP HTTP.
+- `README.md` actualiza la fuente de verdad técnica a `v0.5.46` e incluye la cobertura QA del refactor render/MCP y limpieza de artefactos en `/tmp`.
+- Incremento de versión a `0.5.46` en `README.md`, `pyproject.toml` y `package.json`.
+
 ## [0.5.45] - 2026-03-01
 
 ### Added
