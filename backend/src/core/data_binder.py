@@ -3,20 +3,29 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any
 
 
 _MIN_FONT_SIZE_PX = 12
+logger = logging.getLogger(__name__)
 
 
-def _extract_name(slot_data: dict[str, Any]) -> str:
+def _extract_name(slot_data: Any) -> str:
     """Return only the artist name for visual injection."""
-    name = slot_data.get("name", "")
+    if isinstance(slot_data, dict):
+        name = slot_data.get("name", "")
+    else:
+        name = getattr(slot_data, "get", lambda k, d: "")("name", "")
     return str(name)
 
 
-def generate_injection_script(lineup: list[dict[str, Any]], max_slots: int = 8) -> str:
+def generate_injection_script(lineup: Any, max_slots: int = 8) -> str:
     """Generate a JS snippet that injects lineup names into `.slot-n .name`."""
+    if not isinstance(lineup, list):
+        logger.error("Invalid lineup payload type: %s", type(lineup).__name__)
+        return "window.renderReady = true;"
+
     lines: list[str] = []
 
     for slot_index in range(1, max_slots + 1):
@@ -62,6 +71,6 @@ def generate_injection_script(lineup: list[dict[str, Any]], max_slots: int = 8) 
     return "\n".join(lines)
 
 
-def generate_injection_js(lineup: list[dict[str, Any]], total_slots: int = 8) -> str:
+def generate_injection_js(lineup: Any, total_slots: int = 8) -> str:
     """Backward-compatible alias expected by current tests."""
     return generate_injection_script(lineup=lineup, max_slots=total_slots)

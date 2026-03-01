@@ -27,3 +27,36 @@ def test_slot_mapping_hides_unused_slots_from_4_to_8() -> None:
     for slot in range(4, 9):
         assert f".slot-{slot}" in script
         assert f"slotEl{slot}.style.display = 'none'" in script
+
+
+def test_lineup_empty_hides_all_slots() -> None:
+    script = generate_injection_js([], total_slots=8)
+
+    for slot in range(1, 9):
+        assert f"slotEl{slot}.style.display = 'none'" in script
+
+
+def test_lineup_with_non_dict_entries_does_not_crash() -> None:
+    script = generate_injection_js(["foo", "bar"], total_slots=8)
+
+    assert ".slot-1 .name" in script
+    assert ".slot-2 .name" in script
+    # fallback extraction returns empty names, but script must still be generated
+    assert "window.renderReady = true;" in script
+
+
+def test_lineup_with_ten_people_maps_first_eight() -> None:
+    lineup = [{"name": f"Comico {idx}", "instagram": f"c{idx}"} for idx in range(1, 11)]
+
+    script = generate_injection_js(lineup, total_slots=8)
+
+    for idx in range(1, 9):
+        assert f"Comico {idx}" in script
+    assert "Comico 9" not in script
+    assert "Comico 10" not in script
+
+
+def test_invalid_lineup_type_returns_safe_ready_script() -> None:
+    script = generate_injection_js("invalid-payload", total_slots=8)
+
+    assert script.strip() == "window.renderReady = true;"

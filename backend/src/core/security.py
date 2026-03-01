@@ -38,11 +38,11 @@ def _failure_response(error_code: str) -> dict[str, str | bool]:
 def is_secure_url(url: str) -> bool:
     """Validate URL scheme according to security policy.
 
-    Only HTTPS URLs are accepted. Other schemes (e.g., file://, ftp://) are
-    rejected.
+    Only HTTP/HTTPS URLs are accepted. Other schemes (e.g., file://, ftp://)
+    are rejected.
     """
     parsed = urlparse(url)
-    return parsed.scheme.lower() == "https"
+    return parsed.scheme.lower() in {"http", "https"}
 
 
 

@@ -1,7 +1,7 @@
 # AI LineUp Architect 🎭
 
 **Estado del Proyecto:** 🛠️ En desarrollo activo
-**Versión:** `0.5.47`
+**Versión:** `0.5.48`
 **Metodología:** Spec-Driven Development (SDD)
 
 Sistema para ingesta, curación y generación automática de cartel de Open Mics, con trazabilidad completa desde formularios hasta artefacto final publicado.
@@ -10,6 +10,11 @@ Sistema para ingesta, curación y generación automática de cartel de Open Mics
 
 En esta versión se consolidan los siguientes cambios estructurales:
 
+
+- **Blindaje defensivo del Data Binder:** `backend/src/core/data_binder.py` valida payloads no-lista devolviendo un JS seguro (`window.renderReady = true;`), tolera entradas no dict en `_extract_name` y mantiene mapeo estable para lineups extensos (mapea hasta 8 slots sin romper con 0..20 artistas).
+- **Validación HTTP robusta en endpoint MCP:** `POST /tools/render_lineup` ahora devuelve error controlado `422` para payloads inválidos (`event_id` ausente o `lineup` no lista) en lugar de permitir rutas de error 500.
+- **Cobertura reforzada en tests core/mcp:** nuevas pruebas de `data_binder` para lineup vacío, lineup con strings y lineup de 10 personas; pruebas de `security` con `unittest.mock.patch('requests.get')` para cabecera EXE (`MZ`), PNG real, timeout y URL prohibida localhost.
+- **Política de protocolo en seguridad de referencias:** `backend/src/core/security.py` permite únicamente `http/https` y conserva bloqueo explícito de hosts locales/privados (localhost, loopback y RFC1918).
 
 - **Blindaje de infraestructura de tests (`pytest-asyncio`):** nuevo `pytest.ini` con `asyncio_mode = auto` y `asyncio_default_test_loop_scope = function` para compatibilidad con pytest v9 sin warnings de loop scope.
 - **Refactor HTTP MCP sin puertos reales:** `backend/tests/mcp/test_mcp_server_http.py` usa `@pytest_asyncio.fixture` y `httpx.ASGITransport(app=app)` para probar FastAPI in-process, incluyendo cobertura para payload inválido (`test_render_invalid_payload`).

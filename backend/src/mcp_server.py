@@ -208,7 +208,7 @@ async def render_lineup(
 def _build_http_app():
     """Build HTTP server with REST endpoint for n8n and optional MCP streamable mount."""
     try:
-        from fastapi import FastAPI, Request
+        from fastapi import FastAPI, HTTPException, Request
     except Exception:  # noqa: BLE001 - permite importar el módulo sin extras HTTP instalados.
         logger.warning("FastAPI no disponible; el servidor HTTP no puede inicializarse")
         return None
@@ -233,6 +233,8 @@ def _build_http_app():
 
     @app.post("/tools/render_lineup")
     async def render_lineup_http(payload: dict[str, Any]) -> dict[str, Any]:
+        if not isinstance(payload.get("lineup"), list) or not payload.get("event_id"):
+            raise HTTPException(status_code=422, detail="Invalid payload for render_lineup")
         event_id = str(payload.get("event_id", "unknown-event"))
         logger.info("n8n render_lineup event_id=%s", event_id)
         return await orchestrate_render(payload)
