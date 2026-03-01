@@ -1,3 +1,14 @@
+## [0.5.45] - 2026-03-01
+
+### Added
+- `backend/src/core/render.py` implementa `capture_screenshot(html_path, injection_js, output_path)` como motor Playwright agnóstico con flags root (`--no-sandbox`, `--disable-dev-shm-usage`), espera explícita de `window.renderReady === true` y captura PNG full page.
+- `backend/tests/unit/test_core_render.py` añade cobertura unitaria para validar flags de lanzamiento, sincronización por `renderReady` y cierre garantizado de `Page`/`BrowserContext`/`Browser` incluso ante fallo.
+
+### Changed
+- `backend/src/mcp_server.py` delega la captura Playwright en `backend/src/core/render.py`, reduciendo responsabilidades de orquestación y manteniendo contrato de salida del renderer MCP.
+- `README.md`, `docs/render-api-produccion.md` y `docs/mcp-agnostic-renderer-spec.md` documentan la separación del motor Playwright en capa core agnóstica.
+- Incremento de versión a `0.5.45` en `README.md`, `pyproject.toml` y `package.json`.
+
 ## [0.5.44] - 2026-03-01
 
 ### Changed

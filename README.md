@@ -1,15 +1,16 @@
 # AI LineUp Architect 🎭
 
 **Estado del Proyecto:** 🛠️ En desarrollo activo
-**Versión:** `0.5.44`
+**Versión:** `0.5.45`
 **Metodología:** Spec-Driven Development (SDD)
 
 Sistema para ingesta, curación y generación automática de cartel de Open Mics, con trazabilidad completa desde formularios hasta artefacto final publicado.
 
-## 1. Fuente de verdad técnica (v0.5.44)
+## 1. Fuente de verdad técnica (v0.5.45)
 
 En esta versión se consolidan los siguientes cambios estructurales:
 
+- **Motor Playwright desacoplado:** nuevo módulo `backend/src/core/render.py` centraliza `capture_screenshot(...)` como única integración con Playwright (flags root `--no-sandbox` + `--disable-dev-shm-usage`, espera `window.renderReady === true` y cierre garantizado en `finally`).
 - **MCP Renderer en modo HTTP para n8n:** `backend/src/mcp_server.py` ahora expone servidor HTTP en `127.0.0.1:5050` (`uvicorn`), endpoint REST `POST /tools/render_lineup`, healthcheck `GET /healthz` y montaje opcional de `FastMCP streamable HTTP` en `/mcp` cuando la librería `mcp[http]` está disponible.
 - **Trazabilidad de tráfico de n8n:** middleware HTTP registra cada request y `event_id` en `backend/logs/mcp_render.log`.
 - **Hardening de cierre Playwright:** el flujo de render usa cierre garantizado de `BrowserContext` y `Browser` en bloque `finally` para evitar procesos zombie de Chromium.
