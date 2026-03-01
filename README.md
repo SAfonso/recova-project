@@ -1,21 +1,21 @@
 # AI LineUp Architect 🎭
 
 **Estado del Proyecto:** 🛠️ En desarrollo activo
-**Versión:** `0.5.43`
+**Versión:** `0.5.44`
 **Metodología:** Spec-Driven Development (SDD)
 
 Sistema para ingesta, curación y generación automática de cartel de Open Mics, con trazabilidad completa desde formularios hasta artefacto final publicado.
 
-## 1. Fuente de verdad técnica (v0.5.43)
+## 1. Fuente de verdad técnica (v0.5.44)
 
 En esta versión se consolidan los siguientes cambios estructurales:
 
-- **MCP Renderer en modo HTTP para n8n:** `backend/src/mcp_server.py` ahora expone servidor HTTP en `127.0.0.1:8000` (`uvicorn`), endpoint REST `POST /tools/render_lineup`, healthcheck `GET /healthz` y montaje opcional de `FastMCP streamable HTTP` en `/mcp` cuando la librería `mcp[http]` está disponible.
+- **MCP Renderer en modo HTTP para n8n:** `backend/src/mcp_server.py` ahora expone servidor HTTP en `127.0.0.1:5050` (`uvicorn`), endpoint REST `POST /tools/render_lineup`, healthcheck `GET /healthz` y montaje opcional de `FastMCP streamable HTTP` en `/mcp` cuando la librería `mcp[http]` está disponible.
 - **Trazabilidad de tráfico de n8n:** middleware HTTP registra cada request y `event_id` en `backend/logs/mcp_render.log`.
 - **Hardening de cierre Playwright:** el flujo de render usa cierre garantizado de `BrowserContext` y `Browser` en bloque `finally` para evitar procesos zombie de Chromium.
 - **Operación PM2 del MCP HTTP:** nuevo `ecosystem.config.js` con comando `./.venv/bin/python -m backend.src.mcp_server` para ejecución persistente en VPS.
 
-- **Servidor MCP de render (implementado):** `backend/src/mcp_server.py` expone `render_lineup` con lock global de concurrencia, gate de seguridad para `reference_image_url`, fallback automático a plantilla `active`, render Playwright con `--no-sandbox`, espera `window.renderReady` y salida PNG en `/tmp/render_{event_id}.png` con trazabilidad de recuperación.
+- **Servidor MCP de render (implementado):** `backend/src/mcp_server.py` expone `render_lineup` con lock global de concurrencia, gate de seguridad para `reference_image_url`, fallback automático a plantilla `active`, render Playwright con `--no-sandbox` + `--disable-dev-shm-usage`, espera `window.renderReady` y salida PNG en `/tmp/render_{event_id}.png` con trazabilidad de recuperación.
 - **Suite de integración MCP Server (TDD asíncrono):** nueva batería en `backend/tests/mcp/test_server_integration.py` para contrato de orquestación end-to-end (éxito, recuperación por fallo de seguridad, lock de concurrencia y caja negra de metadatos sensibles) usando `pytest-asyncio` y `unittest.mock` para evitar navegador real.
 - **Implementación del Data Binder (SDD §13):** `backend/src/core/data_binder.py` incorpora `generate_injection_script(lineup, max_slots)` (alias `generate_injection_js`) con inyección exclusiva de `name` por selector `.slot-n .name`, ocultación de slots vacíos con `style.display = 'none'`, FitText en pasos de `1px` hasta `12px` mínimo y señal final `window.renderReady = true` para sincronización Playwright.
 - **TDD de capa de seguridad MCP:** se incorpora `backend/tests/mcp/test_security.py` para validar HTTPS-only, bloqueo de wrappers (Google Drive/Dropbox), inspección de Magic Bytes (PNG/JPEG/WebP) y manejo de timeout de red con recuperación no bloqueante (`USE_ACTIVE_TEMPLATE`).

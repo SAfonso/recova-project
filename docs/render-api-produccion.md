@@ -65,7 +65,7 @@ Si Chromium no arranca, el renderer mantiene `status: success` y devuelve warnin
 Además del endpoint Flask histórico, el proyecto incorpora `backend/src/mcp_server.py` en modo HTTP para integración con n8n:
 
 - Host: `127.0.0.1`
-- Puerto: `8000`
+- Puerto: `5050`
 - Endpoint REST n8n: `POST /tools/render_lineup`
 - Healthcheck: `GET /healthz`
 - Transporte MCP streamable (si `mcp[http]` está disponible): `POST /mcp`

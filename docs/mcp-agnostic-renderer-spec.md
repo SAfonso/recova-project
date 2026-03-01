@@ -10,7 +10,7 @@ La especificación normativa (Source of Truth) está en:
 
 ## Exposición HTTP para n8n
 
-La operación en VPS expone `backend/src/mcp_server.py` en modo HTTP con:
+La operación en VPS expone `backend/src/mcp_server.py` en modo HTTP en `127.0.0.1:5050` con:
 
 - `POST /tools/render_lineup` para consumo REST directo desde n8n.
 - `GET /healthz` para sonda de disponibilidad.
