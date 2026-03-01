@@ -1,15 +1,20 @@
 # AI LineUp Architect 🎭
 
 **Estado del Proyecto:** 🛠️ En desarrollo activo
-**Versión:** `0.5.46`
+**Versión:** `0.5.47`
 **Metodología:** Spec-Driven Development (SDD)
 
 Sistema para ingesta, curación y generación automática de cartel de Open Mics, con trazabilidad completa desde formularios hasta artefacto final publicado.
 
-## 1. Fuente de verdad técnica (v0.5.46)
+## 1. Fuente de verdad técnica (v0.5.47)
 
 En esta versión se consolidan los siguientes cambios estructurales:
 
+
+- **Blindaje de infraestructura de tests (`pytest-asyncio`):** nuevo `pytest.ini` con `asyncio_mode = auto` y `asyncio_default_test_loop_scope = function` para compatibilidad con pytest v9 sin warnings de loop scope.
+- **Refactor HTTP MCP sin puertos reales:** `backend/tests/mcp/test_mcp_server_http.py` usa `@pytest_asyncio.fixture` y `httpx.ASGITransport(app=app)` para probar FastAPI in-process, incluyendo cobertura para payload inválido (`test_render_invalid_payload`).
+- **Cobertura core `data_binder` y `security`:** nuevas suites en `backend/tests/core/test_data_binder.py` y `backend/tests/core/test_security.py` para validar FitText, ocultación de slots no usados, hardening de URLs locales/privadas y validación de Magic Bytes contra archivos falsos.
+- **Hardening SSRF en seguridad de render:** `backend/src/core/security.py` bloquea explícitamente hosts locales/privados (`localhost`, loopback, rangos RFC1918/link-local/reservados) antes de abrir requests externas.
 - **Nueva suite QA del refactor render/MCP:** se agregan pruebas asíncronas en `backend/tests/core/test_render.py` (éxito, timeout y flags `--no-sandbox`) y en `backend/tests/mcp/test_mcp_server_http.py` (healthcheck HTTP, contrato `POST /tools/render_lineup` y verificación de lock de concurrencia vía peticiones simultáneas con `httpx`).
 - **Higiene de artefactos temporales:** los nuevos tests eliminan PNG generados en `/tmp` al finalizar cada ejecución para mantener limpio el VPS.
 - **Motor Playwright desacoplado:** nuevo módulo `backend/src/core/render.py` centraliza `capture_screenshot(...)` como única integración con Playwright (flags root `--no-sandbox` + `--disable-dev-shm-usage`, espera `window.renderReady === true` y cierre garantizado en `finally`).
