@@ -1,15 +1,16 @@
 # AI LineUp Architect 🎭
 
 **Estado del Proyecto:** 🛠️ En desarrollo activo
-**Versión:** `0.5.38`
+**Versión:** `0.5.39`
 **Metodología:** Spec-Driven Development (SDD)
 
 Sistema para ingesta, curación y generación automática de cartel de Open Mics, con trazabilidad completa desde formularios hasta artefacto final publicado.
 
-## 1. Fuente de verdad técnica (v0.5.38)
+## 1. Fuente de verdad técnica (v0.5.39)
 
 En esta versión se consolidan los siguientes cambios estructurales:
 
+- **TDD de capa de seguridad MCP:** se incorpora `backend/tests/mcp/test_security.py` para validar HTTPS-only, bloqueo de wrappers (Google Drive/Dropbox), inspección de Magic Bytes (PNG/JPEG/WebP) y manejo de timeout de red con recuperación no bloqueante (`USE_ACTIVE_TEMPLATE`).
 - **Nueva capa MCP Agnostic Renderer (spec-first):** se define el contrato agnóstico de entrada/salida, trazabilidad y modos `template_catalog`/`vision_generated` en `specs/mcp_agnostic_renderer_spec.md` como Fuente de Verdad previa a implementación.
 - **Security Gate para imágenes de referencia:** `reference_image_url` exige pre-fetch de 32 bytes + inspección de Magic Bytes (PNG/JPEG/WebP), rechazo `ERR_INVALID_FILE_TYPE` y política de origen `Direct Link Only`/Supabase con bloqueo de wrappers HTML (`ERR_ACCESS_DENIED_OR_NOT_DIRECT_LINK`).
 - **Jerarquía de resiliencia MCP (2 niveles):** se formaliza `Active Mode` por intent y fallback local obligatorio a `backend/src/templates/catalog/fallback/`, con warning de trazabilidad `SYSTEM_FALLBACK_TRIGGERED` en `trace.warnings`.
