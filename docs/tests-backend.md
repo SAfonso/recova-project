@@ -48,3 +48,6 @@ Esto reduce fallos de arranque de navegador real y evita depender del fallback l
 
 13. Ejecutar la suite de integración del orquestador MCP (TDD asíncrono):
    - `./.venv/bin/python -m pytest -q backend/tests/mcp/test_server_integration.py`
+
+14. Ejecutar solo la validación de lock de concurrencia MCP:
+   - `./.venv/bin/python -m pytest -q backend/tests/mcp/test_server_integration.py::test_concurrency_lock`
