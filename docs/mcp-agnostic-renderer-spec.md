@@ -58,3 +58,48 @@ Cada estilo debe ser autocontenido con:
 
 - **Implementación:** pendiente (spec-first).
 - **Cobertura documental:** completa para iniciar desarrollo backend con SDD.
+
+
+## Jerarquía de resiliencia (fallback strategy)
+
+La ejecución del MCP se define en dos niveles obligatorios:
+
+1. **Nivel 1 — Active Mode**
+   - Ejecuta render según `intent` resuelto (`vision_generated` o `template_catalog`).
+2. **Nivel 2 — Local Fallback**
+   - Si Nivel 1 falla por `timeout`, error de Playwright o assets corruptos, el MCP debe usar `backend/src/templates/catalog/fallback/`.
+
+Trazabilidad mínima obligatoria al activar fallback:
+
+- `trace.warnings[]` debe contener `SYSTEM_FALLBACK_TRIGGERED`.
+
+## Persistencia eficiente: ciclo de vida y archivo condicional
+
+El VPS se trata como entorno efímero. La persistencia permanente se controla por modo:
+
+- **`vision_generated`**
+  - Debe crear `archive/{event_id}/{timestamp}/` en bucket `design-archive` con:
+    - `final.png`
+    - `generated.html`
+    - `generated.css`
+    - `reference.png`
+    - `metadata.json`
+- **`template_catalog`**
+  - No debe crear entrada en `archive/`, porque el diseño ya vive en catálogo persistente (`backend/src/templates/catalog/` o `archive/catalog_templates`).
+
+Tras render exitoso (y upload cuando aplique), el MCP debe purgar temporales del VPS para evitar acumulación.
+
+## Capacidad de hidratación (recovery)
+
+El contrato acepta `intent.recovery_event_id` para reconstruir carteles únicos históricos:
+
+1. Buscar carpeta del evento en bucket `design-archive`.
+2. Descargar assets archivados a entorno local efímero.
+3. Re-renderizar usando esos assets.
+
+Distinción operativa:
+
+- `template_catalog` se recupera por `template_id` (catálogo).
+- `vision_generated` se recupera por `recovery_event_id` (archivo histórico).
+
+Esta separación evita redundancia de datos y mantiene reproducibilidad de diseños generados por IA.
