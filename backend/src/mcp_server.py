@@ -7,6 +7,8 @@ function used by integration tests.
 from __future__ import annotations
 
 import asyncio
+import logging
+import os
 from pathlib import Path
 from typing import Any
 
@@ -37,8 +39,27 @@ class FastMCP:
         return decorator
 
 
-mcp = FastMCP("recova-mcp-renderer")
+try:  # pragma: no cover - dependiente de entorno MCP en despliegue.
+    from mcp.server.fastmcp import FastMCP as _RuntimeFastMCP
+except Exception:  # noqa: BLE001 - fallback local para tests sin dependencia MCP.
+    RuntimeFastMCP = FastMCP
+else:
+    RuntimeFastMCP = _RuntimeFastMCP
+
+
+mcp = RuntimeFastMCP("recova-mcp-renderer")
 render_lock = asyncio.Lock()
+
+MCP_LOG_PATH = Path(__file__).resolve().parents[1] / "logs" / "mcp_render.log"
+MCP_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+logger = logging.getLogger("backend.mcp_http")
+if not logger.handlers:
+    file_handler = logging.FileHandler(MCP_LOG_PATH, encoding="utf-8")
+    file_handler.setFormatter(logging.Formatter("%(asctime)s | %(levelname)s | %(message)s"))
+    logger.addHandler(file_handler)
+logger.setLevel(logging.INFO)
+logger.propagate = False
 
 
 def _safe_event_slug(event_id: str) -> str:
@@ -78,16 +99,22 @@ async def execute_render(
         await page.screenshot(path=str(screenshot_path), full_page=True)
         await page.close()
     else:
-        async with async_playwright() as playwright:
-            browser = await playwright.chromium.launch(args=["--no-sandbox"])
-            context = await browser.new_context()
-            page = await context.new_page()
-            await page.goto(template_html.resolve().as_uri())
-            await page.add_script_tag(content=injection_script)
-            await page.wait_for_function("window.renderReady === true")
-            await page.screenshot(path=str(screenshot_path), full_page=True)
-            await context.close()
-            await browser.close()
+        browser = None
+        context = None
+        try:
+            async with async_playwright() as playwright:
+                browser = await playwright.chromium.launch(args=["--no-sandbox"])
+                context = await browser.new_context()
+                page = await context.new_page()
+                await page.goto(template_html.resolve().as_uri())
+                await page.add_script_tag(content=injection_script)
+                await page.wait_for_function("window.renderReady === true")
+                await page.screenshot(path=str(screenshot_path), full_page=True)
+        finally:
+            if context is not None:
+                await context.close()
+            if browser is not None:
+                await browser.close()
 
     return {
         "status": "success",
@@ -192,3 +219,66 @@ async def render_lineup(
         },
     }
     return await orchestrate_render(payload)
+
+
+def _build_http_app():
+    """Build HTTP server with REST endpoint for n8n and optional MCP streamable mount."""
+    try:
+        from fastapi import FastAPI, Request
+    except Exception:  # noqa: BLE001 - permite importar el módulo sin extras HTTP instalados.
+        logger.warning("FastAPI no disponible; el servidor HTTP no puede inicializarse")
+        return None
+
+    app = FastAPI(title="recova-mcp-renderer")
+
+    @app.middleware("http")
+    async def request_log_middleware(request: Request, call_next):
+        event_id = "unknown-event"
+        if request.method.upper() == "POST":
+            try:
+                payload = await request.json()
+            except Exception:  # noqa: BLE001 - cuerpo no JSON.
+                payload = {}
+            event_id = str(payload.get("event_id", event_id))
+        logger.info("HTTP request path=%s event_id=%s", request.url.path, event_id)
+        return await call_next(request)
+
+    @app.get("/healthz")
+    async def healthz() -> dict[str, str]:
+        return {"status": "ok"}
+
+    @app.post("/tools/render_lineup")
+    async def render_lineup_http(payload: dict[str, Any]) -> dict[str, Any]:
+        event_id = str(payload.get("event_id", "unknown-event"))
+        logger.info("n8n render_lineup event_id=%s", event_id)
+        return await orchestrate_render(payload)
+
+    try:
+        mcp_http_app = mcp.streamable_http_app()
+    except Exception:  # noqa: BLE001 - entorno sin transporte MCP HTTP.
+        logger.info("FastMCP streamable_http_app no disponible; REST endpoint activo")
+    else:
+        app.mount("/mcp", mcp_http_app)
+        logger.info("FastMCP streamable_http_app habilitado en /mcp")
+
+    return app
+
+
+app = _build_http_app()
+
+
+def run_http_server(host: str = "127.0.0.1", port: int = 8000) -> None:
+    """Run HTTP MCP server for n8n consumption."""
+    if app is None:
+        raise RuntimeError("FastAPI/uvicorn no instalados. Instala dependencias HTTP del MCP.")
+
+    import uvicorn
+
+    uvicorn.run(app, host=host, port=port, log_level="info")
+
+
+if __name__ == "__main__":
+    run_http_server(
+        host=os.getenv("MCP_HOST", "127.0.0.1"),
+        port=int(os.getenv("MCP_PORT", "8000")),
+    )
