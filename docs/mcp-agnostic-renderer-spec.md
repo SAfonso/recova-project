@@ -107,8 +107,9 @@ La Sección 13 de la SDD formaliza el comportamiento del renderer como motor vis
    - `metadata.date_text` y `metadata.venue` solo se inyectan en sus selectores únicos de plantilla.
 2. **FitText Engine post-inyección**
    - Tras bind de datos, Playwright evalúa cada `.name` comparando `scrollWidth` vs `clientWidth`.
-   - Si hay overflow, reduce `font-size` en iteraciones de `2px` hasta encajar o alcanzar `min-font-size` declarado en `manifest.json`.
+   - Si hay overflow, reduce `font-size` en iteraciones de `1px` hasta encajar o alcanzar `12px` como mínimo de seguridad de layout.
    - Todo ajuste tipográfico se registra en `trace.logs` para auditoría estética.
+  - Señal de fin de ajuste: al terminar, el script debe fijar `window.renderReady = true` para que Playwright sincronice el snapshot/render final.
 3. **Single Responsibility de salida**
    - El renderer devuelve únicamente `output.public_url` del artefacto visual y `trace`.
    - No genera captions ni textos para redes.
