@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.5.33] - 2026-03-01
+
+### Added
+- `specs/mcp_agnostic_renderer_spec.md` define la nueva especificación SDD de la Capa de Abstracción MCP (Agnostic Renderer), incluyendo contrato de entrada único, invariantes de prioridad de modo y trazabilidad de salida.
+- `docs/mcp-agnostic-renderer-spec.md` documenta la guía operativa de adopción y el alcance spec-first para desacoplar n8n del render físico.
+
+### Changed
+- `README.md` actualiza la Fuente de Verdad a `v0.5.33` e incorpora la nueva referencia MCP Agnostic Renderer.
+- Incremento de versión a `0.5.33` en `package.json`, `pyproject.toml` y `README.md`.
+
 ## [0.5.32] - 2026-02-27
 
 ### Changed
