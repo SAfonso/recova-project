@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.34] - 2026-03-01
+
+### Added
+- `specs/mcp_agnostic_renderer_spec.md` incorpora un protocolo estricto de validación de entrada para `reference_image_url` con Security Gate: pre-fetch de 32 bytes, inspección de Magic Bytes (PNG/JPEG/WebP) y fail-fast por `ERR_INVALID_FILE_TYPE`.
+- `specs/mcp_agnostic_renderer_spec.md` añade invariantes de seguridad operativa de origen (`Direct Link Only`, soporte explícito de Supabase bucket y prohibición de wrappers HTML como Google Drive/Dropbox preview).
+
+### Changed
+- `specs/mcp_agnostic_renderer_spec.md` amplía la trazabilidad obligatoria para errores de acceso/no direct link (`ERR_ACCESS_DENIED_OR_NOT_DIRECT_LINK`) e incluye registro de MIME detectado vs esperado en `trace.logs`.
+- `docs/mcp-agnostic-renderer-spec.md` documenta el manual operativo de enlaces de referencia válidos y el comportamiento del Security Gate.
+- `README.md` actualiza la fuente de verdad técnica a `v0.5.34` incorporando las nuevas invariantes de seguridad del MCP Renderer.
+- Incremento de versión a `0.5.34` en `package.json`, `pyproject.toml` y `README.md`.
+
 ## [0.5.33] - 2026-03-01
 
 ### Added
