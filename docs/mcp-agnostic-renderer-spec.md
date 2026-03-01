@@ -12,6 +12,8 @@ La especificación normativa (Source of Truth) está en:
 
 La operación en VPS expone `backend/src/mcp_server.py` en modo HTTP en `127.0.0.1:5050` con:
 
+> Nota v0.5.45: el acceso a Playwright se encapsula en `backend/src/core/render.py` (`capture_screenshot`), manteniendo `mcp_server.py` como capa de orquestación.
+
 - `POST /tools/render_lineup` para consumo REST directo desde n8n.
 - `GET /healthz` para sonda de disponibilidad.
 - `POST /mcp` cuando está disponible `mcp[http]` (transporte streamable MCP).
