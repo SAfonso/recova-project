@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.36] - 2026-03-01
+
+### Added
+- `specs/mcp_agnostic_renderer_spec.md` incorpora la **Sección 12** "Unidad Atómica de Diseño (Plantilla Local)" con estructura obligatoria por `template_id` (`template.html`, `style.css`, `manifest.json`, `assets/`) en `backend/src/templates/catalog/`.
+- `specs/mcp_agnostic_renderer_spec.md` formaliza el contrato de `manifest.json` con campos obligatorios `template_id`, `version`, `display_name`, `canvas.width/height`, `capabilities.min_slots/max_slots` y `font_strategy`.
+- `specs/mcp_agnostic_renderer_spec.md` añade invariante de pre-vuelo de capacidad con error `TEMPLATE_CAPACITY_EXCEEDED`, soporte de `intent.force_capacity_override` y trazabilidad obligatoria `CAPACITY_OVERRIDE_ACTIVE`.
+
+### Changed
+- `docs/mcp-agnostic-renderer-spec.md` documenta el estándar operativo de plantilla atómica, el contrato de `manifest.json` y el override de capacidad con responsabilidad del Host.
+- `README.md` actualiza la fuente de verdad técnica a `v0.5.36` incorporando la Sección 12 como estándar de configuración única de render.
+- Incremento de versión a `0.5.36` en `package.json`, `pyproject.toml` y `README.md`.
+
 ## [0.5.35] - 2026-03-01
 
 ### Added

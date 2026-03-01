@@ -400,3 +400,117 @@ Este flujo habilita recuperación de carteles `vision_generated` históricos que
 - **Diseños generados (`vision_generated`)**: se recuperan por `recovery_event_id` desde `design-archive` para reproducibilidad fiel.
 
 La separación anterior es obligatoria para optimizar almacenamiento, reducir duplicados y preservar trazabilidad de diseños únicos.
+
+---
+
+## 12) Unidad Atómica de Diseño (Plantilla Local)
+
+La Capa MCP DEBE tratar cada plantilla local como una **Unidad Atómica de Diseño** autocontenida y versionable.
+El `manifest.json` es la **única fuente de configuración** consumida por el motor de renderizado para capacidad, canvas y estrategia tipográfica.
+
+### 12.1 Estructura de directorio de plantilla
+
+Cada `template_id` corresponde a una carpeta dentro de:
+
+```text
+backend/src/templates/catalog/
+```
+
+Estructura obligatoria por plantilla:
+
+```text
+backend/src/templates/catalog/{template_id}/
+  template.html
+  style.css
+  manifest.json
+  assets/
+```
+
+Contrato mínimo de contenido:
+
+- `template.html`
+  - Define la estructura DOM del diseño.
+  - Debe exponer selectores `.slot-1` a `.slot-n` para binding determinista del lineup.
+- `style.css`
+  - Define estilos encapsulados por plantilla.
+  - Debe soportar variables CSS (`--token`) para parametrización visual sin alterar contrato estructural.
+- `manifest.json`
+  - Define configuración técnica obligatoria que interpreta el MCP.
+- `assets/`
+  - Contiene recursos locales del diseño (imágenes, logos, texturas y variantes gráficas propias de la plantilla).
+
+No se permiten dependencias externas implícitas entre plantillas del catálogo.
+
+### 12.2 Contrato del `manifest.json`
+
+Para que el MCP “entienda” la plantilla, el `manifest.json` DEBE incluir estos campos obligatorios:
+
+- `template_id` (`string`)
+- `version` (`string`)
+- `display_name` (`string`)
+- `canvas` (`object`)
+  - `width` (`number`, px)
+  - `height` (`number`, px)
+- `capabilities` (`object`)
+  - `min_slots` (`number`)
+  - `max_slots` (`number`)
+- `font_strategy` (`array[string]`)
+  - Lista de Google Fonts requeridas para inyección vía `@import`.
+
+Ejemplo canónico:
+
+```json
+{
+  "template_id": "lineup_bold_v1",
+  "version": "1.2.0",
+  "display_name": "LineUp Bold",
+  "canvas": {
+    "width": 1080,
+    "height": 1350
+  },
+  "capabilities": {
+    "min_slots": 6,
+    "max_slots": 8
+  },
+  "font_strategy": [
+    "Bebas Neue",
+    "Montserrat",
+    "Open Sans"
+  ]
+}
+```
+
+Regla normativa: cualquier configuración de render (viewport, capacidad o tipografía) fuera de `manifest.json` se considera inválida por contrato.
+
+### 12.3 Invariante de pre-vuelo y override de capacidad
+
+Antes de renderizar, el MCP DEBE ejecutar un pre-check de capacidad usando exclusivamente el `manifest.json` de la plantilla resuelta.
+
+#### Protocolo de validación
+
+- El MCP compara `len(lineup)` contra `manifest.capabilities.max_slots`.
+- Si `len(lineup) > manifest.capabilities.max_slots`, el render DEBE abortar con error estructurado:
+  - `TEMPLATE_CAPACITY_EXCEEDED`
+
+#### Mecanismo de override
+
+El contrato de entrada acepta:
+
+- `intent.force_capacity_override` (`boolean`, opcional, default `false`).
+
+Comportamiento:
+
+- Si `intent.force_capacity_override = true`, el MCP ignora el límite `manifest.capabilities.max_slots` y procede con el render.
+
+#### Trazabilidad obligatoria
+
+Cuando el override esté activo, el trace DEBE registrar:
+
+- `CAPACITY_OVERRIDE_ACTIVE`
+
+Este registro es obligatorio para auditoría operativa.
+
+#### Advertencia operativa
+
+Si se activa `force_capacity_override`, el sistema **no garantiza la integridad estética** del resultado final (overflow, solapamientos, pérdida de legibilidad, clipping).
+La responsabilidad editorial y operativa recae en el Host que fuerza el override.
