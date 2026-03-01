@@ -1,4 +1,110 @@
+## [0.5.48] - 2026-03-01
+
+### Added
+- `backend/tests/core/test_data_binder.py` añade casos de robustez para lineup vacío, lineup con strings y lineup con 10 artistas (mapeo tope de 8 slots).
+- `backend/tests/mcp/test_data_binder.py` replica cobertura de contrato para entradas vacías/no-dict y cardinalidad extendida.
+- `backend/tests/core/test_security.py` y `backend/tests/mcp/test_security.py` incorporan validación de Magic Bytes y red con `unittest.mock.patch("requests.get")` para EXE (`MZ`), PNG real, timeout y localhost bloqueado.
+
+### Changed
+- `backend/src/core/data_binder.py` endurece el contrato: valida tipo de `lineup`, evita crash por `.get` en strings y retorna fallback seguro `window.renderReady = true;` cuando el payload es inválido.
+- `backend/src/core/security.py` restringe esquemas permitidos a `http/https` manteniendo bloqueo de hosts locales/privados.
+- `backend/src/mcp_server.py` retorna `HTTP 422` para payload inválido en `POST /tools/render_lineup` (sin crash 500).
+- `backend/tests/mcp/test_mcp_server_http.py` ajusta `test_render_invalid_payload` para esperar error controlado `400/422`.
+- `README.md` y `docs/tests-backend.md` actualizan documentación de blindaje y comandos de cobertura.
+- Bump de versión a `0.5.48` en `pyproject.toml`, `package.json` y `README.md`.
+
+## [0.5.47] - 2026-03-01
+
+### Added
+- `pytest.ini` con `asyncio_mode = auto` y `asyncio_default_test_loop_scope = function` para estabilizar la suite async con pytest/pytest-asyncio recientes.
+- `backend/tests/core/test_data_binder.py` con cobertura de FitText (reducción de `fontSize`) y mapeo de slots con ocultación de `.slot-4` a `.slot-8`.
+- `backend/tests/core/test_security.py` con casos de URL hardening, Magic Bytes falsos (`.png` con header tipo ejecutable) y clasificación de errores de red.
+
+### Changed
+- `backend/tests/mcp/test_mcp_server_http.py` refactoriza `http_client` a `@pytest_asyncio.fixture` y mantiene pruebas HTTP in-process con `httpx.ASGITransport(app=app)`, añadiendo cobertura de payload inválido (`test_render_invalid_payload`).
+- `backend/src/core/security.py` endurece validación de host bloqueando localhost, loopback e IPs privadas/link-local/reservadas antes de iniciar descarga de referencia.
+- `README.md`, `docs/tests-backend.md`, `package.json` y `pyproject.toml` se actualizan para documentar y versionar el blindaje de infraestructura de tests.
+
+## [0.5.46] - 2026-03-01
+
+### Added
+- `backend/tests/core/test_render.py` añade suite unitaria asíncrona para `capture_screenshot(...)`: flujo exitoso con HTML mínimo + `window.renderReady`, manejo de timeout cuando no se marca `renderReady` y verificación explícita del flag `--no-sandbox` al lanzar Chromium.
+- `backend/tests/mcp/test_mcp_server_http.py` incorpora suite de integración HTTP con `httpx` para `GET /healthz`, contrato `POST /tools/render_lineup` y serialización de peticiones concurrentes mediante `render_lock`.
+
+### Changed
+- `docs/tests-backend.md` documenta los nuevos comandos de ejecución para las suites QA del motor de render y del servidor MCP HTTP.
+- `README.md` actualiza la fuente de verdad técnica a `v0.5.46` e incluye la cobertura QA del refactor render/MCP y limpieza de artefactos en `/tmp`.
+- Incremento de versión a `0.5.46` en `README.md`, `pyproject.toml` y `package.json`.
+
+## [0.5.45] - 2026-03-01
+
+### Added
+- `backend/src/core/render.py` implementa `capture_screenshot(html_path, injection_js, output_path)` como motor Playwright agnóstico con flags root (`--no-sandbox`, `--disable-dev-shm-usage`), espera explícita de `window.renderReady === true` y captura PNG full page.
+- `backend/tests/unit/test_core_render.py` añade cobertura unitaria para validar flags de lanzamiento, sincronización por `renderReady` y cierre garantizado de `Page`/`BrowserContext`/`Browser` incluso ante fallo.
+
+### Changed
+- `backend/src/mcp_server.py` delega la captura Playwright en `backend/src/core/render.py`, reduciendo responsabilidades de orquestación y manteniendo contrato de salida del renderer MCP.
+- `README.md`, `docs/render-api-produccion.md` y `docs/mcp-agnostic-renderer-spec.md` documentan la separación del motor Playwright en capa core agnóstica.
+- Incremento de versión a `0.5.45` en `README.md`, `pyproject.toml` y `package.json`.
+
+## [0.5.44] - 2026-03-01
+
+### Changed
+- `backend/src/mcp_server.py` actualiza el puerto por defecto del servidor HTTP MCP a `5050` (incluyendo `MCP_PORT` fallback), manteniendo `POST /tools/render_lineup` para integración con n8n y emitiendo log de arranque `[RECOVA-RENDER] Servidor escuchando en http://127.0.0.1:5050.`.
+- `backend/src/mcp_server.py` endurece el lanzamiento de Chromium en entorno root agregando `--disable-dev-shm-usage` junto a `--no-sandbox`.
+- `backend/src/mcp_server.py` asegura liberación explícita de recursos Playwright cerrando `Page`, `BrowserContext` y `Browser` tras cada render para evitar procesos activos de Chromium.
+- `README.md`, `docs/render-api-produccion.md` y `docs/mcp-agnostic-renderer-spec.md` documentan el nuevo puerto operativo `5050` y el log de arranque esperado.
+- Incremento de versión a `0.5.44` en `README.md`, `pyproject.toml` y `package.json`.
+
+## [0.5.43] - 2026-03-01
+
+### Added
+- `backend/src/mcp_server.py` migra a modo HTTP y levanta `uvicorn` en `127.0.0.1:8000` con endpoint REST `POST /tools/render_lineup`, healthcheck `GET /healthz` y montaje opcional de transporte MCP streamable en `/mcp` cuando existe `mcp[http]`.
+- `backend/src/mcp_server.py` incorpora logging de tráfico HTTP en `backend/logs/mcp_render.log` registrando `path` y `event_id` por request para observabilidad en n8n.
+- `ecosystem.config.js` define proceso PM2 `recova-mcp-http` usando `./.venv/bin/python -m backend.src.mcp_server`.
+
+### Changed
+- `backend/src/mcp_server.py` endurece el cierre de Playwright cerrando `BrowserContext` y `Browser` en bloque `finally` para evitar procesos zombie de Chromium.
+- `requirements.txt` y `pyproject.toml` añaden dependencias de operación HTTP (`fastapi`, `uvicorn`, `mcp[http]`).
+- `README.md`, `docs/render-api-produccion.md` y `docs/mcp-agnostic-renderer-spec.md` documentan el despliegue HTTP/PM2 y la trazabilidad de requests.
+- Incremento de versión a `0.5.43` en `README.md`, `pyproject.toml` y `package.json`.
+
+## [0.5.42] - 2026-03-01
+
+### Added
+- `backend/src/mcp_server.py` implementa orquestación MCP asíncrona con lock global (`asyncio.Lock`) para serializar renderizados y proteger RAM del VPS.
+- Tool `render_lineup` con contrato FastMCP-compatible y parámetros `event_id`, `lineup`, `reference_image_url`, `template_id`.
+- Motor Playwright integrado con `--no-sandbox`, carga de plantilla por catálogo (`backend/src/templates/catalog/{template_id}/template.html`), inyección por `generate_injection_js(...)` y espera de sincronización `window.renderReady === true` antes de capturar PNG en `/tmp/render_{event_id}.png`.
+
+### Changed
+- `backend/src/mcp_server.py` aplica flujo de seguridad previo (`validate_reference_image`) y fallback automático a plantilla `active` con `trace.recovery_notes` + warning de recuperación.
+- `backend/src/mcp_server.py` añade manejo global de errores de Playwright devolviendo respuesta estructurada (`status=error`) para cumplir política de fallo no bloqueante.
+- `README.md` y `docs/tests-backend.md` se actualizan para documentar el nuevo servidor MCP y su suite de integración asíncrona.
+- Incremento de versión a `0.5.42` en `README.md`, `pyproject.toml` y `package.json`.
+
 # Changelog
+
+## [0.5.41] - 2026-03-01
+
+### Added
+- `backend/tests/mcp/test_server_integration.py` incorpora suite de integración asíncrona (pytest-asyncio) para el orquestador MCP con cuatro contratos SDD: flujo exitoso completo, recuperación ante fallo de seguridad, serialización por lock de concurrencia y verificación de caja negra sin fuga de metadatos sensibles.
+
+### Changed
+- `docs/tests-backend.md` agrega el comando dedicado para ejecutar `backend/tests/mcp/test_server_integration.py`.
+- `README.md` actualiza la fuente de verdad técnica a `v0.5.41` e incorpora el hito TDD del orquestador MCP.
+- Incremento de versión a `0.5.41` en `package.json` y `pyproject.toml`; actualización de `frontend/package.json` a `0.1.7`.
+
+## [0.5.40] - 2026-03-01
+
+### Added
+- `backend/src/core/data_binder.py` implementa `generate_injection_script(lineup, max_slots=8)` y alias `generate_injection_js(...)` para cumplir SDD §13: binding exclusivo de nombres por `.slot-n .name`, ocultación de slots vacíos y ajuste FitText por overflow hasta mínimo `12px`.
+
+### Changed
+- `backend/src/core/data_binder.py` añade señal de sincronización `window.renderReady = true` al final del ajuste tipográfico para coordinación con Playwright.
+- `README.md` actualiza la fuente de verdad técnica a `v0.5.40` e incorpora el estado de implementación del Data Binder DOM-safe.
+- `docs/mcp-agnostic-renderer-spec.md` alinea Sección 13 con reducción de `1px`, mínimo `12px` y señal de listo para render.
+- `docs/tests-backend.md` documenta el comando dedicado `backend/tests/mcp/test_data_binder.py`.
+- Incremento de versión a `0.5.40` en `package.json` y `pyproject.toml`; actualización de `frontend/package.json` a `0.1.6`.
 
 ## [0.5.39] - 2026-03-01
 

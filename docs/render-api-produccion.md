@@ -22,7 +22,7 @@ La API valida antes de renderizar:
 
 ## Flujo de ejecución
 1. Recibe JSON y valida el contrato.
-2. Invoca `PlaywrightRenderer.render(payload)`.
+2. Genera `injection_js` con el Data Binder y delega la captura a `capture_screenshot(...)` en `backend/src/core/render.py` (único punto Playwright).
 3. El renderer:
    - genera HTML desde `backend/src/templates/lineup_v1.html`,
    - captura PNG,
@@ -58,3 +58,39 @@ pm2 start "./.venv/bin/gunicorn -w 4 -b 0.0.0.0:8000 backend.src.app:app" --name
 
 ## Modo fallback y warnings (SDD §3.1)
 Si Chromium no arranca, el renderer mantiene `status: success` y devuelve warning estructurado `PLAYWRIGHT_FALLBACK_ACTIVE` en `warnings[]`, incluyendo `details.stage`, `details.reason` y `retryable` para debug operativo en VPS.
+
+
+## Servidor MCP HTTP para n8n (FastMCP + REST)
+
+Además del endpoint Flask histórico, el proyecto incorpora `backend/src/mcp_server.py` en modo HTTP para integración con n8n:
+
+- Host: `127.0.0.1`
+- Puerto: `5050`
+- Endpoint REST n8n: `POST /tools/render_lineup`
+- Healthcheck: `GET /healthz`
+- Transporte MCP streamable (si `mcp[http]` está disponible): `POST /mcp`
+
+### Logging de tráfico
+Cada request HTTP registra `path` y `event_id` en `backend/logs/mcp_render.log` para auditoría operativa.
+
+### Cierre seguro de Playwright
+El flujo de render cierra `BrowserContext` y `Browser` en bloque `finally`, evitando procesos zombie de Chromium en el VPS.
+
+### PM2 recomendado
+
+```bash
+pm2 start ecosystem.config.js --only recova-mcp-http
+```
+
+Comando equivalente directo:
+
+```bash
+pm2 start "./.venv/bin/python -m backend.src.mcp_server" --name recova-mcp-http
+```
+
+
+## Motor Playwright desacoplado
+
+Desde `v0.5.45`, la integración con Playwright vive exclusivamente en `backend/src/core/render.py` mediante `capture_screenshot(html_path, injection_js, output_path)`.
+
+Este módulo aplica hardening para VPS root (`--no-sandbox`, `--disable-dev-shm-usage`), sincroniza la captura con `window.renderReady === true` y garantiza `browser.close()` con `try/finally` para evitar procesos zombie.

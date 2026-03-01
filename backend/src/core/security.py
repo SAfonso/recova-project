@@ -6,6 +6,7 @@ Bytes validation using a non-blocking failure contract.
 
 from __future__ import annotations
 
+from ipaddress import ip_address
 from urllib.parse import parse_qs, urlparse
 
 import requests
@@ -37,17 +38,48 @@ def _failure_response(error_code: str) -> dict[str, str | bool]:
 def is_secure_url(url: str) -> bool:
     """Validate URL scheme according to security policy.
 
-    Only HTTPS URLs are accepted. Other schemes (e.g., file://, ftp://) are
-    rejected.
+    Only HTTP/HTTPS URLs are accepted. Other schemes (e.g., file://, ftp://)
+    are rejected.
     """
     parsed = urlparse(url)
-    return parsed.scheme.lower() == "https"
+    return parsed.scheme.lower() in {"http", "https"}
 
+
+
+
+def _is_private_or_local_host(host: str) -> bool:
+    """Block localhost and private/link-local loopback IP ranges."""
+    hostname = host.strip().lower()
+    if not hostname:
+        return True
+
+    if hostname in {"localhost", "::1"}:
+        return True
+
+    if hostname.startswith("[") and hostname.endswith("]"):
+        hostname = hostname[1:-1]
+
+    try:
+        addr = ip_address(hostname)
+    except ValueError:
+        return False
+
+    return (
+        addr.is_private
+        or addr.is_loopback
+        or addr.is_link_local
+        or addr.is_unspecified
+        or addr.is_reserved
+        or addr.is_multicast
+    )
 
 def _is_blocked_wrapper_url(url: str) -> bool:
     """Detect non-direct file wrapper URLs from Google Drive and Dropbox."""
     parsed = urlparse(url)
-    host = parsed.netloc.lower()
+    host = parsed.hostname.lower() if parsed.hostname else ""
+
+    if _is_private_or_local_host(host):
+        return True
     path = parsed.path.lower()
     query = parse_qs(parsed.query)
 
