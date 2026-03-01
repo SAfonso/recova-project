@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.5.37] - 2026-03-01
+
+### Added
+- `specs/mcp_agnostic_renderer_spec.md` incorpora la **Sección 13** "Motor de Inyección Visual e Integridad de Layout" con contrato Data-to-DOM estricto (`lineup[n].name` → `.slot-(n+1) .name`), exclusión visual normativa de `lineup[n].instagram` y mapeo único de `metadata.date_text`/`metadata.venue`.
+- `specs/mcp_agnostic_renderer_spec.md` define el invariante de **FitText Engine** post-inyección en contexto Playwright, usando evaluación `scrollWidth` vs `clientWidth`, reducción iterativa de `font-size` en pasos de `2px` y límite mínimo por `min-font-size` en `manifest.json`.
+- `specs/mcp_agnostic_renderer_spec.md` formaliza trazabilidad estética obligatoria en `trace.logs` para cada ajuste tipográfico aplicado por slot.
+
+### Changed
+- `specs/mcp_agnostic_renderer_spec.md` consolida el principio de **Single Responsibility** del renderer: salida limitada a `output.public_url` y `trace`, excluyendo captions o transformaciones editoriales para redes.
+- `docs/mcp-agnostic-renderer-spec.md` documenta operativamente la nueva Sección 13 para adopción por integraciones.
+- `README.md` actualiza la fuente de verdad técnica a `v0.5.37` incorporando invariantes de inyección visual y protección de layout.
+- Incremento de versión a `0.5.37` en `package.json`, `pyproject.toml` y `README.md`.
+
 ## [0.5.36] - 2026-03-01
 
 ### Added
