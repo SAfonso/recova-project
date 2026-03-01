@@ -164,17 +164,39 @@ playwright install-deps
 ## 8. Estructura del repositorio (alto nivel)
 
 ```text
-backend/
-  src/
-    app.py
-    webhook_listener.py
-    playwright_renderer.py
-    templates/
-  tests/
-frontend/
-workflows/n8n/
-specs/
-docs/
+.
+├── AGENTS.md
+├── README.md
+├── CHANGELOG.md
+├── requirements.txt
+├── pyproject.toml
+├── package.json
+├── setup_db.py
+├── backend/
+│   ├── src/
+│   │   ├── app.py
+│   │   ├── playwright_renderer.py
+│   │   ├── webhook_listener.py
+│   │   └── templates/
+│   │       ├── lineup_v1.html
+│   │       └── lineup_v2.html
+│   ├── tests/
+│   │   ├── unit/
+│   │   ├── integration/
+│   │   └── sql/
+│   └── logs/
+├── frontend/
+│   └── src/
+├── specs/
+│   ├── playwright_renderer_spec.md
+│   ├── mcp_agnostic_renderer_spec.md
+│   ├── workflows/
+│   └── sql/
+├── docs/
+├── workflows/
+│   ├── main_pipeline.json
+│   └── n8n/
+└── backups/
 ```
 
 ## 9. Referencias internas recomendadas
