@@ -22,7 +22,7 @@ La API valida antes de renderizar:
 
 ## Flujo de ejecución
 1. Recibe JSON y valida el contrato.
-2. Invoca `PlaywrightRenderer.render(payload)`.
+2. Genera `injection_js` con el Data Binder y delega la captura a `capture_screenshot(...)` en `backend/src/core/render.py` (único punto Playwright).
 3. El renderer:
    - genera HTML desde `backend/src/templates/lineup_v1.html`,
    - captura PNG,
@@ -87,3 +87,10 @@ Comando equivalente directo:
 ```bash
 pm2 start "./.venv/bin/python -m backend.src.mcp_server" --name recova-mcp-http
 ```
+
+
+## Motor Playwright desacoplado
+
+Desde `v0.5.45`, la integración con Playwright vive exclusivamente en `backend/src/core/render.py` mediante `capture_screenshot(html_path, injection_js, output_path)`.
+
+Este módulo aplica hardening para VPS root (`--no-sandbox`, `--disable-dev-shm-usage`), sincroniza la captura con `window.renderReady === true` y garantiza `browser.close()` con `try/finally` para evitar procesos zombie.

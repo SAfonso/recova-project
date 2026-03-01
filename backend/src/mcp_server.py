@@ -12,10 +12,11 @@ import os
 from pathlib import Path
 from typing import Any
 
-from playwright.async_api import BrowserContext, async_playwright
-
 from backend.src.core.data_binder import generate_injection_js
+from backend.src.core.render import capture_screenshot
 from backend.src.core.security import validate_reference_image
+
+BrowserContext = Any
 
 
 class FastMCP:
@@ -70,9 +71,11 @@ async def execute_render(
     *,
     payload: dict[str, Any],
     injection_script: str,
-    browser_context: BrowserContext | None = None,
+    browser_context: Any | None = None,
 ) -> dict[str, Any]:
-    """Run Playwright rendering flow and return a structured success payload."""
+    """Run rendering flow and return a structured success payload."""
+    del browser_context  # Compat: kept for tests and previous contract.
+
     intent = payload.get("intent", {})
     template_id = intent.get("template_id", "active")
     event_id = payload["event_id"]
@@ -89,39 +92,13 @@ async def execute_render(
         raise FileNotFoundError(f"Template HTML not found: {template_html}")
 
     screenshot_path = Path("/tmp") / f"render_{_safe_event_slug(event_id)}.png"
-    page = None
-
-    if browser_context is not None:
-        try:
-            page = await browser_context.new_page()
-            await page.goto(template_html.resolve().as_uri())
-            await page.add_script_tag(content=injection_script)
-            await page.wait_for_function("window.renderReady === true")
-            await page.screenshot(path=str(screenshot_path), full_page=True)
-        finally:
-            if page is not None and not page.is_closed():
-                await page.close()
-    else:
-        browser = None
-        context = None
-        try:
-            async with async_playwright() as playwright:
-                browser = await playwright.chromium.launch(
-                    args=["--no-sandbox", "--disable-dev-shm-usage"],
-                )
-                context = await browser.new_context()
-                page = await context.new_page()
-                await page.goto(template_html.resolve().as_uri())
-                await page.add_script_tag(content=injection_script)
-                await page.wait_for_function("window.renderReady === true")
-                await page.screenshot(path=str(screenshot_path), full_page=True)
-        finally:
-            if page is not None and not page.is_closed():
-                await page.close()
-            if context is not None:
-                await context.close()
-            if browser is not None:
-                await browser.close()
+    success = await capture_screenshot(
+        html_path=template_html,
+        injection_js=injection_script,
+        output_path=screenshot_path,
+    )
+    if not success:
+        raise RuntimeError("Playwright render execution failed")
 
     return {
         "status": "success",
