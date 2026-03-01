@@ -142,8 +142,4 @@ async def test_mcp_lock_concurrency(
 async def test_render_invalid_payload(http_client: httpx.AsyncClient) -> None:
     response = await http_client.post("/tools/render_lineup", json={"lineup": "bad-payload"})
 
-    assert response.status_code in {200, 422}
-    if response.status_code == 200:
-        body = response.json()
-        assert body["status"] == "error"
-        assert body["output"]["error_code"] == "ERR_RENDER_ENGINE_CRASH"
+    assert response.status_code in {400, 422}

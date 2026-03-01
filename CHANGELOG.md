@@ -1,3 +1,18 @@
+## [0.5.48] - 2026-03-01
+
+### Added
+- `backend/tests/core/test_data_binder.py` añade casos de robustez para lineup vacío, lineup con strings y lineup con 10 artistas (mapeo tope de 8 slots).
+- `backend/tests/mcp/test_data_binder.py` replica cobertura de contrato para entradas vacías/no-dict y cardinalidad extendida.
+- `backend/tests/core/test_security.py` y `backend/tests/mcp/test_security.py` incorporan validación de Magic Bytes y red con `unittest.mock.patch("requests.get")` para EXE (`MZ`), PNG real, timeout y localhost bloqueado.
+
+### Changed
+- `backend/src/core/data_binder.py` endurece el contrato: valida tipo de `lineup`, evita crash por `.get` en strings y retorna fallback seguro `window.renderReady = true;` cuando el payload es inválido.
+- `backend/src/core/security.py` restringe esquemas permitidos a `http/https` manteniendo bloqueo de hosts locales/privados.
+- `backend/src/mcp_server.py` retorna `HTTP 422` para payload inválido en `POST /tools/render_lineup` (sin crash 500).
+- `backend/tests/mcp/test_mcp_server_http.py` ajusta `test_render_invalid_payload` para esperar error controlado `400/422`.
+- `README.md` y `docs/tests-backend.md` actualizan documentación de blindaje y comandos de cobertura.
+- Bump de versión a `0.5.48` en `pyproject.toml`, `package.json` y `README.md`.
+
 ## [0.5.47] - 2026-03-01
 
 ### Added
