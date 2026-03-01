@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.5.41] - 2026-03-01
+
+### Added
+- `backend/tests/mcp/test_server_integration.py` incorpora suite de integración asíncrona (pytest-asyncio) para el orquestador MCP con cuatro contratos SDD: flujo exitoso completo, recuperación ante fallo de seguridad, serialización por lock de concurrencia y verificación de caja negra sin fuga de metadatos sensibles.
+
+### Changed
+- `docs/tests-backend.md` agrega el comando dedicado para ejecutar `backend/tests/mcp/test_server_integration.py`.
+- `README.md` actualiza la fuente de verdad técnica a `v0.5.41` e incorpora el hito TDD del orquestador MCP.
+- Incremento de versión a `0.5.41` en `package.json` y `pyproject.toml`; actualización de `frontend/package.json` a `0.1.7`.
+
 ## [0.5.40] - 2026-03-01
 
 ### Added
