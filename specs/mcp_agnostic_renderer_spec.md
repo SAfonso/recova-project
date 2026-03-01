@@ -89,6 +89,25 @@ Se responderá `400 Bad Request` cuando:
 - `lineup` esté vacío o exceda 8 elementos.
 - Se reciba `intent.reference_image_url = null` y `intent.template_id = null` simultáneamente.
 
+### 2.5 Security Gate de `reference_image_url` (validación de entrada estricta)
+
+Cuando `intent.reference_image_url` esté informado, la capa MCP DEBE ejecutar el siguiente protocolo antes de cualquier procesamiento Vision-to-Code:
+
+1. **Pre-fetch acotado:** descargar exclusivamente los primeros **32 bytes** del recurso remoto.
+2. **Inspección de Magic Bytes:** validar firma binaria real contra formatos permitidos.
+3. **Fail-fast:** abortar de inmediato si el contenido no es imagen válida.
+
+Formatos permitidos por firma:
+
+- PNG (`89 50 4E 47 0D 0A 1A 0A`)
+- JPEG (`FF D8 FF`)
+- WebP (`52 49 46 46 .... 57 45 42 50`)
+
+Reglas de rechazo:
+
+- Si el payload corresponde a HTML, script u otro binario fuera de whitelist → `ERR_INVALID_FILE_TYPE`.
+- Si la URL no es accesible o no devuelve binario de imagen directo → `ERR_ACCESS_DENIED_OR_NOT_DIRECT_LINK`.
+
 ---
 
 ## 3) Lógica de comportamiento (Invariantes de diseño)
@@ -134,6 +153,14 @@ Reglas:
 - Los slots representan posición visual de cada persona del lineup.
 - La inyección por Playwright se realizará exclusivamente contra estos selectores.
 - Si falta un selector requerido para el tamaño de lineup recibido, el render debe fallar con error estructurado (`SLOT_BINDING_ERROR`).
+
+### 3.4 Invariantes de seguridad operativa (origen de imágenes)
+
+Para `generation_mode = "vision_generated"`, la especificación impone estas invariantes no negociables:
+
+- **Direct Link Only:** `reference_image_url` DEBE apuntar a un recurso de descarga directa (Content-Type de imagen) o a un objeto del bucket de Supabase.
+- **Wrappers prohibidos:** URLs de visualización previa (ej. Google Drive preview/uc wrapper, Dropbox preview/share page) quedan explícitamente prohibidas.
+- **Razonamiento operativo:** cualquier wrapper HTML rompe el inspector de Magic Bytes y debe considerarse entrada inválida por diseño.
 
 ---
 
@@ -181,6 +208,10 @@ Reglas:
   - Array ordenado de eventos de ejecución.
 - `trace.warnings`
   - Array de warnings no bloqueantes.
+
+En errores de acceso/origen no directo, `trace.logs` DEBE incluir `ERR_ACCESS_DENIED_OR_NOT_DIRECT_LINK`.
+
+El trace DEBE registrar también el MIME detectado versus el MIME esperado para debugging forense (por ejemplo: `mime.detected=text/html`, `mime.expected=image/*`).
 
 ### 4.3 Contrato de error
 
@@ -237,6 +268,8 @@ backend/src/templates/catalog/
 |---|---|---|
 | `reference_image_url` válido | `vision_generated` | Generación Vision-to-Code + inyección de fuentes seguras + binding `.slot-n`. |
 | `reference_image_url = null` y `template_id` válido | `template_catalog` | Carga de plantilla local del catálogo + binding `.slot-n`. |
+| `reference_image_url` con firma no válida | N/A | Abortar por `ERR_INVALID_FILE_TYPE`. |
+| `reference_image_url` no accesible o wrapper HTML | N/A | Abortar por `ERR_ACCESS_DENIED_OR_NOT_DIRECT_LINK` + log de MIME detectado/esperado. |
 | Ambos nulos | N/A | Error de validación (`400`). |
 | Ambos informados | `vision_generated` | Se ignora `template_id`, se emite warning en trace. |
 
@@ -260,6 +293,7 @@ La implementación futura se considerará conforme si:
 2. Cumple la prioridad de generación (sección 3.1).
 3. En `vision_generated`, inyecta siempre Google Fonts seguras y bloquea fuentes locales no verificadas (sección 3.2).
 4. Garantiza inyección por `.slot-1..n` para cualquier origen HTML (sección 3.3).
-5. Devuelve Output Schema con trazabilidad completa (`status`, `output.public_url`, `trace`) según sección 4.
-6. Respeta la estructura de catálogo autocontenida en `backend/src/templates/catalog/` (sección 5).
-
+5. Aplica Security Gate para `reference_image_url` (32 bytes + Magic Bytes + fail-fast) según sección 2.5.
+6. En `vision_generated`, solo acepta direct links/Supabase y rechaza wrappers HTML (sección 3.4).
+7. Devuelve Output Schema con trazabilidad completa (`status`, `output.public_url`, `trace`) según sección 4.
+8. Respeta la estructura de catálogo autocontenida en `backend/src/templates/catalog/` (sección 5).
