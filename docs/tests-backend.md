@@ -32,6 +32,9 @@ Si `python3 -m pytest` falla por modulo no encontrado, usa el Python del entorno
 10. Ejecutar tests de la API Flask de render:
    - `./.venv/bin/python -m pytest -q backend/tests/unit/test_app.py`
 
+11. Ejecutar la suite TDD de seguridad MCP (URL + Magic Bytes + timeout):
+   - `./.venv/bin/python -m pytest -q backend/tests/mcp/test_security.py`
+
 
 ## Requisito de entorno para renderer en VPS
 Antes de validar tests o ejecutar render en producción:
