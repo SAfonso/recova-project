@@ -620,3 +620,61 @@ Queda fuera de alcance del renderer:
 - transformaciones editoriales no visuales.
 
 El renderer termina su responsabilidad al publicar el recurso gráfico y devolver su URL pública con trazabilidad.
+
+
+---
+
+## 14) Filosofía de Fallo No Bloqueante
+
+La Capa MCP DEBE priorizar la entrega de un cartel funcional por encima de la interrupción del flujo por errores técnicos recuperables.
+El principio normativo es: **si existe una ruta de render exitoso (incluyendo emergencia/fallback), el flujo no se bloquea**.
+
+### 14.1 Filosofía de respuesta y HTTP Status
+
+Regla obligatoria de transporte para integración con n8n:
+
+- El MCP DEBE responder `HTTP 200 OK` siempre que el proceso de render culmine con artefacto válido, incluso si fue necesario activar recuperación automática.
+- La semántica de éxito/error funcional se gestiona exclusivamente dentro del JSON de respuesta (`status`, `trace`, `warnings`, `recovery_notes`).
+- Este diseño evita detener ejecuciones de n8n por códigos HTTP de error cuando el cartel ya fue entregado mediante ruta de contingencia.
+
+### 14.2 Matriz de errores y acciones de auto-recuperación
+
+Los errores recuperables NO deben abortar el flujo. Deben activar alternativa obligatoria según la siguiente matriz:
+
+| Código de error | Causa | Acción de auto-recuperación (obligatoria) |
+|---|---|---|
+| `ERR_CONTRACT_INVALID` | JSON mal formado o incompleto | Ignorar el input dañado y renderizar plantilla en `/active/` con datos genéricos operativos. |
+| `ERR_INVALID_FILE_TYPE` | La referencia no es imagen válida por Magic Bytes | Omitir modo Vision y renderizar plantilla en `/active/`. |
+| `ERR_NOT_DIRECT_LINK` | La URL de referencia es wrapper HTML/no binario directo | Omitir modo Vision y renderizar plantilla en `/active/`. |
+| `ERR_CAPACITY_EXCEEDED` | `lineup` supera slots máximos de la plantilla | **Recorte Automático**: renderizar solo los primeros `n` perfiles que entren; descartar el resto. |
+
+Invariante operativo:
+
+- En cualquiera de los casos anteriores, si la recuperación produce artefacto final, el MCP DEBE responder `HTTP 200 OK` y `status = "success"`.
+
+### 14.3 Protocolo de notificación en el trace
+
+Cuando ocurra auto-recuperación, el objeto `trace` DEBE notificar explícitamente la degradación controlada para que n8n informe al Host (ej. Telegram):
+
+- `trace.status`: DEBE tomar el valor `recovered_with_warnings`.
+- `trace.recovery_notes`: DEBE incluir un mensaje legible por humanos explicando la modificación aplicada.
+
+Ejemplos válidos de `trace.recovery_notes`:
+
+- `"Imagen de referencia inválida, se usó plantilla activa"`
+- `"Lineup recortado de 8 a 5 personas"`
+
+Adicionalmente, se recomienda mantener códigos estructurados en `trace.warnings[]` para consumo automático de nodos n8n.
+
+### 14.4 Errores fatales (aborto real)
+
+Solo existen dos categorías donde el sistema SÍ debe detenerse al no disponer de ruta de recuperación funcional:
+
+1. `ERR_RENDER_ENGINE_CRASH`
+   - Fallo crítico de Playwright/Chromium que impide tanto el render principal como el fallback.
+2. `ERR_STORAGE_UNREACHABLE`
+   - Imposibilidad total de subir el artefacto a Supabase Storage tras múltiples reintentos.
+
+Regla final:
+
+- Fuera de estos errores fatales, el comportamiento normativo de la Capa MCP es **fallo no bloqueante** con entrega de cartel funcional y trazabilidad explícita de recuperación.
