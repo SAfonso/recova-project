@@ -57,6 +57,11 @@ async def test_capture_screenshot_success(tmp_path: Path, monkeypatch: pytest.Mo
 
     assert ok is True
     assert output_path.exists()
+    page.wait_for_function.assert_awaited_once_with("window.renderReady === true")
+    page.screenshot.assert_awaited_once_with(path=str(output_path), full_page=True)
+    page.close.assert_awaited_once()
+    context.close.assert_awaited_once()
+    browser.close.assert_awaited_once()
 
 
 async def test_capture_screenshot_timeout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -136,3 +141,44 @@ async def test_no_sandbox_flag(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     chromium.launch.assert_awaited_once()
     launch_args = chromium.launch.await_args.kwargs.get("args", [])
     assert "--no-sandbox" in launch_args
+
+
+async def test_capture_screenshot_closes_resources_on_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    html_file = tmp_path / "minimal_fail.html"
+    html_file.write_text("<html><body></body></html>", encoding="utf-8")
+    output_path = Path("/tmp/render_test_failure.png")
+
+    page = SimpleNamespace(
+        goto=AsyncMock(side_effect=RuntimeError("boom")),
+        add_script_tag=AsyncMock(),
+        wait_for_function=AsyncMock(),
+        screenshot=AsyncMock(),
+        is_closed=lambda: False,
+        close=AsyncMock(),
+    )
+    context = SimpleNamespace(new_page=AsyncMock(return_value=page), close=AsyncMock())
+    browser = SimpleNamespace(new_context=AsyncMock(return_value=context), close=AsyncMock())
+    chromium = SimpleNamespace(launch=AsyncMock(return_value=browser))
+
+    class _PlaywrightCM:
+        async def __aenter__(self):
+            return SimpleNamespace(chromium=chromium)
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+    monkeypatch.setattr(render, "async_playwright", lambda: _PlaywrightCM())
+
+    ok = await render.capture_screenshot(
+        html_path=html_file,
+        injection_js="window.renderReady = true;",
+        output_path=output_path,
+    )
+
+    assert ok is False
+    page.close.assert_awaited_once()
+    context.close.assert_awaited_once()
+    browser.close.assert_awaited_once()

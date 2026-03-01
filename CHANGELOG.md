@@ -1,3 +1,24 @@
+## [0.5.49] - 2026-03-01
+
+### Fixed
+- Eliminado el origen de `import file mismatch` en CI al suprimir duplicados con el mismo nombre en rutas distintas:
+  - `backend/tests/mcp/test_data_binder.py` (removido)
+  - `backend/tests/mcp/test_security.py` (removido)
+- Eliminado `backend/tests/unit/test_core_render.py` para mantener la Regla del Espejo: el módulo `backend/src/core/render.py` queda cubierto exclusivamente por `backend/tests/core/test_render.py`.
+
+### Changed
+- `backend/tests/core/test_data_binder.py` absorbe cobertura funcional de mapeo/privacidad (inyección de nombres y exclusión de instagram) proveniente de tests duplicados.
+- `backend/tests/core/test_security.py` absorbe cobertura de esquema URL (`http/https`) y refuerza validación de `recovery_action` en timeouts de red.
+- `backend/tests/core/test_render.py` incorpora verificaciones de cierre de recursos Playwright en ruta de fallo y asserts de contrato en ruta de éxito.
+- `docs/tests-backend.md` se reescribe con comandos actualizados y rutas vigentes tras refactor.
+- `README.md` actualiza versión, fuente de verdad técnica, path real del webhook (`backend/src/triggers/webhook_listener.py`) y esquema de repositorio.
+
+### Removed
+- `backend/tests/integration/test_supabase_storage.py` por deprecación de integración directa backend->Supabase Storage en la estrategia actual (responsabilidad movida al flujo orquestado).
+
+### Versioning
+- Bump de versión a `0.5.49` en `package.json`, `pyproject.toml` y `README.md`.
+
 ## [0.5.48] - 2026-03-01
 
 ### Added

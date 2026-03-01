@@ -3,6 +3,33 @@ from __future__ import annotations
 from backend.src.core.data_binder import generate_injection_js
 
 
+def test_injection_mapping_writes_expected_slots_and_names() -> None:
+    lineup = [
+        {"name": "Ana Perez", "instagram": "@ana"},
+        {"name": "Luis Gomez", "instagram": "@luis"},
+    ]
+
+    script = generate_injection_js(lineup, total_slots=8)
+
+    assert ".slot-1 .name" in script
+    assert ".slot-2 .name" in script
+    assert "Ana Perez" in script
+    assert "Luis Gomez" in script
+
+
+def test_instagram_is_not_injected_in_visual_payload() -> None:
+    lineup = [
+        {"name": "Ana Perez", "instagram": "@ana"},
+        {"name": "Luis Gomez", "instagram": "@luis"},
+    ]
+
+    script = generate_injection_js(lineup, total_slots=8)
+
+    assert "instagram" not in script.lower()
+    assert "@ana" not in script
+    assert "@luis" not in script
+
+
 def test_fit_text_script_reduces_font_size_for_long_names() -> None:
     long_name = "A" * 50
     script = generate_injection_js([{"name": long_name, "instagram": "long_name"}], total_slots=8)

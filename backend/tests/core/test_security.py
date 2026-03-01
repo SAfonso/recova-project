@@ -9,6 +9,7 @@ from backend.src.core.security import (
     ERR_INVALID_FILE_TYPE,
     ERR_NETWORK_ERROR,
     ERR_NETWORK_TIMEOUT,
+    is_secure_url,
     validate_reference_image,
 )
 
@@ -42,6 +43,13 @@ def test_url_hardening_blocks_localhost_and_private_hosts() -> None:
         assert result["error_code"] == ERR_ACCESS_DENIED_OR_NOT_DIRECT_LINK
 
 
+def test_is_secure_url_allows_http_https_and_rejects_other_schemes() -> None:
+    assert is_secure_url("https://cdn.recova.com/lineup.png") is True
+    assert is_secure_url("http://cdn.recova.com/lineup.png") is True
+    assert is_secure_url("file:///etc/passwd") is False
+    assert is_secure_url("ftp://example.com/poster.jpg") is False
+
+
 def test_magic_bytes_rejects_exe_header_with_requests_patch() -> None:
     fake_exe_header = b"MZ" + b"\x00" * 30
 
@@ -71,5 +79,6 @@ def test_network_failures_are_classified() -> None:
 
     assert timeout_result["status"] is False
     assert timeout_result["error_code"] == ERR_NETWORK_TIMEOUT
+    assert timeout_result["recovery_action"] == "USE_ACTIVE_TEMPLATE"
     assert error_result["status"] is False
     assert error_result["error_code"] == ERR_NETWORK_ERROR
