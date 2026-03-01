@@ -22,6 +22,22 @@ La especificación normativa (Source of Truth) está en:
 
 - En `vision_generated` se inyecta de forma forzada un pack seguro de Google Fonts (`Bebas Neue`, `Montserrat`, `Open Sans`).
 - Todo HTML que llegue al renderer debe exponer selectores `.slot-1 ... .slot-n` para binding confiable con Playwright.
+- Se aplica **Security Gate** obligatorio sobre `reference_image_url`: pre-fetch de 32 bytes, validación por Magic Bytes y rechazo inmediato con `ERR_INVALID_FILE_TYPE` cuando no sea PNG/JPEG/WebP real.
+- Solo se permiten **direct links** (o bucket de Supabase). URLs wrapper/preview (Google Drive estándar, Dropbox Preview, etc.) están prohibidas y deben fallar con `ERR_ACCESS_DENIED_OR_NOT_DIRECT_LINK`.
+- El `trace.logs` debe registrar `ERR_ACCESS_DENIED_OR_NOT_DIRECT_LINK` en fallos de acceso/enlace no directo, junto con el MIME detectado vs esperado (`image/*`) para facilitar debugging.
+
+
+## Manual operativo: URLs de referencia válidas
+
+Para evitar fallos no deterministas en Vision-to-Code, operación debe respetar:
+
+1. **Permitido**
+   - URL directa a archivo de imagen (respuesta binaria de imagen).
+   - Objeto publicado desde Supabase Storage.
+2. **No permitido**
+   - Páginas de visualización/compartición que devuelven HTML (wrappers).
+3. **Diagnóstico estándar**
+   - Si el Magic Bytes inspector detecta HTML/script o MIME no imagen, el renderer aborta por contrato (`ERR_INVALID_FILE_TYPE` o `ERR_ACCESS_DENIED_OR_NOT_DIRECT_LINK`).
 
 ## Catálogo de plantillas
 
