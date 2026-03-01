@@ -66,3 +66,6 @@ Esto reduce fallos de arranque de navegador real y evita depender del fallback l
 
 19. Ejecutar la integración HTTP MCP con payload inválido controlado:
    - `./.venv/bin/python -m pytest -q backend/tests/mcp/test_mcp_server_http.py::test_render_invalid_payload`
+
+20. Ejecutar cobertura enfocada en core y visualizar líneas Missing:
+   - `./.venv/bin/python -m pytest --cov=backend/src --cov-report=term-missing backend/tests/core backend/tests/mcp`
