@@ -1,3 +1,15 @@
+## [0.5.47] - 2026-03-01
+
+### Added
+- `pytest.ini` con `asyncio_mode = auto` y `asyncio_default_test_loop_scope = function` para estabilizar la suite async con pytest/pytest-asyncio recientes.
+- `backend/tests/core/test_data_binder.py` con cobertura de FitText (reducción de `fontSize`) y mapeo de slots con ocultación de `.slot-4` a `.slot-8`.
+- `backend/tests/core/test_security.py` con casos de URL hardening, Magic Bytes falsos (`.png` con header tipo ejecutable) y clasificación de errores de red.
+
+### Changed
+- `backend/tests/mcp/test_mcp_server_http.py` refactoriza `http_client` a `@pytest_asyncio.fixture` y mantiene pruebas HTTP in-process con `httpx.ASGITransport(app=app)`, añadiendo cobertura de payload inválido (`test_render_invalid_payload`).
+- `backend/src/core/security.py` endurece validación de host bloqueando localhost, loopback e IPs privadas/link-local/reservadas antes de iniciar descarga de referencia.
+- `README.md`, `docs/tests-backend.md`, `package.json` y `pyproject.toml` se actualizan para documentar y versionar el blindaje de infraestructura de tests.
+
 ## [0.5.46] - 2026-03-01
 
 ### Added
