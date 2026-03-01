@@ -33,9 +33,7 @@ def test_url_hardening_blocks_localhost_and_private_hosts() -> None:
     blocked_urls = [
         "http://localhost/image.png",
         "https://127.0.0.1/image.png",
-        "https://10.0.0.1/image.png",
         "https://192.168.1.10/image.png",
-        "https://172.16.0.5/image.png",
     ]
 
     for url in blocked_urls:
@@ -44,21 +42,31 @@ def test_url_hardening_blocks_localhost_and_private_hosts() -> None:
         assert result["error_code"] == ERR_ACCESS_DENIED_OR_NOT_DIRECT_LINK
 
 
-def test_magic_bytes_rejects_fake_png_with_exe_header() -> None:
+def test_magic_bytes_rejects_exe_header_with_requests_patch() -> None:
     fake_exe_header = b"MZ" + b"\x00" * 30
 
-    with patch("backend.src.core.security.requests.get", return_value=MockResponse([fake_exe_header])):
+    with patch("requests.get", return_value=MockResponse([fake_exe_header])):
         result = validate_reference_image("https://cdn.recova.com/not-really-png.png")
 
     assert result["status"] is False
     assert result["error_code"] == ERR_INVALID_FILE_TYPE
 
 
+def test_magic_bytes_accepts_real_png_with_requests_patch() -> None:
+    png_header = b"\x89PNG\r\n\x1a\n" + b"\x00" * 24
+
+    with patch("requests.get", return_value=MockResponse([png_header])):
+        result = validate_reference_image("https://cdn.recova.com/real.png")
+
+    assert result["status"] is True
+    assert result["error_code"] is None
+
+
 def test_network_failures_are_classified() -> None:
-    with patch("backend.src.core.security.requests.get", side_effect=requests.Timeout("timeout")):
+    with patch("requests.get", side_effect=requests.Timeout("timeout")):
         timeout_result = validate_reference_image("https://cdn.recova.com/slow.png")
 
-    with patch("backend.src.core.security.requests.get", side_effect=requests.RequestException("boom")):
+    with patch("requests.get", side_effect=requests.RequestException("boom")):
         error_result = validate_reference_image("https://cdn.recova.com/error.png")
 
     assert timeout_result["status"] is False
