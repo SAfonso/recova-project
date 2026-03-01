@@ -1,15 +1,19 @@
 # AI LineUp Architect 🎭
 
 **Estado del Proyecto:** 🛠️ En desarrollo activo
-**Versión:** `0.5.48`
+**Versión:** `0.5.49`
 **Metodología:** Spec-Driven Development (SDD)
 
 Sistema para ingesta, curación y generación automática de cartel de Open Mics, con trazabilidad completa desde formularios hasta artefacto final publicado.
 
-## 1. Fuente de verdad técnica (v0.5.47)
+## 1. Fuente de verdad técnica (v0.5.49)
 
 En esta versión se consolidan los siguientes cambios estructurales:
 
+- **QA cleanup para CI Drone (Regla del Espejo):** las pruebas de módulos `backend/src/core/*` se consolidan exclusivamente en `backend/tests/core/*` para evitar `import file mismatch` por nombres de test duplicados.
+- **Eliminación de duplicados de test:** se eliminan copias de `test_data_binder.py` y `test_security.py` en `backend/tests/mcp/`, manteniendo y ampliando cobertura en `backend/tests/core/`.
+- **Unificación de tests de render core:** se elimina `backend/tests/unit/test_core_render.py` y su cobertura se integra en `backend/tests/core/test_render.py`.
+- **Purga de integración legacy de Supabase:** se elimina `backend/tests/integration/test_supabase_storage.py` (la subida ya no se valida en backend test suite por cambio de responsabilidad a n8n).
 
 - **Blindaje defensivo del Data Binder:** `backend/src/core/data_binder.py` valida payloads no-lista devolviendo un JS seguro (`window.renderReady = true;`), tolera entradas no dict en `_extract_name` y mantiene mapeo estable para lineups extensos (mapea hasta 8 slots sin romper con 0..20 artistas).
 - **Validación HTTP robusta en endpoint MCP:** `POST /tools/render_lineup` ahora devuelve error controlado `422` para payloads inválidos (`event_id` ausente o `lineup` no lista) en lugar de permitir rutas de error 500.
@@ -31,7 +35,7 @@ En esta versión se consolidan los siguientes cambios estructurales:
 - **Servidor MCP de render (implementado):** `backend/src/mcp_server.py` expone `render_lineup` con lock global de concurrencia, gate de seguridad para `reference_image_url`, fallback automático a plantilla `active`, render Playwright con `--no-sandbox` + `--disable-dev-shm-usage`, espera `window.renderReady` y salida PNG en `/tmp/render_{event_id}.png` con trazabilidad de recuperación.
 - **Suite de integración MCP Server (TDD asíncrono):** nueva batería en `backend/tests/mcp/test_server_integration.py` para contrato de orquestación end-to-end (éxito, recuperación por fallo de seguridad, lock de concurrencia y caja negra de metadatos sensibles) usando `pytest-asyncio` y `unittest.mock` para evitar navegador real.
 - **Implementación del Data Binder (SDD §13):** `backend/src/core/data_binder.py` incorpora `generate_injection_script(lineup, max_slots)` (alias `generate_injection_js`) con inyección exclusiva de `name` por selector `.slot-n .name`, ocultación de slots vacíos con `style.display = 'none'`, FitText en pasos de `1px` hasta `12px` mínimo y señal final `window.renderReady = true` para sincronización Playwright.
-- **TDD de capa de seguridad MCP:** se incorpora `backend/tests/mcp/test_security.py` para validar HTTPS-only, bloqueo de wrappers (Google Drive/Dropbox), inspección de Magic Bytes (PNG/JPEG/WebP) y manejo de timeout de red con recuperación no bloqueante (`USE_ACTIVE_TEMPLATE`).
+- **TDD de capa de seguridad MCP:** la cobertura activa queda consolidada en `backend/tests/core/test_security.py` para validar HTTPS-only, bloqueo de wrappers (Google Drive/Dropbox), inspección de Magic Bytes (PNG/JPEG/WebP) y manejo de timeout de red con recuperación no bloqueante (`USE_ACTIVE_TEMPLATE`).
 - **Nueva capa MCP Agnostic Renderer (spec-first):** se define el contrato agnóstico de entrada/salida, trazabilidad y modos `template_catalog`/`vision_generated` en `specs/mcp_agnostic_renderer_spec.md` como Fuente de Verdad previa a implementación.
 - **Security Gate para imágenes de referencia:** `reference_image_url` exige pre-fetch de 32 bytes + inspección de Magic Bytes (PNG/JPEG/WebP), rechazo `ERR_INVALID_FILE_TYPE` y política de origen `Direct Link Only`/Supabase con bloqueo de wrappers HTML (`ERR_ACCESS_DENIED_OR_NOT_DIRECT_LINK`).
 - **Jerarquía de resiliencia MCP (2 niveles):** se formaliza `Active Mode` por intent y fallback local obligatorio a `backend/src/templates/catalog/fallback/`, con warning de trazabilidad `SYSTEM_FALLBACK_TRIGGERED` en `trace.warnings`.
@@ -77,7 +81,7 @@ flowchart LR
 |---|---|---|
 | Hosting | VPS Ubuntu | Entorno principal de ejecución en producción. |
 | Orquestación | n8n | Coordinación de flujos (ingesta, validación y render). |
-| Ingesta API | Flask (`backend/src/webhook_listener.py`) | Endpoint webhook para normalización y paso Bronze → Silver en `:5000`. |
+| Ingesta API | Flask (`backend/src/triggers/webhook_listener.py`) | Endpoint webhook para normalización y paso Bronze → Silver en `:5000`. |
 | Render API | Flask + Gunicorn (`backend/src/app.py`) | Endpoint `POST /render-lineup` en `:5050`. |
 | Motor de Cartelería | Playwright + Jinja2 (`PlaywrightRenderer`) | Generación del PNG final en runtime local. |
 | Persistencia de procesos | PM2 | Gestión de procesos `webhook-ingesta` y `recova-renderer`. |
@@ -123,7 +127,7 @@ curl -X POST http://localhost:5000/ingest \
 
 ```bash
 pm2 start "./.venv/bin/gunicorn -w 4 -b 0.0.0.0:5050 backend.src.app:app" --name recova-renderer
-pm2 start "./.venv/bin/python backend/src/webhook_listener.py" --name webhook-ingesta
+pm2 start "./.venv/bin/python backend/src/triggers/webhook_listener.py" --name webhook-ingesta
 ```
 
 ## 5. Almacenamiento de carteles (Supabase Storage)
@@ -190,6 +194,7 @@ playwright install-deps
 ├── AGENTS.md
 ├── README.md
 ├── CHANGELOG.md
+├── .env.example
 ├── requirements.txt
 ├── pyproject.toml
 ├── package.json
@@ -199,45 +204,56 @@ playwright install-deps
 ├── backend/
 │   ├── database/
 │   │   └── setup_frontend_logic.sql
-│   ├── logs/
-│   │   ├── canva_auth.log
-│   │   ├── canva_auth.log.2026-02-18
-│   │   ├── canva_auth.log.2026-02-19
-│   │   └── canva_builder.log
 │   ├── src/
 │   │   ├── app.py
 │   │   ├── bronze_to_silver_ingestion.py
-│   │   ├── playwright_renderer.py
+│   │   ├── mcp_server.py
 │   │   ├── scoring_engine.py
+│   │   ├── core/
+│   │   │   ├── data_binder.py
+│   │   │   ├── render.py
+│   │   │   └── security.py
 │   │   ├── old/
-│   │   │   ├── canva_auth_utils.py
-│   │   │   ├── canva_builder.py
-│   │   │   ├── getVeri.py
+│   │   │   ├── app.py
 │   │   │   ├── ingestion_cli_backup.py
-│   │   │   ├── test.py
+│   │   │   ├── lineup_v1.html
+│   │   │   ├── lineup_v2.html
+│   │   │   ├── playwright_renderer.py
 │   │   │   └── test/
-│   │   │       └── test_canva_builder.py
+│   │   │       ├── test_app.py
+│   │   │       ├── test_canva_builder.py
+│   │   │       ├── test_playwright_renderer.py
+│   │   │       └── test_supabase_upload.py
 │   │   ├── triggers/
 │   │   │   └── webhook_listener.py
 │   │   └── templates/
-│   │       ├── lineup_v1.html
-│   │       └── lineup_v2.html
+│   │       └── catalog/
+│   │           └── active/
+│   │               └── template.html
 │   ├── tests/
 │   │   ├── .gitkeep
 │   │   ├── conftest.py
+│   │   ├── core/
+│   │   │   ├── test_data_binder.py
+│   │   │   ├── test_render.py
+│   │   │   └── test_security.py
+│   │   ├── mcp/
+│   │   │   ├── test_mcp_server_http.py
+│   │   │   └── test_server_integration.py
 │   │   ├── unit/
-│   │   │   ├── test_app.py
 │   │   │   ├── test_bronze_to_silver_ingestion.py
 │   │   │   ├── test_n8n_workflows_security.py
-│   │   │   ├── test_playwright_renderer.py
 │   │   │   ├── test_scoring_engine.py
 │   │   │   ├── test_setup_db.py
 │   │   │   └── test_webhook_listener.py
-│   │   ├── integration/
-│   │   │   ├── test_supabase_storage.py
-│   │   │   └── test_supabase_upload.py
 │   │   └── sql/
 │   │       └── test_sql_contracts.py
+│   └── logs/
+│       ├── canva_auth.log
+│       ├── canva_auth.log.2026-02-18
+│       ├── canva_auth.log.2026-02-19
+│       ├── canva_builder.log
+│       └── mcp_render.log
 ├── docs/
 │   ├── bronze-multi-proveedor-master-data.md
 │   ├── bronze-silver-comicos-sync.md
@@ -301,7 +317,6 @@ playwright install-deps
 │       ├── Ingesta-Solicitudes.json
 │       ├── LineUp.json
 │       └── Scoring & Draft.json
-└── .env.example
 ```
 
 ## 9. Referencias internas recomendadas
