@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.5.39] - 2026-03-01
+
+### Added
+- `backend/tests/mcp/test_security.py` agrega una suite TDD para validar esquema seguro HTTPS-only, bloqueo de wrappers de Google Drive/Dropbox, validación de Magic Bytes y manejo de timeout de red con recuperación no bloqueante.
+- `backend/src/core/security.py` implementa `validate_reference_image(url)` con lectura por streaming de 32 bytes y detección de firmas PNG/JPEG/WebP según el contrato de seguridad MCP.
+
+### Changed
+- `README.md` actualiza la fuente de verdad técnica a `v0.5.39` e incorpora el hito de seguridad TDD previo a lógica de negocio.
+- `docs/tests-backend.md` incorpora la nueva ruta de pruebas `backend/tests/mcp/test_security.py` y su objetivo de hardening de red/artefactos.
+- Incremento de versión a `0.5.39` en `package.json` y `pyproject.toml`; actualización de `frontend/package.json` a `0.1.5`.
+
 ## [0.5.38] - 2026-03-01
 
 ### Added
