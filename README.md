@@ -172,31 +172,114 @@ playwright install-deps
 ├── pyproject.toml
 ├── package.json
 ├── setup_db.py
+├── backups/
+│   └── .gitkeep
 ├── backend/
+│   ├── database/
+│   │   └── setup_frontend_logic.sql
+│   ├── logs/
+│   │   ├── canva_auth.log
+│   │   ├── canva_auth.log.2026-02-18
+│   │   ├── canva_auth.log.2026-02-19
+│   │   └── canva_builder.log
 │   ├── src/
 │   │   ├── app.py
+│   │   ├── bronze_to_silver_ingestion.py
 │   │   ├── playwright_renderer.py
-│   │   ├── webhook_listener.py
+│   │   ├── scoring_engine.py
+│   │   ├── old/
+│   │   │   ├── canva_auth_utils.py
+│   │   │   ├── canva_builder.py
+│   │   │   ├── getVeri.py
+│   │   │   ├── ingestion_cli_backup.py
+│   │   │   ├── test.py
+│   │   │   └── test/
+│   │   │       └── test_canva_builder.py
+│   │   ├── triggers/
+│   │   │   └── webhook_listener.py
 │   │   └── templates/
 │   │       ├── lineup_v1.html
 │   │       └── lineup_v2.html
 │   ├── tests/
+│   │   ├── .gitkeep
+│   │   ├── conftest.py
 │   │   ├── unit/
+│   │   │   ├── test_app.py
+│   │   │   ├── test_bronze_to_silver_ingestion.py
+│   │   │   ├── test_n8n_workflows_security.py
+│   │   │   ├── test_playwright_renderer.py
+│   │   │   ├── test_scoring_engine.py
+│   │   │   ├── test_setup_db.py
+│   │   │   └── test_webhook_listener.py
 │   │   ├── integration/
+│   │   │   ├── test_supabase_storage.py
+│   │   │   └── test_supabase_upload.py
 │   │   └── sql/
-│   └── logs/
-├── frontend/
-│   └── src/
-├── specs/
-│   ├── playwright_renderer_spec.md
-│   ├── mcp_agnostic_renderer_spec.md
-│   ├── workflows/
-│   └── sql/
+│   │       └── test_sql_contracts.py
 ├── docs/
+│   ├── bronze-multi-proveedor-master-data.md
+│   ├── bronze-silver-comicos-sync.md
+│   ├── bronze-solo-solicitudes-linaje-silver.md
+│   ├── canva-oauth-pkce-builder.md
+│   ├── curacion-lineup-validacion-estados-gold-silver.md
+│   ├── esquemas-bronze-silver.md
+│   ├── github-actions-deploy-dev.md
+│   ├── ingesta-atomica-n8n.md
+│   ├── ingesta-batch-bronze-queue.md
+│   ├── ingesta-bronze-silver-error-handling.md
+│   ├── ingesta-bronze-silver-reserva.md
+│   ├── ingesta-constraint-unicidad-proveedor-slug.md
+│   ├── ingesta-logs-auditoria.md
+│   ├── ingesta-whatsapp-show-cercano-origen.md
+│   ├── mcp-agnostic-renderer-spec.md
+│   ├── n8n-workflows-secretos-entorno.md
+│   ├── proveedor-default-recova.md
+│   ├── refactor-validacion-bronze-silver.md
+│   ├── render-api-produccion.md
+│   ├── scoring-batch-n8n-fix.md
+│   ├── seed-data-casos-borde.md
+│   ├── seed-unique-comico-fecha-fix.md
+│   ├── setup-db-backup-local.md
+│   ├── setup-db-backup-reset-seed.md
+│   ├── setup-db-migraciones.md
+│   ├── silver-relacional.md
+│   ├── stack-tecnologico-infraestructura-mvp.md
+│   ├── tests-backend.md
+│   └── webhook-listener-n8n-ingesta.md
+├── frontend/
+│   ├── index.html
+│   ├── package.json
+│   ├── postcss.config.js
+│   ├── tailwind.config.js
+│   ├── vite.config.js
+│   └── src/
+│       ├── App.jsx
+│       ├── index.css
+│       ├── main.jsx
+│       └── supabaseClient.js
+├── specs/
+│   ├── mcp_agnostic_renderer_spec.md
+│   ├── playwright_renderer_spec.md
+│   ├── workflows/
+│   │   └── n8n_workflow_secret_externalization.md
+│   └── sql/
+│       ├── bronze_multi_proveedor_master.sql
+│       ├── gold_relacional.sql
+│       ├── seed_data.sql
+│       ├── silver_relacional.sql
+│       └── migrations/
+│           ├── 20260212_alter_tipo_solicitud_status.sql
+│           ├── 20260217_drop_score_final_from_silver_solicitudes.sql
+│           ├── 20260217_fix_anon_update_policy_silver_comicos.sql
+│           ├── 20260217_sync_lineup_validation_states.sql
+│           └── 20260218_create_lineup_candidates_and_validate_lineup.sql
 ├── workflows/
 │   ├── main_pipeline.json
 │   └── n8n/
-└── backups/
+│       ├── Ingesta-Solicitudes.json
+│       ├── LineUp.json
+│       └── Scoring & Draft.json
+└── .env.example
 ```
 
 ## 9. Referencias internas recomendadas
