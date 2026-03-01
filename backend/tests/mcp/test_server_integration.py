@@ -124,6 +124,9 @@ async def test_concurrency_lock(monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
     """Debe serializar peticiones concurrentes para evitar picos de RAM."""
     order: list[str] = []
 
+    # Añade esta línea: Fuerza a usar un lock del bucle de eventos actual
+    monkeypatch.setattr(mcp_server, "render_lock", asyncio.Lock())
+    
     monkeypatch.setattr(mcp_server, "validate_reference_image", Mock(return_value={"status": True}))
     monkeypatch.setattr(mcp_server, "generate_injection_js", Mock(return_value="window.renderReady=true;"))
 
