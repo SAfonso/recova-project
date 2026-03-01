@@ -400,3 +400,281 @@ Este flujo habilita recuperación de carteles `vision_generated` históricos que
 - **Diseños generados (`vision_generated`)**: se recuperan por `recovery_event_id` desde `design-archive` para reproducibilidad fiel.
 
 La separación anterior es obligatoria para optimizar almacenamiento, reducir duplicados y preservar trazabilidad de diseños únicos.
+
+---
+
+## 12) Unidad Atómica de Diseño (Plantilla Local)
+
+La Capa MCP DEBE tratar cada plantilla local como una **Unidad Atómica de Diseño** autocontenida y versionable.
+El `manifest.json` es la **única fuente de configuración** consumida por el motor de renderizado para capacidad, canvas y estrategia tipográfica.
+
+### 12.1 Estructura de directorio de plantilla
+
+Cada `template_id` corresponde a una carpeta dentro de:
+
+```text
+backend/src/templates/catalog/
+```
+
+Estructura obligatoria por plantilla:
+
+```text
+backend/src/templates/catalog/{template_id}/
+  template.html
+  style.css
+  manifest.json
+  assets/
+```
+
+Contrato mínimo de contenido:
+
+- `template.html`
+  - Define la estructura DOM del diseño.
+  - Debe exponer selectores `.slot-1` a `.slot-n` para binding determinista del lineup.
+- `style.css`
+  - Define estilos encapsulados por plantilla.
+  - Debe soportar variables CSS (`--token`) para parametrización visual sin alterar contrato estructural.
+- `manifest.json`
+  - Define configuración técnica obligatoria que interpreta el MCP.
+- `assets/`
+  - Contiene recursos locales del diseño (imágenes, logos, texturas y variantes gráficas propias de la plantilla).
+
+No se permiten dependencias externas implícitas entre plantillas del catálogo.
+
+### 12.2 Contrato del `manifest.json`
+
+Para que el MCP “entienda” la plantilla, el `manifest.json` DEBE incluir estos campos obligatorios:
+
+- `template_id` (`string`)
+- `version` (`string`)
+- `display_name` (`string`)
+- `canvas` (`object`)
+  - `width` (`number`, px)
+  - `height` (`number`, px)
+- `capabilities` (`object`)
+  - `min_slots` (`number`)
+  - `max_slots` (`number`)
+- `font_strategy` (`array[string]`)
+  - Lista de Google Fonts requeridas para inyección vía `@import`.
+
+Ejemplo canónico:
+
+```json
+{
+  "template_id": "lineup_bold_v1",
+  "version": "1.2.0",
+  "display_name": "LineUp Bold",
+  "canvas": {
+    "width": 1080,
+    "height": 1350
+  },
+  "capabilities": {
+    "min_slots": 6,
+    "max_slots": 8
+  },
+  "font_strategy": [
+    "Bebas Neue",
+    "Montserrat",
+    "Open Sans"
+  ]
+}
+```
+
+Regla normativa: cualquier configuración de render (viewport, capacidad o tipografía) fuera de `manifest.json` se considera inválida por contrato.
+
+### 12.3 Invariante de pre-vuelo y override de capacidad
+
+Antes de renderizar, el MCP DEBE ejecutar un pre-check de capacidad usando exclusivamente el `manifest.json` de la plantilla resuelta.
+
+#### Protocolo de validación
+
+- El MCP compara `len(lineup)` contra `manifest.capabilities.max_slots`.
+- Si `len(lineup) > manifest.capabilities.max_slots`, el render DEBE abortar con error estructurado:
+  - `TEMPLATE_CAPACITY_EXCEEDED`
+
+#### Mecanismo de override
+
+El contrato de entrada acepta:
+
+- `intent.force_capacity_override` (`boolean`, opcional, default `false`).
+
+Comportamiento:
+
+- Si `intent.force_capacity_override = true`, el MCP ignora el límite `manifest.capabilities.max_slots` y procede con el render.
+
+#### Trazabilidad obligatoria
+
+Cuando el override esté activo, el trace DEBE registrar:
+
+- `CAPACITY_OVERRIDE_ACTIVE`
+
+Este registro es obligatorio para auditoría operativa.
+
+#### Advertencia operativa
+
+Si se activa `force_capacity_override`, el sistema **no garantiza la integridad estética** del resultado final (overflow, solapamientos, pérdida de legibilidad, clipping).
+La responsabilidad editorial y operativa recae en el Host que fuerza el override.
+
+---
+
+## 13) Motor de Inyección Visual e Integridad de Layout (Agnostic Renderer)
+
+La Capa MCP DEBE comportarse como un renderer agnóstico, reactivo y especializado en producción de artefactos visuales.
+Esta sección define de forma exclusiva la inyección de datos visuales, el auto-ajuste tipográfico y el principio de responsabilidad única de salida.
+
+### 13.1 Mapeo de Capa Visual (Data-to-DOM)
+
+La inyección de contenido DEBE ejecutarse con binding estricto, determinista y sin transformación semántica adicional.
+
+#### Mapeo de LineUp (estricto por índice)
+
+Para cada elemento `lineup[n]`, el renderer DEBE inyectar exclusivamente:
+
+- `lineup[n].name` → selector `.slot-(n+1) .name`
+
+No se permite:
+
+- inyectar `name` en otros nodos no declarados por contrato,
+- reasignar índices,
+- aplicar enriquecimiento textual fuera del valor recibido.
+
+Si el selector objetivo no existe para un índice requerido, aplica error estructurado de binding (`SLOT_BINDING_ERROR`) conforme a sección 3.3.
+
+#### Exclusión normativa de metadatos no visuales
+
+El campo `lineup[n].instagram` NO tiene representación en el DOM del cartel.
+
+Invariante obligatorio:
+
+- `lineup[n].instagram` se considera dato de transporte de payload (si hiciera falta para capas externas),
+- el Agnostic Renderer NO lo procesa visualmente,
+- NO se renderiza en texto, subtítulo, badge ni atributo DOM.
+
+#### Mapeo de metadata del evento
+
+El renderer DEBE inyectar:
+
+- `metadata.date_text` en su selector único de fecha definido por el manual técnico de la plantilla.
+- `metadata.venue` en su selector único de venue definido por el manual técnico de la plantilla.
+
+Queda prohibido duplicar estos valores en slots de lineup o en selectores no declarados por la plantilla.
+
+### 13.2 Invariante de Auto-ajuste de Texto (FitText Engine)
+
+Tras finalizar la inyección Data-to-DOM, el renderer DEBE ejecutar un motor de ajuste tipográfico en contexto navegador (Playwright) para proteger la integridad del layout ante nombres extensos.
+
+#### Algoritmo de evaluación post-inyección
+
+Para cada nodo `.name`, el motor DEBE medir:
+
+- `scrollWidth` del contenido,
+- `clientWidth` del contenedor.
+
+Regla de overflow:
+
+- Si `scrollWidth > clientWidth`, existe desbordamiento horizontal y se activa ajuste.
+
+#### Reducción dinámica obligatoria
+
+El ajuste DEBE aplicarse de forma iterativa:
+
+1. Tomar `font-size` computado actual del nodo.
+2. Reducir en pasos de `2px`.
+3. Re-evaluar `scrollWidth` vs `clientWidth` tras cada iteración.
+4. Detener cuando:
+   - el texto encaje (`scrollWidth <= clientWidth`), o
+   - se alcance `min-font-size` definido en `manifest.json` de la plantilla.
+
+Reglas normativas:
+
+- Nunca bajar de `manifest.min-font-size`.
+- No escalar al alza durante este ciclo (el motor solo corrige overflow por reducción).
+- El ajuste se ejecuta por slot y no debe alterar el orden ni el contenido textual del lineup.
+
+#### Trazabilidad estética obligatoria
+
+Cualquier ajuste de fuente aplicado por FitText DEBE registrarse en `trace.logs` como evento informativo auditable.
+
+Mínimo recomendado de payload de log:
+
+- identificador de slot (`slot-1`, `slot-2`, ...),
+- `font-size` inicial,
+- `font-size` final,
+- resultado (`fit_applied` o `min_font_size_reached`).
+
+### 13.3 Output Simplificado (Single Responsibility)
+
+La Capa MCP mantiene una salida mínima alineada con responsabilidad única del renderer visual.
+
+Invariante de output:
+
+- El Output Schema (§4) solo expone:
+  - `output.public_url` del artefacto visual persistido,
+  - `trace` con observabilidad operativa.
+
+Queda fuera de alcance del renderer:
+
+- generación de copies,
+- captions,
+- textos para redes sociales,
+- transformaciones editoriales no visuales.
+
+El renderer termina su responsabilidad al publicar el recurso gráfico y devolver su URL pública con trazabilidad.
+
+
+---
+
+## 14) Filosofía de Fallo No Bloqueante
+
+La Capa MCP DEBE priorizar la entrega de un cartel funcional por encima de la interrupción del flujo por errores técnicos recuperables.
+El principio normativo es: **si existe una ruta de render exitoso (incluyendo emergencia/fallback), el flujo no se bloquea**.
+
+### 14.1 Filosofía de respuesta y HTTP Status
+
+Regla obligatoria de transporte para integración con n8n:
+
+- El MCP DEBE responder `HTTP 200 OK` siempre que el proceso de render culmine con artefacto válido, incluso si fue necesario activar recuperación automática.
+- La semántica de éxito/error funcional se gestiona exclusivamente dentro del JSON de respuesta (`status`, `trace`, `warnings`, `recovery_notes`).
+- Este diseño evita detener ejecuciones de n8n por códigos HTTP de error cuando el cartel ya fue entregado mediante ruta de contingencia.
+
+### 14.2 Matriz de errores y acciones de auto-recuperación
+
+Los errores recuperables NO deben abortar el flujo. Deben activar alternativa obligatoria según la siguiente matriz:
+
+| Código de error | Causa | Acción de auto-recuperación (obligatoria) |
+|---|---|---|
+| `ERR_CONTRACT_INVALID` | JSON mal formado o incompleto | Ignorar el input dañado y renderizar plantilla en `/active/` con datos genéricos operativos. |
+| `ERR_INVALID_FILE_TYPE` | La referencia no es imagen válida por Magic Bytes | Omitir modo Vision y renderizar plantilla en `/active/`. |
+| `ERR_NOT_DIRECT_LINK` | La URL de referencia es wrapper HTML/no binario directo | Omitir modo Vision y renderizar plantilla en `/active/`. |
+| `ERR_CAPACITY_EXCEEDED` | `lineup` supera slots máximos de la plantilla | **Recorte Automático**: renderizar solo los primeros `n` perfiles que entren; descartar el resto. |
+
+Invariante operativo:
+
+- En cualquiera de los casos anteriores, si la recuperación produce artefacto final, el MCP DEBE responder `HTTP 200 OK` y `status = "success"`.
+
+### 14.3 Protocolo de notificación en el trace
+
+Cuando ocurra auto-recuperación, el objeto `trace` DEBE notificar explícitamente la degradación controlada para que n8n informe al Host (ej. Telegram):
+
+- `trace.status`: DEBE tomar el valor `recovered_with_warnings`.
+- `trace.recovery_notes`: DEBE incluir un mensaje legible por humanos explicando la modificación aplicada.
+
+Ejemplos válidos de `trace.recovery_notes`:
+
+- `"Imagen de referencia inválida, se usó plantilla activa"`
+- `"Lineup recortado de 8 a 5 personas"`
+
+Adicionalmente, se recomienda mantener códigos estructurados en `trace.warnings[]` para consumo automático de nodos n8n.
+
+### 14.4 Errores fatales (aborto real)
+
+Solo existen dos categorías donde el sistema SÍ debe detenerse al no disponer de ruta de recuperación funcional:
+
+1. `ERR_RENDER_ENGINE_CRASH`
+   - Fallo crítico de Playwright/Chromium que impide tanto el render principal como el fallback.
+2. `ERR_STORAGE_UNREACHABLE`
+   - Imposibilidad total de subir el artefacto a Supabase Storage tras múltiples reintentos.
+
+Regla final:
+
+- Fuera de estos errores fatales, el comportamiento normativo de la Capa MCP es **fallo no bloqueante** con entrega de cartel funcional y trazabilidad explícita de recuperación.
