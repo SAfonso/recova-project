@@ -1,3 +1,16 @@
+## [0.5.42] - 2026-03-01
+
+### Added
+- `backend/src/mcp_server.py` implementa orquestación MCP asíncrona con lock global (`asyncio.Lock`) para serializar renderizados y proteger RAM del VPS.
+- Tool `render_lineup` con contrato FastMCP-compatible y parámetros `event_id`, `lineup`, `reference_image_url`, `template_id`.
+- Motor Playwright integrado con `--no-sandbox`, carga de plantilla por catálogo (`backend/src/templates/catalog/{template_id}/template.html`), inyección por `generate_injection_js(...)` y espera de sincronización `window.renderReady === true` antes de capturar PNG en `/tmp/render_{event_id}.png`.
+
+### Changed
+- `backend/src/mcp_server.py` aplica flujo de seguridad previo (`validate_reference_image`) y fallback automático a plantilla `active` con `trace.recovery_notes` + warning de recuperación.
+- `backend/src/mcp_server.py` añade manejo global de errores de Playwright devolviendo respuesta estructurada (`status=error`) para cumplir política de fallo no bloqueante.
+- `README.md` y `docs/tests-backend.md` se actualizan para documentar el nuevo servidor MCP y su suite de integración asíncrona.
+- Incremento de versión a `0.5.42` en `README.md`, `pyproject.toml` y `package.json`.
+
 # Changelog
 
 ## [0.5.41] - 2026-03-01
