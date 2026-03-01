@@ -1,4 +1,9 @@
-"""Contract tests for backend.src.core.data_binder (SDD §13)."""
+"""Contract tests for backend.src.core.data_binder (SDD §13).
+
+Estas pruebas definen el contrato esperado del módulo data_binder.
+Como `backend/src/core/data_binder.py` está vacío actualmente,
+el estado esperado es ROJO (fallo por AttributeError al invocar la API).
+"""
 
 from backend.src.core import data_binder
 
@@ -66,6 +71,19 @@ def test_lineup_with_string_entries_supported():
     assert ".slot-1 .name" in script
     assert ".slot-2 .name" in script
 
+def test_overflow_slots_hidden():
+    lineup = [
+        {"name": "Comico 1", "instagram": "@c1"},
+        {"name": "Comico 2", "instagram": "@c2"},
+        {"name": "Comico 3", "instagram": "@c3"},
+        {"name": "Comico 4", "instagram": "@c4"},
+    ]
+
+    script = data_binder.generate_injection_js(lineup, total_slots=8)
+
+    for slot in range(5, 9):
+        assert f".slot-{slot}" in script
+    assert ".style.display = 'none'" in script or '.style.display = "none"' in script
 
 def test_lineup_with_ten_people_only_maps_first_eight():
     lineup = [{"name": f"Comico {idx}", "instagram": f"@c{idx}"} for idx in range(1, 11)]
