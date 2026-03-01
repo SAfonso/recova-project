@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.5.38] - 2026-03-01
+
+### Added
+- `specs/mcp_agnostic_renderer_spec.md` incorpora la **Sección 14** "Filosofía de Fallo No Bloqueante" con política de `HTTP 200 OK` para renders exitosos (incluyendo recuperación), semántica de error gestionada en JSON y prioridad explícita de continuidad para n8n.
+- `specs/mcp_agnostic_renderer_spec.md` define matriz obligatoria de auto-recuperación para `ERR_CONTRACT_INVALID`, `ERR_INVALID_FILE_TYPE`, `ERR_NOT_DIRECT_LINK` y `ERR_CAPACITY_EXCEEDED` con fallback `/active/` y recorte automático de lineup cuando aplique.
+- `specs/mcp_agnostic_renderer_spec.md` agrega protocolo de trazabilidad de recuperación con `trace.status = recovered_with_warnings` y `trace.recovery_notes` legible para notificación al Host (Telegram/n8n).
+
+### Changed
+- `specs/mcp_agnostic_renderer_spec.md` acota abortos reales únicamente a `ERR_RENDER_ENGINE_CRASH` y `ERR_STORAGE_UNREACHABLE`, reforzando la entrega de cartel funcional como prioridad del sistema.
+- `docs/mcp-agnostic-renderer-spec.md` documenta operativamente la Sección 14 para adopción en flujos n8n-safe.
+- `README.md` actualiza la fuente de verdad técnica a `v0.5.38` e incluye los nuevos invariantes de fallo no bloqueante.
+- Incremento de versión a `0.5.38` en `package.json` y `pyproject.toml`; actualización de `frontend/package.json` a `0.1.4`.
+
 ## [0.5.37] - 2026-03-01
 
 ### Added

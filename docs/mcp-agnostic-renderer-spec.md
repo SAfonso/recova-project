@@ -162,3 +162,25 @@ Distinción operativa:
 - `vision_generated` se recupera por `recovery_event_id` (archivo histórico).
 
 Esta separación evita redundancia de datos y mantiene reproducibilidad de diseños generados por IA.
+
+
+## Sección 14: Fallo No Bloqueante (operación n8n-safe)
+
+La SDD incorpora una filosofía de continuidad operativa: si el renderer logra entregar un cartel (incluso vía contingencia), la API responde `HTTP 200 OK` para no romper automatizaciones de n8n.
+
+### Reglas operativas
+
+1. **HTTP 200 con recuperación:** los incidentes recuperables se reportan en JSON (`status`, `trace`) y no en códigos HTTP de transporte.
+2. **Matriz de auto-recuperación obligatoria:**
+   - `ERR_CONTRACT_INVALID` → ignorar input dañado y renderizar `/active/` con datos genéricos.
+   - `ERR_INVALID_FILE_TYPE` → omitir Vision y renderizar `/active/`.
+   - `ERR_NOT_DIRECT_LINK` → omitir Vision y renderizar `/active/`.
+   - `ERR_CAPACITY_EXCEEDED` → recorte automático del lineup a capacidad máxima (`n`).
+3. **Trazabilidad explícita para notificación al Host:**
+   - `trace.status = recovered_with_warnings`
+   - `trace.recovery_notes` con mensaje humano (ej. `Imagen de referencia inválida, se usó plantilla activa`).
+4. **Abortos reales restringidos a dos casos:**
+   - `ERR_RENDER_ENGINE_CRASH`
+   - `ERR_STORAGE_UNREACHABLE`
+
+Con esto, la capa MCP prioriza siempre la entrega de un cartel funcional frente a la parada por error técnico recuperable.
