@@ -514,3 +514,109 @@ Este registro es obligatorio para auditoría operativa.
 
 Si se activa `force_capacity_override`, el sistema **no garantiza la integridad estética** del resultado final (overflow, solapamientos, pérdida de legibilidad, clipping).
 La responsabilidad editorial y operativa recae en el Host que fuerza el override.
+
+---
+
+## 13) Motor de Inyección Visual e Integridad de Layout (Agnostic Renderer)
+
+La Capa MCP DEBE comportarse como un renderer agnóstico, reactivo y especializado en producción de artefactos visuales.
+Esta sección define de forma exclusiva la inyección de datos visuales, el auto-ajuste tipográfico y el principio de responsabilidad única de salida.
+
+### 13.1 Mapeo de Capa Visual (Data-to-DOM)
+
+La inyección de contenido DEBE ejecutarse con binding estricto, determinista y sin transformación semántica adicional.
+
+#### Mapeo de LineUp (estricto por índice)
+
+Para cada elemento `lineup[n]`, el renderer DEBE inyectar exclusivamente:
+
+- `lineup[n].name` → selector `.slot-(n+1) .name`
+
+No se permite:
+
+- inyectar `name` en otros nodos no declarados por contrato,
+- reasignar índices,
+- aplicar enriquecimiento textual fuera del valor recibido.
+
+Si el selector objetivo no existe para un índice requerido, aplica error estructurado de binding (`SLOT_BINDING_ERROR`) conforme a sección 3.3.
+
+#### Exclusión normativa de metadatos no visuales
+
+El campo `lineup[n].instagram` NO tiene representación en el DOM del cartel.
+
+Invariante obligatorio:
+
+- `lineup[n].instagram` se considera dato de transporte de payload (si hiciera falta para capas externas),
+- el Agnostic Renderer NO lo procesa visualmente,
+- NO se renderiza en texto, subtítulo, badge ni atributo DOM.
+
+#### Mapeo de metadata del evento
+
+El renderer DEBE inyectar:
+
+- `metadata.date_text` en su selector único de fecha definido por el manual técnico de la plantilla.
+- `metadata.venue` en su selector único de venue definido por el manual técnico de la plantilla.
+
+Queda prohibido duplicar estos valores en slots de lineup o en selectores no declarados por la plantilla.
+
+### 13.2 Invariante de Auto-ajuste de Texto (FitText Engine)
+
+Tras finalizar la inyección Data-to-DOM, el renderer DEBE ejecutar un motor de ajuste tipográfico en contexto navegador (Playwright) para proteger la integridad del layout ante nombres extensos.
+
+#### Algoritmo de evaluación post-inyección
+
+Para cada nodo `.name`, el motor DEBE medir:
+
+- `scrollWidth` del contenido,
+- `clientWidth` del contenedor.
+
+Regla de overflow:
+
+- Si `scrollWidth > clientWidth`, existe desbordamiento horizontal y se activa ajuste.
+
+#### Reducción dinámica obligatoria
+
+El ajuste DEBE aplicarse de forma iterativa:
+
+1. Tomar `font-size` computado actual del nodo.
+2. Reducir en pasos de `2px`.
+3. Re-evaluar `scrollWidth` vs `clientWidth` tras cada iteración.
+4. Detener cuando:
+   - el texto encaje (`scrollWidth <= clientWidth`), o
+   - se alcance `min-font-size` definido en `manifest.json` de la plantilla.
+
+Reglas normativas:
+
+- Nunca bajar de `manifest.min-font-size`.
+- No escalar al alza durante este ciclo (el motor solo corrige overflow por reducción).
+- El ajuste se ejecuta por slot y no debe alterar el orden ni el contenido textual del lineup.
+
+#### Trazabilidad estética obligatoria
+
+Cualquier ajuste de fuente aplicado por FitText DEBE registrarse en `trace.logs` como evento informativo auditable.
+
+Mínimo recomendado de payload de log:
+
+- identificador de slot (`slot-1`, `slot-2`, ...),
+- `font-size` inicial,
+- `font-size` final,
+- resultado (`fit_applied` o `min_font_size_reached`).
+
+### 13.3 Output Simplificado (Single Responsibility)
+
+La Capa MCP mantiene una salida mínima alineada con responsabilidad única del renderer visual.
+
+Invariante de output:
+
+- El Output Schema (§4) solo expone:
+  - `output.public_url` del artefacto visual persistido,
+  - `trace` con observabilidad operativa.
+
+Queda fuera de alcance del renderer:
+
+- generación de copies,
+- captions,
+- textos para redes sociales,
+- transformaciones editoriales no visuales.
+
+El renderer termina su responsabilidad al publicar el recurso gráfico y devolver su URL pública con trazabilidad.
