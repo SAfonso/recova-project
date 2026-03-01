@@ -92,18 +92,23 @@ async def execute_render(
     page = None
 
     if browser_context is not None:
-        page = await browser_context.new_page()
-        await page.goto(template_html.resolve().as_uri())
-        await page.add_script_tag(content=injection_script)
-        await page.wait_for_function("window.renderReady === true")
-        await page.screenshot(path=str(screenshot_path), full_page=True)
-        await page.close()
+        try:
+            page = await browser_context.new_page()
+            await page.goto(template_html.resolve().as_uri())
+            await page.add_script_tag(content=injection_script)
+            await page.wait_for_function("window.renderReady === true")
+            await page.screenshot(path=str(screenshot_path), full_page=True)
+        finally:
+            if page is not None and not page.is_closed():
+                await page.close()
     else:
         browser = None
         context = None
         try:
             async with async_playwright() as playwright:
-                browser = await playwright.chromium.launch(args=["--no-sandbox"])
+                browser = await playwright.chromium.launch(
+                    args=["--no-sandbox", "--disable-dev-shm-usage"],
+                )
                 context = await browser.new_context()
                 page = await context.new_page()
                 await page.goto(template_html.resolve().as_uri())
@@ -111,6 +116,8 @@ async def execute_render(
                 await page.wait_for_function("window.renderReady === true")
                 await page.screenshot(path=str(screenshot_path), full_page=True)
         finally:
+            if page is not None and not page.is_closed():
+                await page.close()
             if context is not None:
                 await context.close()
             if browser is not None:
@@ -267,18 +274,19 @@ def _build_http_app():
 app = _build_http_app()
 
 
-def run_http_server(host: str = "127.0.0.1", port: int = 8000) -> None:
+def run_http_server(host: str = "127.0.0.1", port: int = 5050) -> None:
     """Run HTTP MCP server for n8n consumption."""
     if app is None:
         raise RuntimeError("FastAPI/uvicorn no instalados. Instala dependencias HTTP del MCP.")
 
     import uvicorn
 
+    print("[RECOVA-RENDER] Servidor escuchando en http://127.0.0.1:5050.")
     uvicorn.run(app, host=host, port=port, log_level="info")
 
 
 if __name__ == "__main__":
     run_http_server(
         host=os.getenv("MCP_HOST", "127.0.0.1"),
-        port=int(os.getenv("MCP_PORT", "8000")),
+        port=int(os.getenv("MCP_PORT", "5050")),
     )
