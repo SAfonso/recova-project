@@ -42,3 +42,6 @@ Antes de validar tests o ejecutar render en producción:
 - `playwright install-deps`
 
 Esto reduce fallos de arranque de navegador real y evita depender del fallback local.
+
+12. Ejecutar la suite TDD de inyección Data Binder (slots + FitText + privacidad):
+   - `./.venv/bin/python -m pytest -q backend/tests/mcp/test_data_binder.py`
