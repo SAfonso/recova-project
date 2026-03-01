@@ -54,6 +54,48 @@ Cada estilo debe ser autocontenido con:
 - `manifest.json`
 - `assets/` locales del estilo
 
+
+## Unidad Atómica de Diseño (Plantilla Local)
+
+La Sección 12 de la spec formaliza la plantilla local como unidad autocontenida y define que `manifest.json` es la única fuente de configuración para el render.
+
+### Estructura obligatoria por `template_id`
+
+```text
+backend/src/templates/catalog/{template_id}/
+  template.html
+  style.css
+  manifest.json
+  assets/
+```
+
+- `template.html`: DOM con `.slot-1 ... .slot-n`.
+- `style.css`: estilos encapsulados con soporte de variables CSS.
+- `manifest.json`: contrato técnico consumido por MCP.
+- `assets/`: imágenes, logos y texturas específicas del diseño.
+
+### Contrato mínimo de `manifest.json`
+
+Campos obligatorios:
+
+- `template_id`, `version`, `display_name`.
+- `canvas.width` y `canvas.height` (px; viewport Playwright).
+- `capabilities.min_slots` y `capabilities.max_slots`.
+- `font_strategy` (Google Fonts inyectables vía `@import`).
+
+### Pre-vuelo de capacidad y override controlado
+
+Pre-check obligatorio antes de render:
+
+- Comparar `len(lineup)` con `manifest.capabilities.max_slots`.
+- Si se excede capacidad, abortar con `TEMPLATE_CAPACITY_EXCEEDED`.
+
+Override permitido por contrato:
+
+- `intent.force_capacity_override = true` ignora `max_slots` y permite continuar.
+- Con override activo, `trace.logs` debe registrar `CAPACITY_OVERRIDE_ACTIVE`.
+- Advertencia normativa: no se garantiza integridad estética al forzar override; la responsabilidad recae en el Host.
+
 ## Estado
 
 - **Implementación:** pendiente (spec-first).
