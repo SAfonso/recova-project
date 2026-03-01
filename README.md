@@ -1,17 +1,19 @@
 # AI LineUp Architect 🎭
 
 **Estado del Proyecto:** 🛠️ En desarrollo activo
-**Versión:** `0.5.34`
+**Versión:** `0.5.35`
 **Metodología:** Spec-Driven Development (SDD)
 
 Sistema para ingesta, curación y generación automática de cartel de Open Mics, con trazabilidad completa desde formularios hasta artefacto final publicado.
 
-## 1. Fuente de verdad técnica (v0.5.34)
+## 1. Fuente de verdad técnica (v0.5.35)
 
 En esta versión se consolidan los siguientes cambios estructurales:
 
 - **Nueva capa MCP Agnostic Renderer (spec-first):** se define el contrato agnóstico de entrada/salida, trazabilidad y modos `template_catalog`/`vision_generated` en `specs/mcp_agnostic_renderer_spec.md` como Fuente de Verdad previa a implementación.
 - **Security Gate para imágenes de referencia:** `reference_image_url` exige pre-fetch de 32 bytes + inspección de Magic Bytes (PNG/JPEG/WebP), rechazo `ERR_INVALID_FILE_TYPE` y política de origen `Direct Link Only`/Supabase con bloqueo de wrappers HTML (`ERR_ACCESS_DENIED_OR_NOT_DIRECT_LINK`).
+- **Jerarquía de resiliencia MCP (2 niveles):** se formaliza `Active Mode` por intent y fallback local obligatorio a `backend/src/templates/catalog/fallback/`, con warning de trazabilidad `SYSTEM_FALLBACK_TRIGGERED` en `trace.warnings`.
+- **Persistencia condicional eficiente (`design-archive`):** solo `vision_generated` archiva `final.png`, `generated.html`, `generated.css`, `reference.png` y `metadata.json`; `template_catalog` no duplica almacenamiento en archivo.
 - **Hardening de workflows n8n:** `workflows/n8n/LineUp.json` elimina credenciales/hosts hardcodeados y usa variables de entorno (`$env`) para Supabase y renderer.
 - **Nueva variable de entorno para render en n8n:** `N8N_BACKEND_RENDER_URL` documentada en `.env.example`.
 - **Deprecación de Canva:** la integración con Canva API queda retirada del flujo productivo.
@@ -173,10 +175,12 @@ docs/
 ## 9. Referencias internas recomendadas
 
 - `specs/playwright_renderer_spec.md`
+- `specs/mcp_agnostic_renderer_spec.md`
+- `docs/mcp-agnostic-renderer-spec.md`
 - `docs/render-api-produccion.md`
 - `docs/webhook-listener-n8n-ingesta.md`
 - `docs/tests-backend.md`
 
 ---
 
-Este README define el estado operativo objetivo de la versión `0.5.34` y debe tratarse como referencia principal para decisiones de implementación y despliegue.
+Este README define el estado operativo objetivo de la versión `0.5.35` y debe tratarse como referencia principal para decisiones de implementación y despliegue.
