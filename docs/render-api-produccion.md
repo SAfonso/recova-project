@@ -58,3 +58,32 @@ pm2 start "./.venv/bin/gunicorn -w 4 -b 0.0.0.0:8000 backend.src.app:app" --name
 
 ## Modo fallback y warnings (SDD §3.1)
 Si Chromium no arranca, el renderer mantiene `status: success` y devuelve warning estructurado `PLAYWRIGHT_FALLBACK_ACTIVE` en `warnings[]`, incluyendo `details.stage`, `details.reason` y `retryable` para debug operativo en VPS.
+
+
+## Servidor MCP HTTP para n8n (FastMCP + REST)
+
+Además del endpoint Flask histórico, el proyecto incorpora `backend/src/mcp_server.py` en modo HTTP para integración con n8n:
+
+- Host: `127.0.0.1`
+- Puerto: `8000`
+- Endpoint REST n8n: `POST /tools/render_lineup`
+- Healthcheck: `GET /healthz`
+- Transporte MCP streamable (si `mcp[http]` está disponible): `POST /mcp`
+
+### Logging de tráfico
+Cada request HTTP registra `path` y `event_id` en `backend/logs/mcp_render.log` para auditoría operativa.
+
+### Cierre seguro de Playwright
+El flujo de render cierra `BrowserContext` y `Browser` en bloque `finally`, evitando procesos zombie de Chromium en el VPS.
+
+### PM2 recomendado
+
+```bash
+pm2 start ecosystem.config.js --only recova-mcp-http
+```
+
+Comando equivalente directo:
+
+```bash
+pm2 start "./.venv/bin/python -m backend.src.mcp_server" --name recova-mcp-http
+```

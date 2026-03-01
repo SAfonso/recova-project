@@ -8,6 +8,15 @@ La especificación normativa (Source of Truth) está en:
 
 - `specs/mcp_agnostic_renderer_spec.md`
 
+## Exposición HTTP para n8n
+
+La operación en VPS expone `backend/src/mcp_server.py` en modo HTTP con:
+
+- `POST /tools/render_lineup` para consumo REST directo desde n8n.
+- `GET /healthz` para sonda de disponibilidad.
+- `POST /mcp` cuando está disponible `mcp[http]` (transporte streamable MCP).
+- Logging por request en `backend/logs/mcp_render.log` incluyendo `event_id` para trazabilidad.
+
 ## Qué cambia para integraciones
 
 1. **Contrato de entrada único**
