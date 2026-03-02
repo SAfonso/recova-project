@@ -1,14 +1,18 @@
 # AI LineUp Architect 🎭
 
 **Estado del Proyecto:** 🛠️ En desarrollo activo
-**Versión:** `0.5.49`
+**Versión:** `0.5.50`
 **Metodología:** Spec-Driven Development (SDD)
 
 Sistema para ingesta, curación y generación automática de cartel de Open Mics, con trazabilidad completa desde formularios hasta artefacto final publicado.
 
-## 1. Fuente de verdad técnica (v0.5.49)
+## 1. Fuente de verdad técnica (v0.5.50)
 
 En esta versión se consolidan los siguientes cambios estructurales:
+
+- **Refactor visual de curación con UI v0 (sin migración de framework):** `frontend/src/App.jsx` mantiene la lógica de negocio actual (`fetchCandidates`, `updateDraft`, `toggleSelected`, `validateLineup`, Supabase RPC y webhook n8n) y extrae la capa de interfaz en componentes `jsx` dentro de `frontend/src/components/open-mic/` con estilo notebook/cartoon.
+- **Notas de recuperación SDD en validación:** la validación del lineup añade `trace.recovery_notes` en el payload enviado a n8n, alimentado desde nuevo campo `textarea` de curación.
+- **Estilos UI desacoplados de Next/shadcn:** `frontend/src/index.css` incorpora los estilos necesarios extraídos del ZIP (`paint-bg`, `notebook-lines`, `restricted-overlay`, `comic-shadow`) adaptados a React/Vite con Tailwind v3.
 
 - **QA cleanup para CI Drone (Regla del Espejo):** las pruebas de módulos `backend/src/core/*` se consolidan exclusivamente en `backend/tests/core/*` para evitar `import file mismatch` por nombres de test duplicados.
 - **Eliminación de duplicados de test:** se eliminan copias de `test_data_binder.py` y `test_security.py` en `backend/tests/mcp/`, manteniendo y ampliando cobertura en `backend/tests/core/`.
@@ -292,10 +296,18 @@ playwright install-deps
 │   ├── vite.config.js
 │   └── src/
 │       ├── App.jsx
+│       ├── components/
+│       │   └── open-mic/
+│       │       ├── ComicCard.jsx
+│       │       ├── ExpandedView.jsx
+│       │       ├── Header.jsx
+│       │       ├── NotebookSheet.jsx
+│       │       └── ValidateButton.jsx
 │       ├── index.css
 │       ├── main.jsx
 │       └── supabaseClient.js
 ├── specs/
+│   ├── frontend_lineup_notebook_spec.md
 │   ├── mcp_agnostic_renderer_spec.md
 │   ├── playwright_renderer_spec.md
 │   ├── workflows/
@@ -323,11 +335,13 @@ playwright install-deps
 
 - `specs/playwright_renderer_spec.md`
 - `specs/mcp_agnostic_renderer_spec.md`
+- `specs/frontend_lineup_notebook_spec.md`
 - `docs/mcp-agnostic-renderer-spec.md`
+- `docs/curacion-lineup-validacion-estados-gold-silver.md`
 - `docs/render-api-produccion.md`
 - `docs/webhook-listener-n8n-ingesta.md`
 - `docs/tests-backend.md`
 
 ---
 
-Este README define el estado operativo objetivo de la versión `0.5.36` y debe tratarse como referencia principal para decisiones de implementación y despliegue.
+Este README define el estado operativo objetivo de la versión `0.5.50` y debe tratarse como referencia principal para decisiones de implementación y despliegue.
