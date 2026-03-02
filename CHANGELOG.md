@@ -1,3 +1,21 @@
+## [0.5.50] - 2026-03-02
+
+### Added
+- Nueva especificación frontend `specs/frontend_lineup_notebook_spec.md` para formalizar la integración visual v0 en React/Vite sin migrar a Next.js ni TypeScript.
+- Nuevos componentes visuales `jsx` en `frontend/src/components/open-mic/` (`Header`, `NotebookSheet`, `ExpandedView`, `ComicCard`, `ValidateButton`) con separación explícita entre capa de presentación y lógica de negocio.
+- Campo `recoveryNotes` en la UI de curación para trazabilidad SDD durante la validación.
+
+### Changed
+- `frontend/src/App.jsx` se refactoriza a layout notebook/cartoon importado desde ZIP v0, manteniendo intacta la lógica funcional crítica: carga de candidatos desde Supabase, edición de draft, selección máxima de 5 y validación con RPC `validate_lineup`.
+- `validateLineup` amplía el payload de webhook n8n con `trace: { recovery_notes: recoveryNotes }`.
+- `frontend/src/index.css` incorpora estilos extraídos/adaptados de `globals.css` del diseño v0 para fondo, libreta, overlays y comportamiento visual de tarjetas restringidas.
+- `docs/curacion-lineup-validacion-estados-gold-silver.md` documenta la nueva interacción de curación por pestañas y el contrato de notas de recuperación.
+- `README.md` actualiza versión, fuente de verdad técnica y estructura del frontend con la nueva carpeta de componentes.
+
+### Versioning
+- Bump de versión a `0.5.50` en `package.json`, `pyproject.toml` y `README.md`.
+- Bump de frontend a `0.1.8` en `frontend/package.json`.
+
 ## [0.5.49] - 2026-03-01
 
 ### Fixed

@@ -1,7 +1,7 @@
 # Curación y Validación de Lineup: sincronización de estados Gold/Silver
 
 ## Alcance
-Este documento consolida cambios de proceso introducidos entre `0.5.12` y `0.5.15`:
+Este documento consolida cambios de proceso introducidos entre `0.5.12` y `0.5.50`:
 - robustez de validación/n8n desde frontend (`VITE_N8N_WEBHOOK_URL`)
 - exposición de estado real en `gold.lineup_candidates`
 - sincronización de estados al validar lineup (`gold.validate_lineup`)
@@ -123,6 +123,14 @@ Archivo: `frontend/src/App.jsx`
   - actualiza UI local
   - notifica a n8n vía webhook
 
+### Interfaz visual notebook/cartoon (v0.5.50)
+- La capa visual se modulariza en `frontend/src/components/open-mic/` y consume estado/lógica desde `App.jsx`.
+- `activeTab` soporta cuatro vistas operativas: `lineup`, `gold`, `priority`, `restricted`.
+- `lineup` muestra únicamente seleccionados (`selectedIds`), y el resto filtra por `getDraft(c).categoria`.
+- El botón de edición (`...`) abre una vista ampliada con todos los candidatos, manteniendo expansión por `activeId`.
+- En tarjeta expandida se habilita edición de categoría (`gold` / `priority` / `restricted`) mediante `updateDraft(...)`.
+- La selección mantiene invariante de máximo 5 usando `toggleSelected(...)`.
+
 ### Robustez del webhook n8n (0.5.12)
 - `VITE_N8N_WEBHOOK_URL` debe existir y ser URL absoluta (`http/https`)
 - Se añade diagnóstico en consola para distinguir:
@@ -140,6 +148,14 @@ Cada elemento de `p_selection` incluye:
 - `genero` (editado o actual)
 
 La RPC usa `solicitud_id` como referencia principal y cae a matching por `comico_id` + fecha cuando hace falta.
+
+## Payload del frontend hacia webhook n8n (v0.5.50)
+- El webhook mantiene los campos operativos existentes:
+  - `fecha`
+  - `status`
+  - `total`
+- Se añade trazabilidad SDD para recovery:
+  - `trace.recovery_notes` (texto libre ingresado por Host en UI)
 
 ## Checklist operativo (validación de lineup)
 1. Ejecutar scoring para poblar `gold.solicitudes.estado = 'scorado'`.
