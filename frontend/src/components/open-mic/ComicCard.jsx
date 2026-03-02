@@ -1,0 +1,116 @@
+const CATEGORY_BUTTONS = [
+  { value: 'gold', label: 'Gold', className: 'bg-[#FACC15] text-[#1a1a1a]' },
+  { value: 'priority', label: 'Priority', className: 'bg-[#3B82F6] text-[#fff8e7]' },
+  { value: 'restricted', label: 'Restricted', className: 'bg-[#1a1a1a] text-[#fff8e7]' },
+];
+
+function getCardTone(category) {
+  if (category === 'gold') {
+    return 'border-[#D4A017] border-[3px] bg-[#fff8e7] shadow-[0_0_8px_rgba(212,160,23,0.35)]';
+  }
+  if (category === 'priority') {
+    return 'border-[#A0A0A0] border-[3px] bg-[#fff8e7] shadow-[0_0_6px_rgba(160,160,160,0.35)]';
+  }
+  if (category === 'restricted') {
+    return 'restricted-overlay border-[#DC2626] border-[3px] bg-[#fee2e2]';
+  }
+  return 'border-[#1a1a1a] border-[3px] bg-[#fff8e7]';
+}
+
+function categoryBadge(category) {
+  if (category === 'gold') {
+    return <span className="rounded-full bg-[#D4A017] px-2 py-0.5 text-[10px] font-bold text-[#1a1a1a]">GOLD</span>;
+  }
+  if (category === 'priority') {
+    return <span className="rounded-full bg-[#A0A0A0] px-2 py-0.5 text-[10px] font-bold text-[#fff8e7]">PRIO</span>;
+  }
+  if (category === 'restricted') {
+    return <span className="rounded-full bg-[#DC2626] px-2 py-0.5 text-[10px] font-bold text-[#fff8e7]">REST</span>;
+  }
+  return null;
+}
+
+export function ComicCard({
+  candidate,
+  draft,
+  selected,
+  expanded,
+  canSelect,
+  onExpand,
+  onToggleSelected,
+  onUpdateCategory,
+  hasPendingEdit,
+}) {
+  return (
+    <article className={`relative overflow-hidden rounded-lg transition-all duration-200 ${getCardTone(draft.categoria)}`}>
+      <button
+        type="button"
+        onClick={onExpand}
+        className="flex w-full items-center gap-3 px-3 py-2.5 text-left"
+        aria-expanded={expanded}
+      >
+        <span className="relative z-10 flex-1 truncate text-base font-bold text-[#1a1a1a]">{candidate.nombre ?? candidate.instagram ?? 'Sin nombre'}</span>
+        <span className="relative z-10">{categoryBadge(draft.categoria)}</span>
+      </button>
+
+      {expanded && (
+        <div className="relative z-10 border-t-2 border-dashed border-[#1a1a1a]/20 px-3 pb-3 pt-2">
+          <div className="flex items-start gap-3">
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[10px] text-[#6B5C4A]">Categoria</span>
+              <div className="flex gap-1.5">
+                {CATEGORY_BUTTONS.map((button) => {
+                  const active = draft.categoria === button.value;
+                  return (
+                    <button
+                      key={button.value}
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onUpdateCategory(button.value);
+                      }}
+                      className={`h-7 min-w-16 rounded-md border-2 border-[#1a1a1a] px-1 text-[10px] font-bold transition-all ${button.className} ${active ? 'ring-2 ring-[#1a1a1a] ring-offset-2' : 'opacity-70 hover:opacity-100'}`}
+                      aria-label={`Asignar categoria ${button.label}`}
+                    >
+                      {button.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs text-[#6B5C4A]">@{candidate.instagram ?? 'sin_instagram'}</p>
+              <p className="truncate text-xs text-[#6B5C4A]">{candidate.contacto ?? candidate.telefono ?? 'sin contacto'}</p>
+              <p className="text-[10px] text-[#6B5C4A]">Estado: {candidate.estado ?? 'sin_estado'}</p>
+              {hasPendingEdit && (
+                <span className="mt-1 inline-block rounded-full bg-[#f59e0b]/25 px-2 py-0.5 text-[10px] font-bold text-[#7c2d12]">
+                  Editado
+                </span>
+              )}
+            </div>
+
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-[10px] text-[#6B5C4A]">LineUp</span>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  if (!selected && !canSelect) {
+                    return;
+                  }
+                  onToggleSelected();
+                }}
+                disabled={!selected && !canSelect}
+                className={`flex h-8 w-8 items-center justify-center rounded-md border-[3px] border-[#1a1a1a] transition-all ${selected ? 'bg-[#22C55E] text-[#fff8e7]' : 'bg-[#fff8e7] text-transparent'} ${!selected && !canSelect ? 'cursor-not-allowed opacity-40' : 'hover:scale-110'}`}
+                aria-label={selected ? 'Quitar del LineUp' : 'Añadir al LineUp'}
+              >
+                ✓
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </article>
+  );
+}

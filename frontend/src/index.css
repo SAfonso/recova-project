@@ -1,7 +1,84 @@
+@import url('https://fonts.googleapis.com/css2?family=Bangers&family=Patrick+Hand&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: 'Patrick Hand', 'Comic Sans MS', cursive;
+}
+
+.notebook-lines {
+  background-image: repeating-linear-gradient(
+    transparent,
+    transparent 31px,
+    #c8b89a 31px,
+    #c8b89a 32px
+  );
+  background-size: 100% 32px;
+}
+
+.paint-bg {
+  background:
+    radial-gradient(ellipse 120px 100px at 15% 20%, rgba(249, 115, 22, 0.5) 0%, transparent 70%),
+    radial-gradient(ellipse 80px 120px at 85% 15%, rgba(245, 158, 11, 0.4) 0%, transparent 70%),
+    radial-gradient(ellipse 150px 80px at 70% 80%, rgba(249, 115, 22, 0.35) 0%, transparent 70%),
+    radial-gradient(ellipse 100px 60px at 25% 75%, rgba(245, 158, 11, 0.45) 0%, transparent 70%),
+    radial-gradient(ellipse 60px 90px at 50% 45%, rgba(251, 146, 60, 0.3) 0%, transparent 70%),
+    radial-gradient(ellipse 90px 50px at 90% 55%, rgba(245, 158, 11, 0.35) 0%, transparent 70%),
+    radial-gradient(ellipse 70px 100px at 10% 50%, rgba(249, 115, 22, 0.25) 0%, transparent 70%),
+    #dc2626;
+}
+
+.comic-shadow {
+  box-shadow: 4px 4px 0 #1a1a1a;
+}
+
+.comic-shadow:active {
+  box-shadow: 2px 2px 0 #1a1a1a;
+  transform: translate(2px, 2px);
+}
+
+.restricted-overlay {
+  position: relative;
+}
+
+.restricted-overlay::before {
+  content: 'X';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 4rem;
+  font-weight: 700;
+  color: rgba(220, 38, 38, 0.25);
+  font-family: 'Bangers', Impact, sans-serif;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.cartoon-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+
+.cartoon-scroll::-webkit-scrollbar-track {
+  background: #f5f0e1;
+  border-radius: 5px;
+}
+
+.cartoon-scroll::-webkit-scrollbar-thumb {
+  background: #c8b89a;
+  border: 2px solid #f5f0e1;
+  border-radius: 5px;
 }
