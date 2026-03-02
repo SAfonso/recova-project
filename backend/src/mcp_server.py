@@ -266,6 +266,6 @@ def run_http_server(host: str = "127.0.0.1", port: int = 5050) -> None:
 
 if __name__ == "__main__":
     run_http_server(
-        host=os.getenv("MCP_HOST", "127.0.0.1"),
+        host=os.getenv("MCP_HOST", "0.0.0.0"),
         port=int(os.getenv("MCP_PORT", "5050")),
     )
