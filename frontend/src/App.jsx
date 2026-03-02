@@ -1,16 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from './supabaseClient';
+import { ExpandedView } from './components/open-mic/ExpandedView';
+import { Header } from './components/open-mic/Header';
+import { NotebookSheet } from './components/open-mic/NotebookSheet';
+import { ValidateButton } from './components/open-mic/ValidateButton';
 
 const CATEGORY_OPTIONS = [
   { value: 'gold', label: 'Gold' },
   { value: 'priority', label: 'Preferred' },
   { value: 'restricted', label: 'Restricted' },
-];
-
-const GENDER_OPTIONS = [
-  { value: 'm', label: 'm' },
-  { value: 'f', label: 'f' },
-  { value: 'nb', label: 'nb' },
 ];
 
 function App() {
@@ -23,97 +21,99 @@ function App() {
   const [saving, setSaving] = useState(false);
   const [eventDate, setEventDate] = useState('');
   const [error, setError] = useState('');
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [recoveryNotes, setRecoveryNotes] = useState('');
 
   const activeCandidate = useMemo(
     () => candidates.find((candidate) => candidate.row_key === activeId),
     [candidates, activeId],
   );
 
-  useEffect(() => {
-    const fetchCandidates = async () => {
-      setLoading(true);
-      setError('');
+  const fetchCandidates = async () => {
+    setLoading(true);
+    setError('');
 
-      let rows = [];
-      let useLegacyView = false;
-      let hasFechaEvento = true;
+    let rows = [];
+    let useLegacyView = false;
+    let hasFechaEvento = true;
 
-      const { data: dataV2, error: errorV2 } = await supabase
+    const { data: dataV2, error: errorV2 } = await supabase
+      .from('lineup_candidates')
+      .select('solicitud_id,fecha_evento,nombre,genero,categoria,estado,score_final,comico_id,contacto,telefono,instagram')
+      .order('score_final', { ascending: false, nullsFirst: false });
+
+    if (errorV2) {
+      const isSchemaDrift = String(errorV2.message || '').includes('solicitud_id');
+      if (!isSchemaDrift) {
+        setError(errorV2.message);
+        setLoading(false);
+        return;
+      }
+
+      console.warn(
+        'lineup_candidates sin columna solicitud_id en este entorno. Usando modo compatibilidad legacy.',
+        { message: errorV2.message },
+      );
+
+      useLegacyView = true;
+      const { data: dataLegacyWithDate, error: errorLegacyWithDate } = await supabase
         .from('lineup_candidates')
-        .select('solicitud_id,fecha_evento,nombre,genero,categoria,estado,score_final,comico_id,contacto,telefono,instagram')
+        .select('fecha_evento,nombre,genero,categoria,estado,score_final,comico_id,contacto,telefono,instagram')
         .order('score_final', { ascending: false, nullsFirst: false });
 
-      if (errorV2) {
-        const isSchemaDrift = String(errorV2.message || '').includes('solicitud_id');
-        if (!isSchemaDrift) {
-          setError(errorV2.message);
+      if (errorLegacyWithDate) {
+        const missingFechaEvento = String(errorLegacyWithDate.message || '').includes('fecha_evento');
+        if (!missingFechaEvento) {
+          setError(errorLegacyWithDate.message);
           setLoading(false);
           return;
         }
 
-        console.warn(
-          'lineup_candidates sin columna solicitud_id en este entorno. Usando modo compatibilidad legacy.',
-          { message: errorV2.message },
-        );
-
-        useLegacyView = true;
-        const { data: dataLegacyWithDate, error: errorLegacyWithDate } = await supabase
+        hasFechaEvento = false;
+        const { data: dataLegacy, error: errorLegacy } = await supabase
           .from('lineup_candidates')
-          .select('fecha_evento,nombre,genero,categoria,estado,score_final,comico_id,contacto,telefono,instagram')
+          .select('nombre,genero,categoria,estado,score_final,comico_id,contacto,telefono,instagram')
           .order('score_final', { ascending: false, nullsFirst: false });
 
-        if (errorLegacyWithDate) {
-          const missingFechaEvento = String(errorLegacyWithDate.message || '').includes('fecha_evento');
-          if (!missingFechaEvento) {
-            setError(errorLegacyWithDate.message);
-            setLoading(false);
-            return;
-          }
-
-          hasFechaEvento = false;
-          const { data: dataLegacy, error: errorLegacy } = await supabase
-            .from('lineup_candidates')
-            .select('nombre,genero,categoria,estado,score_final,comico_id,contacto,telefono,instagram')
-            .order('score_final', { ascending: false, nullsFirst: false });
-
-          if (errorLegacy) {
-            setError(errorLegacy.message);
-            setLoading(false);
-            return;
-          }
-
-          rows = dataLegacy ?? [];
-        } else {
-          rows = dataLegacyWithDate ?? [];
+        if (errorLegacy) {
+          setError(errorLegacy.message);
+          setLoading(false);
+          return;
         }
+
+        rows = dataLegacy ?? [];
       } else {
-        rows = dataV2 ?? [];
+        rows = dataLegacyWithDate ?? [];
       }
+    } else {
+      rows = dataV2 ?? [];
+    }
 
-      const normalized = rows.map((row, index) => ({
-        ...row,
-        solicitud_id: useLegacyView ? null : (row.solicitud_id ?? null),
-        row_key: useLegacyView
-          ? `${row.comico_id ?? 'unknown'}-${index}`
-          : (row.solicitud_id ?? `${row.comico_id ?? 'unknown'}-${index}`),
-        fecha_evento: hasFechaEvento ? (row.fecha_evento ?? null) : null,
-        genero: row.genero === 'unknown' ? 'nb' : row.genero ?? 'nb',
-        categoria: row.categoria === 'standard' ? 'priority' : row.categoria ?? 'priority',
-      }));
-      const scoredFirst = normalized.filter((candidate) => candidate.estado === 'scorado');
-      const pendingLegacy = normalized.filter((candidate) => candidate.estado === 'pendiente');
-      const selectionSource =
-        scoredFirst.length > 0 ? scoredFirst : (pendingLegacy.length > 0 ? pendingLegacy : normalized);
-      const firstEventDate = selectionSource.find((candidate) => candidate.fecha_evento)?.fecha_evento;
+    const normalized = rows.map((row, index) => ({
+      ...row,
+      solicitud_id: useLegacyView ? null : (row.solicitud_id ?? null),
+      row_key: useLegacyView
+        ? `${row.comico_id ?? 'unknown'}-${index}`
+        : (row.solicitud_id ?? `${row.comico_id ?? 'unknown'}-${index}`),
+      fecha_evento: hasFechaEvento ? (row.fecha_evento ?? null) : null,
+      genero: row.genero === 'unknown' ? 'nb' : row.genero ?? 'nb',
+      categoria: row.categoria === 'standard' ? 'priority' : row.categoria ?? 'priority',
+    }));
+    const scoredFirst = normalized.filter((candidate) => candidate.estado === 'scorado');
+    const pendingLegacy = normalized.filter((candidate) => candidate.estado === 'pendiente');
+    const selectionSource =
+      scoredFirst.length > 0 ? scoredFirst : (pendingLegacy.length > 0 ? pendingLegacy : normalized);
+    const firstEventDate = selectionSource.find((candidate) => candidate.fecha_evento)?.fecha_evento;
 
-      setCandidates(normalized);
-      setSelectedIds(selectionSource.slice(0, 5).map((candidate) => candidate.row_key));
-      if (firstEventDate) {
-        setEventDate(firstEventDate);
-      }
-      setLoading(false);
-    };
+    setCandidates(normalized);
+    setSelectedIds(selectionSource.slice(0, 5).map((candidate) => candidate.row_key));
+    if (firstEventDate) {
+      setEventDate(firstEventDate);
+    }
+    setLoading(false);
+  };
 
+  useEffect(() => {
     fetchCandidates();
   }, []);
 
@@ -238,6 +238,9 @@ function App() {
           fecha: rpcEventDate,
           status: 'validado',
           total: selectedIds.length,
+          trace: {
+            recovery_notes: recoveryNotes,
+          },
         }),
       });
 
@@ -262,163 +265,107 @@ function App() {
     }
   };
 
+  const handleCategoryUpdate = (candidateId, category) => {
+    const targetCandidate = candidates.find((candidate) => candidate.row_key === candidateId);
+    if (!targetCandidate) {
+      return;
+    }
+
+    if (activeId !== candidateId) {
+      setActiveId(candidateId);
+      setEdits((previous) => ({
+        ...previous,
+        [candidateId]: {
+          ...getDraft(targetCandidate),
+          categoria: category,
+        },
+      }));
+      return;
+    }
+
+    if (!CATEGORY_OPTIONS.some((option) => option.value === category)) {
+      return;
+    }
+
+    updateDraft('categoria', category);
+  };
+
+  const openExpanded = () => {
+    setIsExpanded(true);
+    if (!activeId && candidates.length > 0) {
+      setActiveId(candidates[0].row_key);
+    }
+  };
+
   return (
-    <main className="mx-auto min-h-screen max-w-7xl bg-slate-950 p-6 text-slate-100">
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">LineUp Curator</h1>
-          <p className="text-sm text-slate-300">Gestiona la selección y curación de solicitudes desde el esquema gold.</p>
-        </div>
+    <main className="paint-bg min-h-screen px-4 pb-8">
+      <div className="mx-auto flex max-w-lg flex-col gap-4 lg:max-w-5xl">
+        <Header
+          eventDate={eventDate}
+          onEventDateChange={setEventDate}
+          selectedCount={selectedIds.length}
+        />
 
-        <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-xl font-semibold text-emerald-300">
-          {selectedIds.length}/5
-        </div>
-      </header>
+        {error && (
+          <p className="rounded-md border-2 border-[#7f1d1d] bg-[#fee2e2] p-3 text-sm text-[#7f1d1d]">
+            {error}
+          </p>
+        )}
 
-      <section className="mb-6 flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          onClick={() => setActiveTab('lineup')}
-          className={`rounded-md px-4 py-2 text-sm font-medium ${
-            activeTab === 'lineup' ? 'bg-indigo-500 text-white' : 'bg-slate-800 text-slate-200'
-          }`}
-        >
-          Propuestos (5)
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('curation')}
-          className={`rounded-md px-4 py-2 text-sm font-medium ${
-            activeTab === 'curation' ? 'bg-indigo-500 text-white' : 'bg-slate-800 text-slate-200'
-          }`}
-        >
-          Curation
-        </button>
-
-        <label className="ml-auto flex items-center gap-2 text-sm text-slate-300">
-          Fecha del evento
-          <input
-            type="date"
-            value={eventDate}
-            onChange={(event) => setEventDate(event.target.value)}
-            className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100"
+        {loading ? (
+          <section className="notebook-lines rounded-lg border-[3px] border-[#1a1a1a] bg-[#fff8e7] p-8 text-center text-[#6B5C4A]">
+            Cargando candidatos...
+          </section>
+        ) : (
+          <NotebookSheet
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            candidates={candidates}
+            selectedCandidates={selectedCandidates}
+            getDraft={getDraft}
+            onOpenExpanded={openExpanded}
           />
-        </label>
-      </section>
+        )}
 
-      {error && <p className="mb-4 rounded-md border border-rose-700 bg-rose-900/30 p-3 text-sm text-rose-200">{error}</p>}
+        <section className="mx-auto w-full max-w-3xl rounded-lg border-[3px] border-[#1a1a1a] bg-[#fff8e7] p-4">
+          <label htmlFor="recovery-notes" className="mb-2 block text-sm font-bold text-[#1a1a1a]">
+            Notas de recuperación (SDD)
+          </label>
+          <textarea
+            id="recovery-notes"
+            value={recoveryNotes}
+            onChange={(event) => setRecoveryNotes(event.target.value)}
+            placeholder="Contexto para Telegram/n8n si el flujo necesita recovery..."
+            className="min-h-24 w-full rounded-md border-2 border-[#1a1a1a] bg-[#F5F0E1] p-3 text-sm text-[#1a1a1a] outline-none focus:ring-2 focus:ring-[#DC2626]"
+          />
+        </section>
 
-      <section className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-        <div className="space-y-3">
-          {loading ? (
-            <p className="text-slate-300">Cargando candidatos...</p>
-          ) : (
-            (activeTab === 'lineup' ? selectedCandidates : candidates).map((candidate) => {
-              const draft = getDraft(candidate);
-              const selected = selectedIds.includes(candidate.row_key);
-              return (
-                <article
-                  key={candidate.row_key}
-                  className={`rounded-xl border p-4 ${
-                    selected ? 'border-emerald-500/70 bg-slate-900' : 'border-slate-800 bg-slate-900/60'
-                  }`}
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <h2 className="text-lg font-semibold">{candidate.nombre ?? candidate.instagram}</h2>
-                      <p className="text-sm text-slate-400">@{candidate.instagram}</p>
-                      <p className="text-sm text-slate-400">{candidate.contacto ?? candidate.telefono}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-slate-300">Score: {candidate.score_final?.toFixed?.(2) ?? '-'}</p>
-                      <p className="text-xs text-slate-400">Estado: {candidate.estado ?? 'sin_estado'}</p>
-                      {hasPendingEdit(candidate) && (
-                        <span className="mt-1 inline-block rounded-full bg-amber-400/20 px-2 py-0.5 text-xs font-medium text-amber-200">
-                          Editado
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-300">
-                    <span className="rounded-full bg-slate-800 px-2 py-0.5">Categoría: {draft.categoria}</span>
-                    <span className="rounded-full bg-slate-800 px-2 py-0.5">Género: {draft.genero}</span>
-                  </div>
-
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => toggleSelected(candidate.row_key)}
-                      className="rounded-md border border-emerald-500/60 px-3 py-1.5 text-sm text-emerald-200"
-                    >
-                      {selected ? 'Quitar del lineup' : 'Añadir al lineup'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveId(candidate.row_key)}
-                      className="rounded-md border border-indigo-500/60 px-3 py-1.5 text-sm text-indigo-200"
-                    >
-                      Abrir ficha
-                    </button>
-                  </div>
-                </article>
-              );
-            })
-          )}
+        <div className="flex justify-center pt-2">
+          <ValidateButton
+            disabled={saving || selectedIds.length !== 5}
+            saving={saving}
+            onClick={validateLineup}
+          />
         </div>
 
-        <aside className="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
-          <h3 className="mb-3 text-lg font-semibold">Ficha de cómico</h3>
-          {!activeCandidate ? (
-            <p className="text-sm text-slate-400">Selecciona "Abrir ficha" para editar categoría o género antes de validar.</p>
-          ) : (
-            <div className="space-y-4">
-              <p className="text-sm text-slate-300">
-                <span className="font-semibold">{activeCandidate.nombre ?? activeCandidate.instagram}</span> · @{activeCandidate.instagram}
-              </p>
+        <p className="text-center text-sm font-bold text-[#fff8e7]">
+          {selectedIds.length === 5 ? 'LineUp completo para validar' : 'Selecciona exactamente 5 cómicos'}
+        </p>
+      </div>
 
-              <label className="block text-sm text-slate-300">
-                Categoría
-                <select
-                  value={getDraft(activeCandidate).categoria}
-                  onChange={(event) => updateDraft('categoria', event.target.value)}
-                  className="mt-1 w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2"
-                >
-                  {CATEGORY_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="block text-sm text-slate-300">
-                Género
-                <select
-                  value={getDraft(activeCandidate).genero}
-                  onChange={(event) => updateDraft('genero', event.target.value)}
-                  className="mt-1 w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2"
-                >
-                  {GENDER_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-          )}
-
-          <button
-            type="button"
-            disabled={saving || selectedIds.length !== 5}
-            onClick={validateLineup}
-            className="mt-6 w-full rounded-md bg-emerald-500 px-4 py-2 font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {saving ? 'Enviando a n8n...' : '🚀 VALIDAR Y GENERAR'}
-          </button>
-        </aside>
-      </section>
+      {isExpanded && (
+        <ExpandedView
+          candidates={candidates}
+          selectedIds={selectedIds}
+          activeId={activeId}
+          onClose={() => setIsExpanded(false)}
+          onCardExpand={setActiveId}
+          onToggleSelected={toggleSelected}
+          onUpdateCategory={handleCategoryUpdate}
+          getDraft={getDraft}
+          hasPendingEdit={hasPendingEdit}
+        />
+      )}
     </main>
   );
 }
