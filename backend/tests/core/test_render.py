@@ -59,9 +59,7 @@ async def test_capture_screenshot_success(tmp_path: Path, monkeypatch: pytest.Mo
     assert output_path.exists()
     page.wait_for_function.assert_awaited_once_with("window.renderReady === true")
     page.screenshot.assert_awaited_once_with(path=str(output_path), full_page=True)
-    page.close.assert_awaited_once()
-    context.close.assert_awaited_once()
-    browser.close.assert_awaited_once()
+    browser.new_context.assert_awaited_once_with(viewport={"width": 1080, "height": 1350})
 
 
 async def test_capture_screenshot_timeout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -141,11 +139,14 @@ async def test_no_sandbox_flag(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     chromium.launch.assert_awaited_once()
     launch_args = chromium.launch.await_args.kwargs.get("args", [])
     assert "--no-sandbox" in launch_args
+    assert "--disable-dev-shm-usage" in launch_args
+    assert "--disable-gpu" in launch_args
 
 
-async def test_capture_screenshot_closes_resources_on_failure(
+async def test_capture_screenshot_returns_false_and_logs_error_on_failure(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     html_file = tmp_path / "minimal_fail.html"
     html_file.write_text("<html><body></body></html>", encoding="utf-8")
@@ -179,6 +180,6 @@ async def test_capture_screenshot_closes_resources_on_failure(
     )
 
     assert ok is False
-    page.close.assert_awaited_once()
-    context.close.assert_awaited_once()
-    browser.close.assert_awaited_once()
+    output = capsys.readouterr().out
+    assert "Error en render engine:" in output
+    assert "boom" in output

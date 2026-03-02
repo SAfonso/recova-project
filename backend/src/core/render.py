@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from playwright.async_api import Browser, BrowserContext, Page, async_playwright
+from playwright.async_api import async_playwright
 
 
 async def capture_screenshot(html_path: Path, injection_js: str, output_path: Path) -> bool:
@@ -13,16 +13,12 @@ async def capture_screenshot(html_path: Path, injection_js: str, output_path: Pa
     This function is intentionally agnostic to MCP/n8n orchestration concerns.
     """
 
-    browser: Browser | None = None
-    context: BrowserContext | None = None
-    page: Page | None = None
-
     try:
         async with async_playwright() as playwright:
             browser = await playwright.chromium.launch(
-                args=["--no-sandbox", "--disable-dev-shm-usage"],
+                args=["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
             )
-            context = await browser.new_context()
+            context = await browser.new_context(viewport={"width": 1080, "height": 1350})
             page = await context.new_page()
 
             await page.goto(html_path.resolve().as_uri())
@@ -31,13 +27,7 @@ async def capture_screenshot(html_path: Path, injection_js: str, output_path: Pa
 
             output_path.parent.mkdir(parents=True, exist_ok=True)
             await page.screenshot(path=str(output_path), full_page=True)
-            return True
-    except Exception:
+    except Exception as exc:
+        print(f"Error en render engine: {exc}")
         return False
-    finally:
-        if page is not None and not page.is_closed():
-            await page.close()
-        if context is not None:
-            await context.close()
-        if browser is not None:
-            await browser.close()
+    return True
