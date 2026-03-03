@@ -4,6 +4,7 @@
 Esta especificación define la evolución del renderer en la rama `feature/svg-renderer`.
 
 Se reemplaza el motor V1 basado en HTML + navegador headless (Playwright, SDD §14) por un **Compositor de Imágenes SVG dinámico** con salida PNG determinista.
+En la iteración actual se adopta un modelo híbrido: **imagen base PNG + capa de texto SVG**.
 
 ## 2. Objetivo (§14.b)
 Generar carteles **Pixel-Perfect** a partir de plantillas XML/SVG, eliminando dependencias de ejecución de Chromium/Playwright y reduciendo:
@@ -18,8 +19,8 @@ Generar carteles **Pixel-Perfect** a partir de plantillas XML/SVG, eliminando de
 flowchart TD
     A[n8n / MCP Request JSON] --> B[Renderer API /tools/render_lineup]
     B --> C[SVG Composer Engine]
-    C --> D[Load SVG Template + Local Assets]
-    D --> E[Inject Data by Coordinates x,y]
+    C --> D[Load Base Poster PNG + Local Font]
+    D --> E[Inject Text by Coordinates x,y]
     E --> F[Adaptive Layout Algorithm]
     F --> G[SVG Final]
     G --> H[CairoSVG: SVG to PNG]
@@ -50,11 +51,11 @@ Ejemplo de contrato interno de nodo de texto:
 {
   "id": "comic_1",
   "type": "text",
-  "x": 620,
+  "x": 540,
   "y": 470,
   "font_family": "BebasNeue",
   "font_size": 78,
-  "text_anchor": "start",
+  "text_anchor": "middle",
   "value": "ADA TORRES"
 }
 ```
@@ -72,7 +73,21 @@ Ruta obligatoria del MVP:
 /root/RECOVA/backend/assets/fonts/BebasNeue.ttf
 ```
 
-Invariante: si falta la fuente local requerida, el render debe abortar con error estructurado (`ERR_FONT_ASSET_MISSING`).
+Invariante: si falta la fuente local requerida (o el PNG base), el render debe abortar con error estructurado (`ERR_ASSET_MISSING`).
+
+### 4.4 Modelo Híbrido (Base Image + Text Overlay)
+- El `<svg>` debe abrir con una capa `<image>` de fondo:
+  - `href="data:image/png;base64,{...}"`
+  - `width="1080" height="1350"`
+- El PNG base se lee desde asset local (`base_poster.png`) y se serializa en Base64 antes de inyectarlo en el SVG.
+- La fuente TTF se embebe en `@font-face` como `data:font/ttf;base64,{...}` para evitar resolución por ruta en runtime.
+- Se eliminan las capas vectoriales de fondo decorativo (`<pattern>`, `<rect>`, `<polygon>`) del compositor.
+- El compositor queda como proyector de texto dinámico sobre el diseño base PNG.
+- Validación obligatoria de assets con `os.path.exists()`:
+  - fuente TTF,
+  - base poster PNG.
+- Si falta cualquiera, el engine debe fallar con `ERR_ASSET_MISSING`.
+- Optimización: el motor cachea el Base64 de PNG/fuente tras la primera lectura para no penalizar rendimiento por render repetido.
 
 ## 5. Algoritmo de Adaptabilidad
 
@@ -112,17 +127,16 @@ Invariante: `safe_zone_top <= y_center(i) <= safe_zone_bottom` para todo `i`.
 
 ## 6. Capas del Diseño (Layers)
 
-### Capa 0: Fondo
-- Color sólido base.
-- Patrón de puntos generado por código (no dependiente de imagen externa).
+### Capa 0: Imagen Base
+- Póster base raster (`base_poster.png`) con todo el diseño estático.
 
-### Capa 1: Elementos Gráficos
-- Ráfagas amarillas.
-- Silueta de micrófono (vector embebido o asset local SVG).
+### Capa 1: Reservada (sin composición SVG adicional)
+- En modo híbrido no se generan polígonos/patrones por código.
 
 ### Capa 2: Datos Dinámicos
 - Nombres de cómicos (obligatorio).
 - Instagrams (si el template activo los requiere).
+- Estilo mínimo de contraste: `fill: #ffffff`, `stroke: #000000`, `stroke-width: 2px`.
 
 ### Capa 3: Footer
 - Fecha del evento (ej. `event.date`).
@@ -167,7 +181,7 @@ sequenceDiagram
 Errores estructurados recomendados:
 
 - `ERR_CONTRACT_INVALID`
-- `ERR_FONT_ASSET_MISSING`
+- `ERR_ASSET_MISSING`
 - `ERR_SVG_TEMPLATE_NOT_FOUND`
 - `ERR_SVG_COMPOSITION_FAILED`
 - `ERR_RASTERIZATION_FAILED`
@@ -179,7 +193,7 @@ Errores estructurados recomendados:
 | Métricas tipográficas inconsistentes entre entornos | Alto | Media | Congelar fuentes `.ttf` locales + tests snapshot por plantilla |
 | Overflow de nombres largos | Medio | Alta | Clamping de `font_size`, truncado inteligente y tests de borde |
 | Desfase visual por cambios de template | Medio | Media | Versionado de plantilla (`template_id` + `version`) y pruebas golden PNG |
-| Falta de fuente local en despliegue | Alto | Baja | Validación de assets en arranque + `ERR_FONT_ASSET_MISSING` |
+| Falta de assets locales en despliegue (fuente/base poster) | Alto | Baja | Validación de assets en arranque + `ERR_ASSET_MISSING` |
 | Rendimiento en lotes altos | Medio | Media | Pool de workers + cache de template parseado + límites de concurrencia |
 | Divergencia con contrato V1 de n8n | Alto | Baja | Test de compatibilidad de payload V1 en CI |
 

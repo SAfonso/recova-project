@@ -2,6 +2,10 @@
 
 > Nota v0.5.57: se incorpora `backend/src/core/svg_composer.py` como núcleo del SDD v2 para composición vectorial pura (Safe Zone `Y=400..1100`), coexistiendo por ahora con el flujo Playwright actual.
 
+> Nota v0.5.58: el `SVGLineupComposer` pasa a modo híbrido de producción con `base_poster.png` como fondo y capa de texto SVG; el engine valida assets (`font` + `base image`) y falla con `ERR_ASSET_MISSING` si falta alguno.
+
+> Nota v0.5.59: el compositor SVG embebe `base_poster.png` y la fuente TTF como `data URI` en Base64 para que CairoSVG renderice de forma determinista sin depender de rutas `file://`.
+
 # API de producción: Render + Upload (Flask)
 
 ## Objetivo

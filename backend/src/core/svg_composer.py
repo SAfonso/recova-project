@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import base64
 from dataclasses import dataclass
+import os
 from pathlib import Path
 from typing import Any
 from xml.sax.saxutils import escape as xml_escape
@@ -10,21 +12,20 @@ from xml.sax.saxutils import escape as xml_escape
 
 CANVAS_WIDTH = 1080
 CANVAS_HEIGHT = 1350
-DEFAULT_BACKGROUND_COLOR = "#e61d2b"
 SAFE_ZONE_TOP_Y = 400
 SAFE_ZONE_BOTTOM_Y = 1100
 SAFE_ZONE_HEIGHT = SAFE_ZONE_BOTTOM_Y - SAFE_ZONE_TOP_Y
-LINEUP_X = 620
+LINEUP_X = 540
 
-HEADER_RECOVA_Y = 250
-HEADER_MIC_Y = 395
 FOOTER_DATE_Y = 1240
 FOOTER_EVENT_ID_Y = 1330
 
 FONT_BASE_SIZE = 84
 FONT_MIN_SIZE = 38
 FONT_MAX_SIZE = 96
-DEFAULT_FONT_ABSOLUTE_PATH = Path("/root/RECOVA/backend/assets/fonts/BebasNeue.ttf")
+FONT_ENV_VAR = "RECOVA_FONT_PATH"
+DEFAULT_FONT_RELATIVE_PATH = Path("backend/assets/fonts/BebasNeue.ttf")
+DEFAULT_BASE_POSTER_PATH = Path("/root/RECOVA/backend/assets/templates/base_poster.png")
 
 
 @dataclass(slots=True)
@@ -40,11 +41,63 @@ class NameLayout:
 class SVGLineupComposer:
     """Generate SVG posters and delegate PNG rasterization to CairoSVG."""
 
-    def __init__(self, font_path: Path | None = None) -> None:
-        self.font_path = font_path or DEFAULT_FONT_ABSOLUTE_PATH
+    def __init__(self, font_path: Path | None = None, base_image_path: Path | None = None) -> None:
+        self.font_path = self._resolve_font_path(font_path)
+        self.base_image_path = Path(base_image_path) if base_image_path else DEFAULT_BASE_POSTER_PATH
+        self._base_image_base64: str | None = None
+        self._font_base64: str | None = None
+
+    @staticmethod
+    def _resolve_font_path(font_path: Path | None) -> Path:
+        if font_path is not None:
+            return Path(font_path).expanduser()
+
+        env_font_path = os.getenv(FONT_ENV_VAR)
+        if env_font_path:
+            return Path(env_font_path).expanduser()
+
+        project_root = Path(__file__).resolve().parents[3]
+        candidates = (
+            project_root / DEFAULT_FONT_RELATIVE_PATH,
+            Path.cwd() / DEFAULT_FONT_RELATIVE_PATH,
+            Path.cwd() / "assets" / "fonts" / "BebasNeue.ttf",
+        )
+
+        for candidate in candidates:
+            try:
+                if candidate.is_file():
+                    return candidate
+            except OSError:
+                continue
+
+        # Last-resort reference: path relativa al repo para no acoplar entornos.
+        return project_root / DEFAULT_FONT_RELATIVE_PATH
+
+    def _validate_required_assets(self) -> None:
+        required_assets = (
+            ("font", self.font_path),
+            ("base_poster_png", self.base_image_path),
+        )
+        for asset_name, asset_path in required_assets:
+            if not os.path.exists(str(asset_path)):
+                raise RuntimeError(f"ERR_ASSET_MISSING: {asset_name} -> {asset_path}")
+
+    def _get_base64_image(self, path: Path) -> str:
+        with Path(path).open("rb") as file_obj:
+            return base64.b64encode(file_obj.read()).decode("utf-8")
+
+    def _get_base64_font(self, path: Path) -> str:
+        with Path(path).open("rb") as file_obj:
+            return base64.b64encode(file_obj.read()).decode("utf-8")
 
     def generate_poster(self, lineup: list[dict[str, Any]], date: str, event_id: str) -> str:
         """Build an SVG poster for the provided lineup and event metadata."""
+        self._validate_required_assets()
+        if self._base_image_base64 is None:
+            self._base_image_base64 = self._get_base64_image(self.base_image_path)
+        if self._font_base64 is None:
+            self._font_base64 = self._get_base64_font(self.font_path)
+
         safe_lineup = self._normalize_lineup(lineup)
         safe_date = xml_escape(str(date or "").strip() or "FECHA PENDIENTE")
         safe_event_id = xml_escape(str(event_id or "unknown-event"))
@@ -53,38 +106,30 @@ class SVGLineupComposer:
         names_svg = "\n".join(
             (
                 f'<text x="{item.x}" y="{item.y}" class="comic-name" '
-                f'font-size="{item.font_size}" dominant-baseline="middle">{xml_escape(item.text)}</text>'
+                f'font-size="{item.font_size}" dominant-baseline="middle" '
+                f'text-anchor="middle" textLength="900" lengthAdjust="spacingAndGlyphs">'
+                f"{xml_escape(item.text)}</text>"
             )
             for item in name_layout
         )
 
-        font_uri = f"file://{self.font_path}"
+        font_uri = f"data:font/ttf;base64,{self._font_base64}"
+        base_image_uri = f"data:image/png;base64,{self._base_image_base64}"
 
         return f"""<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{CANVAS_WIDTH}\" height=\"{CANVAS_HEIGHT}\" viewBox=\"0 0 {CANVAS_WIDTH} {CANVAS_HEIGHT}\" role=\"img\" aria-label=\"Cartel de lineup\">
+  <image href=\"{base_image_uri}\" x=\"0\" y=\"0\" width=\"{CANVAS_WIDTH}\" height=\"{CANVAS_HEIGHT}\" preserveAspectRatio=\"xMidYMid slice\"/>
   <defs>
-    <pattern id=\"halftone\" x=\"0\" y=\"0\" width=\"30\" height=\"30\" patternUnits=\"userSpaceOnUse\">
-      <circle cx=\"3\" cy=\"3\" r=\"3\" fill=\"#111111\" fill-opacity=\"0.45\"/>
-    </pattern>
     <style>
       @font-face {{
         font-family: 'Bebas Neue';
         src: url('{font_uri}') format('truetype');
       }}
-      .title {{
-        font-family: 'Bebas Neue', sans-serif;
-        font-size: 196px;
-        fill: #ffffff;
-        stroke: #111111;
-        stroke-width: 8;
-        paint-order: stroke;
-        letter-spacing: 2px;
-      }}
       .comic-name {{
         font-family: 'Bebas Neue', sans-serif;
         fill: #ffffff;
-        stroke: #111111;
-        stroke-width: 4;
+        stroke: #000000;
+        stroke-width: 2;
         paint-order: stroke;
         text-transform: uppercase;
       }}
@@ -92,8 +137,8 @@ class SVGLineupComposer:
         font-family: 'Bebas Neue', sans-serif;
         font-size: 150px;
         fill: #ffffff;
-        stroke: #111111;
-        stroke-width: 6;
+        stroke: #000000;
+        stroke-width: 2;
         paint-order: stroke;
       }}
       .event-id {{
@@ -105,24 +150,7 @@ class SVGLineupComposer:
     </style>
   </defs>
 
-  <!-- Layer 0: Background -->
-  <rect x=\"0\" y=\"0\" width=\"{CANVAS_WIDTH}\" height=\"{CANVAS_HEIGHT}\" fill=\"{DEFAULT_BACKGROUND_COLOR}\"/>
-  <rect x=\"0\" y=\"0\" width=\"{CANVAS_WIDTH}\" height=\"{CANVAS_HEIGHT}\" fill=\"url(#halftone)\"/>
-
-  <!-- Layer 1: Graphic elements -->
-  <polygon points=\"0,0 260,110 140,320 0,250\" fill=\"#fff200\"/>
-  <polygon points=\"1080,0 820,110 940,320 1080,250\" fill=\"#fff200\"/>
-  <polygon points=\"0,1350 220,1130 370,1350\" fill=\"#fff200\"/>
-  <polygon points=\"1080,1350 860,1130 710,1350\" fill=\"#fff200\"/>
-
-  <g transform=\"translate(160,430)\" fill=\"#111111\" fill-opacity=\"0.28\">
-    <rect x=\"0\" y=\"0\" width=\"90\" height=\"430\" rx=\"38\"/>
-    <rect x=\"20\" y=\"350\" width=\"50\" height=\"320\" rx=\"20\" transform=\"rotate(18 45 510)\"/>
-  </g>
-
   <!-- Layer 2: Data -->
-  <text x=\"120\" y=\"{HEADER_RECOVA_Y}\" class=\"title\">RECOVA</text>
-  <text x=\"200\" y=\"{HEADER_MIC_Y}\" class=\"title\">MIC</text>
   {names_svg}
 
   <!-- Layer 3: Footer -->

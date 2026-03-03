@@ -2,6 +2,10 @@
 
 > Nota v0.5.57: se añade `backend/src/core/svg_composer.py` como núcleo de composición SVG (SDD v2 §14.b), manteniendo en paralelo el flujo Playwright mientras se completa la migración.
 
+> Nota v0.5.58: el compositor SVG adopta modo híbrido (`base_poster.png` + capa de texto), elimina patrones/polígonos de fondo y valida assets críticos (`.ttf` y `.png`) con error `ERR_ASSET_MISSING`.
+
+> Nota v0.5.59: el compositor SVG embebe imagen base y fuente en Base64 (`data URI`) para evitar fallos de resolución `file://` en CairoSVG, con caché de lectura única por proceso.
+
 # MCP Agnostic Renderer: guía técnica de adopción
 
 ## Objetivo
