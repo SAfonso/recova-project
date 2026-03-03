@@ -1,3 +1,5 @@
+> Nota v0.5.56: la plantilla activa embebe el micrófono en SVG (sin URL externa), reduce tipografía de `.comico` a 60px, y `capture_screenshot` usa `goto(..., wait_until="networkidle")` + `await page.wait_for_timeout(2000)` con viewport 1080x1350 para evitar capturas incompletas.
+
 # API de producción: Render + Upload (Flask)
 
 ## Objetivo
