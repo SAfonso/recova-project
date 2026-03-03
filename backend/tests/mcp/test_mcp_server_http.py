@@ -164,8 +164,8 @@ async def test_render_lineup_http_500_on_engine_failure(
     response = await http_client.post("/tools/render_lineup", json=payload)
 
     assert response.status_code == 500
-    assert response.json()["error"] == "Render engine failed"
-    assert "browser crashed" in response.json()["details"]
+    assert response.json()["detail"]["error"] == "Render engine failed"
+    assert "browser crashed" in response.json()["detail"]["details"]
 
 
 async def test_render_invalid_payload(http_client: httpx.AsyncClient) -> None:

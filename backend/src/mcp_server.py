@@ -209,7 +209,7 @@ def _build_http_app():
     """Build HTTP server with REST endpoint for n8n and optional MCP streamable mount."""
     try:
         from fastapi import FastAPI, HTTPException, Request
-        from fastapi.responses import FileResponse, JSONResponse
+        from fastapi.responses import FileResponse
     except Exception:  # noqa: BLE001 - permite importar el módulo sin extras HTTP instalados.
         logger.warning("FastAPI no disponible; el servidor HTTP no puede inicializarse")
         return None
@@ -241,9 +241,9 @@ def _build_http_app():
         render_result = await orchestrate_render(payload)
 
         if render_result.get("status") != "success":
-            return JSONResponse(
+            raise HTTPException(
                 status_code=500,
-                content={
+                detail={
                     "error": "Render engine failed",
                     "details": render_result.get("trace", {}).get("recovery_notes")
                     or render_result.get("output", {}).get("message")
@@ -251,22 +251,21 @@ def _build_http_app():
                 },
             )
 
-        image_path = render_result.get("image_path") or render_result.get("output", {}).get("image_path")
-        if not image_path or not Path(image_path).exists():
-            return JSONResponse(
+        output_path = str(
+            render_result.get("image_path") or render_result.get("output", {}).get("image_path") or ""
+        )
+        if not output_path or not os.path.exists(output_path):
+            raise HTTPException(
                 status_code=500,
-                content={
-                    "error": "Render engine failed",
-                    "details": f"Rendered file not found: {image_path}",
-                },
+                detail="El archivo no se generó correctamente",
             )
 
         # NOTE: El artefacto en /tmp puede eliminarse tras el envío (background task/cron)
         # para evitar saturación de disco en VPS.
         return FileResponse(
-            path=image_path,
+            path=output_path,
             media_type="image/png",
-            filename=f"cartel_lineup_{_safe_event_slug(event_id)}.png",
+            filename="cartel.png",
         )
 
     try:
