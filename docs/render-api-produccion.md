@@ -71,8 +71,8 @@ Además del endpoint Flask histórico, el proyecto incorpora `backend/src/mcp_se
 - Transporte MCP streamable (si `mcp[http]` está disponible): `POST /mcp`
 
 ### Contrato de respuesta del endpoint MCP REST
-- Éxito: devuelve directamente el PNG renderizado como stream (`Content-Type: image/png`) usando `FileResponse`.
-- Error de motor de render: devuelve `HTTP 500` con JSON:
+- Éxito: devuelve directamente el PNG renderizado como stream (`Content-Type: image/png`) usando `FileResponse(path=output_path, media_type="image/png", filename="cartel.png")`.
+- Error de motor de render: devuelve `HTTP 500` con `detail` JSON:
 
 ```json
 {
@@ -80,6 +80,8 @@ Además del endpoint Flask histórico, el proyecto incorpora `backend/src/mcp_se
   "details": "..."
 }
 ```
+
+- Si el archivo no existe tras el render, responde `HTTP 500` con `detail: "El archivo no se generó correctamente"`.
 
 Nota operativa: el artefacto físico en `/tmp` puede limpiarse tras la respuesta (background task o limpieza periódica) para evitar saturación del disco del VPS.
 

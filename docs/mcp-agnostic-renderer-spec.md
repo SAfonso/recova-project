@@ -21,8 +21,9 @@ La operación en VPS expone `backend/src/mcp_server.py` en modo HTTP en `127.0.0
 
 ### Respuesta HTTP para n8n
 
-- `POST /tools/render_lineup` devuelve el cartel como binario (`image/png`) mediante streaming (`FileResponse`) cuando el render es exitoso.
+- `POST /tools/render_lineup` devuelve el cartel como binario (`image/png`) mediante streaming (`FileResponse`) cuando el render es exitoso (`filename="cartel.png"`).
 - Si el motor falla, responde `HTTP 500` con JSON `{ "error": "Render engine failed", "details": "..." }`.
+- Si el artefacto de salida no existe tras el render, responde `HTTP 500` con `detail: "El archivo no se generó correctamente"`.
 - El contrato JSON rico (`status/output/trace`) se mantiene en la orquestación interna (`orchestrate_render`) y en la integración MCP de servidor, pero el endpoint REST para n8n prioriza entrega directa del artefacto.
 
 ## Qué cambia para integraciones

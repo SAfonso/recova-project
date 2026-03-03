@@ -1,3 +1,15 @@
+## [0.5.52] - 2026-03-03
+
+### Changed
+- `backend/src/mcp_server.py` alinea `POST /tools/render_lineup` al contrato de streaming directo para n8n/Telegram: elimina respuesta JSON de éxito y entrega bytes PNG con `FileResponse(path=output_path, media_type="image/png", filename="cartel.png")`.
+- `backend/src/mcp_server.py` añade validación previa de archivo generado con `os.path.exists(output_path)` y error `HTTP 500` (`detail="El archivo no se generó correctamente"`) cuando falta el artefacto.
+- `backend/src/mcp_server.py` mantiene fallo de motor como `HTTP 500` con detalle estructurado para diagnóstico operativo.
+- `backend/tests/mcp/test_mcp_server_http.py` ajusta aserciones del error 500 al formato `HTTPException` (`response.json()["detail"]`).
+- `README.md`, `docs/render-api-produccion.md` y `docs/mcp-agnostic-renderer-spec.md` actualizan contrato del endpoint MCP REST en modo streaming.
+
+### Versioning
+- Bump de versión a `0.5.52` en `package.json`, `pyproject.toml` y `README.md`.
+
 ## [0.5.51] - 2026-03-03
 
 ### Changed
