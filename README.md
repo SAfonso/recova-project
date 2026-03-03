@@ -1,14 +1,19 @@
 # AI LineUp Architect 🎭
 
 **Estado del Proyecto:** 🛠️ En desarrollo activo
-**Versión:** `0.5.54`
+**Versión:** `0.5.56`
 **Metodología:** Spec-Driven Development (SDD)
 
 Sistema para ingesta, curación y generación automática de cartel de Open Mics, con trazabilidad completa desde formularios hasta artefacto final publicado.
 
-## 1. Fuente de verdad técnica (v0.5.54)
+## 1. Fuente de verdad técnica (v0.5.56)
 
 En esta versión se consolidan los siguientes cambios estructurales:
+
+- **Plantilla activa ajustada para lineup completo (5 artistas):** `backend/src/templates/catalog/active/template.html` cambia `.lineup` a `height: auto` y reduce `.comico` a `font-size: 60px` para mejorar encaje vertical del cartel.
+- **Micro embebido sin dependencia externa:** la silueta del micrófono deja de cargar una URL remota y usa un SVG embebido (`data:image/svg+xml`) para evitar fallos por recursos caídos/bloqueados.
+- **Sincronización de captura más robusta en Playwright:** `backend/src/core/render.py` navega con `wait_until="networkidle"` sobre `file://...`, mantiene señal de `window.renderReady` y añade `await page.wait_for_timeout(2000)` previo al screenshot para asegurar el pintado final de fondo/micrófono.
+- **Viewport fijado al canvas del diseño:** `capture_screenshot(...)` mantiene el viewport explícito `1080x1350` alineado al CSS del template.
 
 - **Render Jinja2 previo a Playwright en MCP:** `backend/src/mcp_server.py` ahora procesa `template.html` con `jinja2.Environment` antes de capturar screenshot, inyectando `lineup`, `event_id` y fecha (`date`/`event.date`/`metadata.date_text`) directamente en el HTML final.
 - **Sin dependencia de Data Binder en servidor MCP:** se elimina `generate_injection_js` del flujo `orchestrate_render -> execute_render`; Playwright recibe HTML ya expandido y solo sincroniza captura con `window.renderReady = true`.

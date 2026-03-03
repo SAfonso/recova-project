@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 
 from playwright.async_api import async_playwright
@@ -18,12 +19,17 @@ async def capture_screenshot(html_path: Path, injection_js: str, output_path: Pa
             browser = await playwright.chromium.launch(
                 args=["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
             )
-            context = await browser.new_context(viewport={"width": 1080, "height": 1350})
+            context = await browser.new_context()
             page = await context.new_page()
 
-            await page.goto(html_path.resolve().as_uri())
+            await page.goto(
+                f"file://{html_path}",
+                wait_until="load",
+            )
+            await page.set_viewport_size({"width": 1080, "height": 1350})
             await page.add_script_tag(content=injection_js)
             await page.wait_for_function("window.renderReady === true")
+            await asyncio.sleep(0.5)
 
             output_path.parent.mkdir(parents=True, exist_ok=True)
             await page.screenshot(path=str(output_path), full_page=True)
