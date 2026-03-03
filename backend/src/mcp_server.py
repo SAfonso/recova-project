@@ -10,9 +10,11 @@ import asyncio
 import logging
 import os
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 from typing import Any
 
-from backend.src.core.data_binder import generate_injection_js
+from jinja2 import Environment, FileSystemLoader, select_autoescape
+
 from backend.src.core.render import capture_screenshot
 from backend.src.core.security import validate_reference_image
 
@@ -70,7 +72,6 @@ def _safe_event_slug(event_id: str) -> str:
 async def execute_render(
     *,
     payload: dict[str, Any],
-    injection_script: str,
     browser_context: Any | None = None,
 ) -> dict[str, Any]:
     """Run rendering flow and return a structured success payload."""
@@ -91,12 +92,49 @@ async def execute_render(
     if not template_html.exists():
         raise FileNotFoundError(f"Template HTML not found: {template_html}")
 
-    screenshot_path = Path("/tmp") / f"render_{_safe_event_slug(event_id)}.png"
-    success = await capture_screenshot(
-        html_path=template_html,
-        injection_js=injection_script,
-        output_path=screenshot_path,
+    metadata = payload.get("metadata", {})
+    event_payload = payload.get("event", {})
+    date_text = (
+        payload.get("date")
+        or event_payload.get("date")
+        or metadata.get("date")
+        or metadata.get("date_text")
+        or event_id
     )
+    template_env = Environment(
+        loader=FileSystemLoader(str(template_html.parent)),
+        autoescape=select_autoescape(["html", "xml"]),
+    )
+    template = template_env.get_template(template_html.name)
+    rendered_html = template.render(
+        lineup=payload.get("lineup", []),
+        event_id=event_id,
+        date=date_text,
+        event={"id": event_id, "date": date_text},
+    )
+
+    screenshot_path = Path("/tmp") / f"render_{_safe_event_slug(event_id)}.png"
+    temp_html_path: Path | None = None
+    try:
+        with NamedTemporaryFile(
+            mode="w",
+            suffix=".html",
+            prefix=f"render_{_safe_event_slug(event_id)}_",
+            delete=False,
+            encoding="utf-8",
+        ) as temp_file:
+            temp_file.write(rendered_html)
+            temp_html_path = Path(temp_file.name)
+
+        success = await capture_screenshot(
+            html_path=temp_html_path,
+            injection_js="window.renderReady = true;",
+            output_path=screenshot_path,
+        )
+    finally:
+        if temp_html_path is not None:
+            temp_html_path.unlink(missing_ok=True)
+
     if not success:
         raise RuntimeError("Playwright render execution failed")
 
@@ -132,6 +170,9 @@ async def orchestrate_render(payload: dict[str, Any], workdir: Path | None = Non
     safe_payload = {
         "event_id": event_id,
         "lineup": payload.get("lineup", []),
+        "date": payload.get("date"),
+        "event": payload.get("event", {}),
+        "metadata": payload.get("metadata", {}),
         "intent": {
             "template_id": payload.get("intent", {}).get("template_id", "active"),
             "reference_image_url": payload.get("intent", {}).get("reference_image_url"),
@@ -150,11 +191,9 @@ async def orchestrate_render(payload: dict[str, Any], workdir: Path | None = Non
                 f"({security_result.get('error_code', 'UNKNOWN_ERROR')})"
             )
 
-    injection_script = generate_injection_js(safe_payload.get("lineup", []))
-
     async with render_lock:
         try:
-            render_result = await execute_render(payload=safe_payload, injection_script=injection_script)
+            render_result = await execute_render(payload=safe_payload)
             merged_trace = {**trace, **render_result.get("trace", {})}
             if trace.get("warnings"):
                 existing = list(merged_trace.get("warnings", []))

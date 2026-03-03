@@ -22,13 +22,13 @@ La API valida antes de renderizar:
 
 ## Flujo de ejecución
 1. Recibe JSON y valida el contrato.
-2. Genera `injection_js` con el Data Binder y delega la captura a `capture_screenshot(...)` en `backend/src/core/render.py` (único punto Playwright).
-   - El Data Binder reemplaza placeholders literales de plantilla (`{{ ... }}` / `{% ... %}`) y aplica binding por selectores (`.slot-n .name` y `.lineup .comico`) antes de la captura.
-3. El renderer:
+2. Renderiza `template.html` con Jinja2 en `backend/src/mcp_server.py` usando datos del payload (`lineup`, `event_id`, `date/event.date/metadata.date_text`) y escribe el HTML expandido en un archivo temporal.
+3. Delega la captura a `capture_screenshot(...)` en `backend/src/core/render.py` (único punto Playwright), pasando el HTML ya procesado y un script mínimo de sincronización (`window.renderReady = true;`).
+4. El renderer:
    - genera HTML desde `backend/src/templates/lineup_v1.html`,
    - captura PNG,
    - sube a bucket `posters` en Supabase.
-4. La API devuelve:
+5. La API devuelve:
    - `public_url` para consumo directo,
    - objeto `mcp` con el contrato rico de salida (storage/artifact/timing/meta).
 
@@ -89,7 +89,11 @@ Nota operativa: el artefacto físico en `/tmp` puede limpiarse tras la respuesta
 ### Logging de tráfico
 Cada request HTTP registra `path` y `event_id` en `backend/logs/mcp_render.log` para auditoría operativa.
 
-### Cierre seguro de Playwright
+### Render Jinja2 previo a Playwright
+
+El servidor MCP elimina la dependencia de `backend/src/core/data_binder.py` para inyección de lineup en este flujo. La expansión de bucles `{% for ... %}` y variables `{{ ... }}` ocurre en backend con Jinja2 antes de abrir Chromium, evitando que la imagen final contenga placeholders sin resolver.
+
+## Cierre seguro de Playwright
 El flujo de render cierra `BrowserContext` y `Browser` en bloque `finally`, evitando procesos zombie de Chromium en el VPS.
 
 ### PM2 recomendado
