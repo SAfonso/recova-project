@@ -66,11 +66,10 @@ Para evitar fallos de red/CDN:
 - no se permite Google Fonts en runtime,
 - fuente objetivo MVP: **Bebas Neue** local.
 
-Estructura recomendada:
+Ruta obligatoria del MVP:
 
 ```text
-backend/src/templates/catalog/active/assets/fonts/
-  BebasNeue-Regular.ttf
+/root/RECOVA/backend/assets/fonts/BebasNeue.ttf
 ```
 
 Invariante: si falta la fuente local requerida, el render debe abortar con error estructurado (`ERR_FONT_ASSET_MISSING`).
@@ -81,28 +80,31 @@ Entrada: `lineup` (array de cómicos) con `n = len(lineup)`.
 
 ### 5.1 Reglas Base
 - `1 <= n <= 8`.
-- El bloque de nombres debe quedar visualmente centrado verticalmente.
+- **Safe Zone obligatoria del lineup:** `Y=400` (top) a `Y=1100` (bottom).
+- El bloque de nombres debe quedar visualmente centrado dentro de esa Safe Zone.
 
 ### 5.2 Cálculo de `font_size`
-Definición recomendada por tramos:
+Definición de referencia para V2:
 
-- `n <= 3` -> `font_size = 88`
-- `n in [4,5]` -> `font_size = 72`
-- `n in [6,8]` -> `font_size = 60`
+- `font_size_base = 84`.
+- Si `n <= 5`: usar `min(font_size_base, max_font_for_slot)`.
+- Si `n > 5`: usar reducción proporcional `font_size = font_size_base * (5 / n)`, acotada por `max_font_for_slot`.
 
-Clamping adicional: `font_size_min = 42`.
+Clamping adicional recomendado: `font_size_min = 38`, `font_size_max = 96`.
 
 ### 5.3 Cálculo de espaciado y `y_offset`
 Variables:
 
-- `line_height = font_size * 1.05`
-- `gap = max(10, round(font_size * 0.20))`
-- `block_height = n * line_height + (n - 1) * gap`
-- `y_start = round((canvas_height - block_height) / 2)`
+- `safe_zone_top = 400`
+- `safe_zone_bottom = 1100`
+- `safe_zone_height = safe_zone_bottom - safe_zone_top = 700`
+- `slot_height = safe_zone_height / n`
 
 Para cada cómico `i` (0-index):
 
-- `y_offset(i) = y_start + i * (line_height + gap)`
+- `y_center(i) = safe_zone_top + slot_height * (i + 0.5)`
+
+Invariante: `safe_zone_top <= y_center(i) <= safe_zone_bottom` para todo `i`.
 
 ### 5.4 Normalización de Texto
 - `name`: trim + uppercase para estilo cartel.
