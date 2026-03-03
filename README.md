@@ -363,4 +363,4 @@ playwright install-deps
 
 ---
 
-Este README define el estado operativo objetivo de la versión `0.5.54` y debe tratarse como referencia principal para decisiones de implementación y despliegue.
+Este README define el estado operativo objetivo de la versión `0.5.56` y debe tratarse como referencia principal para decisiones de implementación y despliegue.
