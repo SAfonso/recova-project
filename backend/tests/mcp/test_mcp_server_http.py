@@ -78,10 +78,8 @@ async def test_render_lineup_endpoint(
     response = await http_client.post("/tools/render_lineup", json=payload)
 
     assert response.status_code == 200
-    body = response.json()
-    assert body["status"] == "success"
-    assert body["image_path"]
-    assert Path(body["image_path"]).exists()
+    assert response.headers["content-type"].startswith("image/png")
+    assert response.content.startswith(b"\x89PNG\r\n\x1a\n")
 
 
 async def test_mcp_lock_concurrency(
@@ -129,14 +127,45 @@ async def test_mcp_lock_concurrency(
 
     assert response_a.status_code == 200
     assert response_b.status_code == 200
-    assert response_a.json()["status"] == "success"
-    assert response_b.json()["status"] == "success"
+    assert response_a.headers["content-type"].startswith("image/png")
+    assert response_b.headers["content-type"].startswith("image/png")
+    assert response_a.content.startswith(b"\x89PNG\r\n\x1a\n")
+    assert response_b.content.startswith(b"\x89PNG\r\n\x1a\n")
     assert order == [
         "start:qa-concurrency-a",
         "end:qa-concurrency-a",
         "start:qa-concurrency-b",
         "end:qa-concurrency-b",
     ]
+
+
+async def test_render_lineup_http_500_on_engine_failure(
+    http_client: httpx.AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fake_orchestrate(payload: dict, workdir: Path | None = None) -> dict:
+        del payload, workdir
+        return {
+            "status": "error",
+            "event_id": "qa-error",
+            "image_path": None,
+            "output": {"message": "Playwright render execution failed"},
+            "trace": {"recovery_notes": "browser crashed"},
+        }
+
+    monkeypatch.setattr(mcp_server, "orchestrate_render", fake_orchestrate)
+
+    payload = {
+        "event_id": "qa-event-http-error",
+        "lineup": [{"name": "Ada Torres", "instagram": "adatorres"}],
+        "intent": {"template_id": "active", "reference_image_url": None},
+    }
+
+    response = await http_client.post("/tools/render_lineup", json=payload)
+
+    assert response.status_code == 500
+    assert response.json()["error"] == "Render engine failed"
+    assert "browser crashed" in response.json()["details"]
 
 
 async def test_render_invalid_payload(http_client: httpx.AsyncClient) -> None:

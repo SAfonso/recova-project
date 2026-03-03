@@ -1,14 +1,18 @@
 # AI LineUp Architect 🎭
 
 **Estado del Proyecto:** 🛠️ En desarrollo activo
-**Versión:** `0.5.50`
+**Versión:** `0.5.51`
 **Metodología:** Spec-Driven Development (SDD)
 
 Sistema para ingesta, curación y generación automática de cartel de Open Mics, con trazabilidad completa desde formularios hasta artefacto final publicado.
 
-## 1. Fuente de verdad técnica (v0.5.50)
+## 1. Fuente de verdad técnica (v0.5.51)
 
 En esta versión se consolidan los siguientes cambios estructurales:
+
+- **Entrega de PNG por streaming en MCP HTTP:** `POST /tools/render_lineup` (FastAPI) devuelve ahora el archivo renderizado directamente como `image/png` mediante `FileResponse`, evitando dependencias de visibilidad de rutas `/tmp` entre contenedores.
+- **Contrato de error explícito para motor de render:** cuando el render falla, el endpoint responde `HTTP 500` con JSON `{"error":"Render engine failed","details":"..."}` para diagnóstico en n8n.
+- **Cobertura HTTP ajustada al nuevo contrato binario:** `backend/tests/mcp/test_mcp_server_http.py` valida cabecera `image/png`, firma PNG y ruta de error 500 con payload de detalles.
 
 - **Refactor visual de curación con UI v0 (sin migración de framework):** `frontend/src/App.jsx` mantiene la lógica de negocio actual (`fetchCandidates`, `updateDraft`, `toggleSelected`, `validateLineup`, Supabase RPC y webhook n8n) y extrae la capa de interfaz en componentes `jsx` dentro de `frontend/src/components/open-mic/` con estilo notebook/cartoon.
 - **Notas de recuperación SDD en validación:** la validación del lineup añade `trace.recovery_notes` en el payload enviado a n8n, alimentado desde nuevo campo `textarea` de curación.
@@ -344,4 +348,4 @@ playwright install-deps
 
 ---
 
-Este README define el estado operativo objetivo de la versión `0.5.50` y debe tratarse como referencia principal para decisiones de implementación y despliegue.
+Este README define el estado operativo objetivo de la versión `0.5.51` y debe tratarse como referencia principal para decisiones de implementación y despliegue.

@@ -1,3 +1,15 @@
+## [0.5.51] - 2026-03-03
+
+### Changed
+- `backend/src/mcp_server.py` cambia la respuesta de `POST /tools/render_lineup` para devolver el PNG generado como stream binario (`FileResponse`, `media_type=image/png`) con filename descriptivo, evitando depender de rutas de archivo visibles fuera del contenedor.
+- `backend/src/mcp_server.py` incorpora manejo explícito de fallo de render con `HTTP 500` y JSON estructurado `{ "error": "Render engine failed", "details": ... }`.
+- `backend/src/mcp_server.py` documenta nota operativa de limpieza de artefactos en `/tmp` tras entrega del fichero.
+- `backend/tests/mcp/test_mcp_server_http.py` actualiza aserciones al contrato binario (`image/png`, firma PNG) y añade prueba de error 500.
+- `README.md`, `docs/render-api-produccion.md` y `docs/mcp-agnostic-renderer-spec.md` actualizan la documentación del endpoint MCP HTTP en modo streaming.
+
+### Versioning
+- Bump de versión a `0.5.51` en `package.json`, `pyproject.toml` y `README.md`.
+
 ## [0.5.50] - 2026-03-02
 
 ### Added

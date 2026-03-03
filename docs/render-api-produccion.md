@@ -70,6 +70,19 @@ Además del endpoint Flask histórico, el proyecto incorpora `backend/src/mcp_se
 - Healthcheck: `GET /healthz`
 - Transporte MCP streamable (si `mcp[http]` está disponible): `POST /mcp`
 
+### Contrato de respuesta del endpoint MCP REST
+- Éxito: devuelve directamente el PNG renderizado como stream (`Content-Type: image/png`) usando `FileResponse`.
+- Error de motor de render: devuelve `HTTP 500` con JSON:
+
+```json
+{
+  "error": "Render engine failed",
+  "details": "..."
+}
+```
+
+Nota operativa: el artefacto físico en `/tmp` puede limpiarse tras la respuesta (background task o limpieza periódica) para evitar saturación del disco del VPS.
+
 ### Logging de tráfico
 Cada request HTTP registra `path` y `event_id` en `backend/logs/mcp_render.log` para auditoría operativa.
 
