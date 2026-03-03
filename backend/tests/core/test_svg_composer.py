@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
+
+import pytest
 
 from backend.src.core.svg_composer import (
     FOOTER_DATE_Y,
-    HEADER_MIC_Y,
-    HEADER_RECOVA_Y,
     SAFE_ZONE_BOTTOM_Y,
     SAFE_ZONE_TOP_Y,
     SVGLineupComposer,
@@ -13,7 +14,7 @@ from backend.src.core.svg_composer import (
 
 
 def _extract_y_values(svg: str) -> list[int]:
-    y_matches = re.findall(r'<text x="620" y="(\d+)" class="comic-name"', svg)
+    y_matches = re.findall(r'<text x="540" y="(\d+)" class="comic-name"', svg)
     return [int(value) for value in y_matches]
 
 
@@ -22,8 +23,16 @@ def _extract_font_sizes(svg: str) -> list[int]:
     return [int(value) for value in size_matches]
 
 
-def test_generate_poster_includes_required_layers_and_assets() -> None:
-    composer = SVGLineupComposer()
+def _build_composer(tmp_path: Path) -> SVGLineupComposer:
+    font_path = tmp_path / "BebasNeue.ttf"
+    base_image_path = tmp_path / "base_poster.png"
+    font_path.write_bytes(b"fake-font")
+    base_image_path.write_bytes(b"fake-png")
+    return SVGLineupComposer(font_path=font_path, base_image_path=base_image_path)
+
+
+def test_generate_poster_includes_required_layers_and_assets(tmp_path: Path) -> None:
+    composer = _build_composer(tmp_path)
     svg = composer.generate_poster(
         lineup=[{"name": "Ada Torres"}, {"name": "Bruno Gil"}],
         date="2026-03-10",
@@ -31,21 +40,24 @@ def test_generate_poster_includes_required_layers_and_assets() -> None:
     )
 
     assert 'width="1080" height="1350"' in svg
-    assert 'fill="#e61d2b"' in svg
-    assert '<pattern id="halftone"' in svg
-    assert '<polygon points="0,0 260,110 140,320 0,250"' in svg
-    assert '<polygon points="1080,0 820,110 940,320 1080,250"' in svg
-    assert "/root/RECOVA/backend/assets/fonts/BebasNeue.ttf" in svg
+    assert '<image href="data:image/png;base64,' in svg
+    assert '<pattern id="halftone"' not in svg
+    assert "<polygon" not in svg
+    assert '<rect x="0" y="0"' not in svg
+    assert "data:font/ttf;base64," in svg
+    assert "file://" not in svg
     assert "ADA TORRES" in svg
     assert "BRUNO GIL" in svg
+    assert 'text-anchor="middle"' in svg
+    assert 'textLength="900"' in svg
+    assert 'lengthAdjust="spacingAndGlyphs"' in svg
+    assert "stroke-width: 2;" in svg
     assert "2026-03-10" in svg
-    assert f'y="{HEADER_RECOVA_Y}" class="title"' in svg
-    assert f'y="{HEADER_MIC_Y}" class="title"' in svg
     assert f'y="{FOOTER_DATE_Y}" class="footer-date"' in svg
 
 
-def test_layout_spacing_is_larger_for_three_than_six_names() -> None:
-    composer = SVGLineupComposer()
+def test_layout_spacing_is_larger_for_three_than_six_names(tmp_path: Path) -> None:
+    composer = _build_composer(tmp_path)
 
     svg_three = composer.generate_poster(
         lineup=[{"name": "A"}, {"name": "B"}, {"name": "C"}],
@@ -77,8 +89,8 @@ def test_layout_spacing_is_larger_for_three_than_six_names() -> None:
     assert gap_three > gap_six
 
 
-def test_lineup_fallback_when_empty_or_invalid() -> None:
-    composer = SVGLineupComposer()
+def test_lineup_fallback_when_empty_or_invalid(tmp_path: Path) -> None:
+    composer = _build_composer(tmp_path)
 
     svg_empty = composer.generate_poster(lineup=[], date="2026-03-10", event_id="evt-empty")
     svg_invalid = composer.generate_poster(lineup="invalid", date="2026-03-10", event_id="evt-invalid")
@@ -87,8 +99,8 @@ def test_lineup_fallback_when_empty_or_invalid() -> None:
     assert "LINEUP PENDIENTE" in svg_invalid
 
 
-def test_all_comic_y_positions_stay_inside_safe_zone() -> None:
-    composer = SVGLineupComposer()
+def test_all_comic_y_positions_stay_inside_safe_zone(tmp_path: Path) -> None:
+    composer = _build_composer(tmp_path)
     svg = composer.generate_poster(
         lineup=[
             {"name": "A"},
@@ -110,8 +122,8 @@ def test_all_comic_y_positions_stay_inside_safe_zone() -> None:
     assert max(y_values) <= SAFE_ZONE_BOTTOM_Y
 
 
-def test_font_size_reduces_when_count_above_five() -> None:
-    composer = SVGLineupComposer()
+def test_font_size_reduces_when_count_above_five(tmp_path: Path) -> None:
+    composer = _build_composer(tmp_path)
 
     svg_five = composer.generate_poster(
         lineup=[{"name": "A"}, {"name": "B"}, {"name": "C"}, {"name": "D"}, {"name": "E"}],
@@ -127,3 +139,52 @@ def test_font_size_reduces_when_count_above_five() -> None:
     font_size_five = _extract_font_sizes(svg_five)[0]
     font_size_six = _extract_font_sizes(svg_six)[0]
     assert font_size_six < font_size_five
+
+
+def test_raise_err_asset_missing_when_required_assets_are_absent(tmp_path: Path) -> None:
+    missing_font = tmp_path / "missing_font.ttf"
+    missing_base = tmp_path / "missing_base_poster.png"
+    composer = SVGLineupComposer(font_path=missing_font, base_image_path=missing_base)
+
+    with pytest.raises(RuntimeError, match="ERR_ASSET_MISSING"):
+        composer.generate_poster(
+            lineup=[{"name": "Ada Torres"}],
+            date="2026-03-10",
+            event_id="evt-missing-assets",
+        )
+
+
+def test_assets_are_base64_cached_after_first_generation(tmp_path: Path) -> None:
+    composer = _build_composer(tmp_path)
+    image_reads = 0
+    font_reads = 0
+
+    original_get_image = composer._get_base64_image
+    original_get_font = composer._get_base64_font
+
+    def counting_image(path: Path) -> str:
+        nonlocal image_reads
+        image_reads += 1
+        return original_get_image(path)
+
+    def counting_font(path: Path) -> str:
+        nonlocal font_reads
+        font_reads += 1
+        return original_get_font(path)
+
+    composer._get_base64_image = counting_image
+    composer._get_base64_font = counting_font
+
+    composer.generate_poster(
+        lineup=[{"name": "Ada Torres"}, {"name": "Bruno Gil"}],
+        date="2026-03-10",
+        event_id="evt-cache-1",
+    )
+    composer.generate_poster(
+        lineup=[{"name": "Ada Torres"}, {"name": "Bruno Gil"}],
+        date="2026-03-11",
+        event_id="evt-cache-2",
+    )
+
+    assert image_reads == 1
+    assert font_reads == 1

@@ -1,3 +1,29 @@
+## [0.5.59] - 2026-03-03
+
+### Changed
+- `backend/src/core/svg_composer.py` añade `_get_base64_image(...)` para serializar el `base_poster.png` y embeberlo como `data:image/png;base64,...` en la etiqueta `<image>`, evitando fallos de resolución `file://` en CairoSVG.
+- `backend/src/core/svg_composer.py` embebe también la fuente TTF en `@font-face` como `data:font/ttf;base64,...`, eliminando dependencia de rutas absolutas para rasterización.
+- `backend/src/core/svg_composer.py` incorpora caché de assets (`_base_image_base64`, `_font_base64`) para asegurar lectura única desde disco tras la primera generación.
+- `backend/tests/core/test_svg_composer.py` actualiza aserciones al contrato Base64 embebido y añade prueba de caché para confirmar una sola lectura de imagen/fuente.
+- `README.md`, `docs/sdd_v2_svg_renderer.md`, `docs/mcp-agnostic-renderer-spec.md` y `docs/render-api-produccion.md` documentan el modo embebido Base64 y su motivación operativa.
+
+### Versioning
+- Bump de versión a `0.5.59` en `package.json`, `pyproject.toml` y `README.md`.
+
+## [0.5.58] - 2026-03-03
+
+### Changed
+- `backend/src/core/svg_composer.py` migra al modelo híbrido SDD v2 (`base_poster.png` + capa de texto SVG), manteniendo intacta la Safe Zone de lineup (`Y=400..1100`) y el algoritmo adaptativo de `font_size`/`y_center`.
+- `backend/src/core/svg_composer.py` elimina composición de fondo por `<pattern>/<rect>/<polygon>` e inyecta la imagen base `file:///root/RECOVA/backend/assets/templates/base_poster.png` como primera capa del SVG.
+- `backend/src/core/svg_composer.py` endurece validación de assets críticos con `os.path.exists()` para fuente `.ttf` y PNG base; cuando falta alguno lanza `ERR_ASSET_MISSING`.
+- `backend/src/core/svg_composer.py` ajusta capa de texto dinámica para overlay con `fill: #ffffff`, `stroke: #000000` y `stroke-width: 2`.
+- `backend/tests/core/test_svg_composer.py` se actualiza al nuevo contrato híbrido y añade cobertura explícita para `ERR_ASSET_MISSING`.
+- `tests/test_svg_spect.py` resuelve también `base_poster.png` y pasa ambos assets (`font_path`, `base_image_path`) al compositor en ejecución local.
+- `README.md`, `docs/sdd_v2_svg_renderer.md`, `docs/mcp-agnostic-renderer-spec.md` y `docs/render-api-produccion.md` documentan el modelo híbrido y la validación de assets.
+
+### Versioning
+- Bump de versión a `0.5.58` en `package.json`, `pyproject.toml` y `README.md`.
+
 ## [0.5.57] - 2026-03-03
 
 ### Added

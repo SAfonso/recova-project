@@ -1,19 +1,21 @@
 # AI LineUp Architect 🎭
 
 **Estado del Proyecto:** 🛠️ En desarrollo activo
-**Versión:** `0.5.57`
+**Versión:** `0.5.59`
 **Metodología:** Spec-Driven Development (SDD)
 
 Sistema para ingesta, curación y generación automática de cartel de Open Mics, con trazabilidad completa desde formularios hasta artefacto final publicado.
 
-## 1. Fuente de verdad técnica (v0.5.57)
+## 1. Fuente de verdad técnica (v0.5.59)
 
 En esta versión se consolidan los siguientes cambios estructurales:
 
 - **Nuevo compositor vectorial SVG (SDD v2):** se añade `backend/src/core/svg_composer.py` con clase `SVGLineupComposer` y función `export_to_png(...)` para generar carteles sin dependencia de navegador headless.
 - **Safe Zone de lineup implementada en motor SVG:** distribución dinámica de nombres dentro del rango vertical `Y=400..1100`, con reducción proporcional de `font-size` cuando `N > 5`.
-- **Capas de diseño declarativas en SVG:** fondo rojo con patrón de puntos, ráfagas laterales por `<polygon>`, capa de datos y footer en coordenadas fijas para proteger header/footer.
-- **Fuente local absoluta para render estable:** referencia a `file:///root/RECOVA/backend/assets/fonts/BebasNeue.ttf` en `@font-face`, evitando fallos de red/CDN.
+- **Modelo híbrido SVG v2:** `backend/src/core/svg_composer.py` reemplaza capas vectoriales de fondo por `<image href="data:image/png;base64,...">` y mantiene solo capa dinámica de texto sobre diseño base.
+- **Validación estricta de assets del compositor:** antes de generar SVG se verifica con `os.path.exists()` la presencia de fuente `.ttf` y póster base `.png`; ante ausencia se lanza `ERR_ASSET_MISSING`.
+- **Estilo de texto optimizado para overlay:** la capa de datos usa `fill: #ffffff` y `stroke: #000000` con grosor fino (`2px`) para legibilidad sin destruir el diseño base.
+- **Assets embebidos para CairoSVG robusto:** imagen base y fuente se serializan en Base64 (`data URI`) y se cachean tras la primera lectura para evitar dependencias de resolución `file://`.
 - **Cobertura QA del compositor:** nueva suite `backend/tests/core/test_svg_composer.py` valida patrón/layers, límites Safe Zone y adaptabilidad tipográfica.
 
 - **Plantilla activa ajustada para lineup completo (5 artistas):** `backend/src/templates/catalog/active/template.html` cambia `.lineup` a `height: auto` y reduce `.comico` a `font-size: 60px` para mejorar encaje vertical del cartel.
@@ -232,8 +234,10 @@ playwright install-deps
 │   └── .gitkeep
 ├── backend/
 │   ├── assets/
-│   │   └── fonts/
-│   │       └── BebasNeue.ttf
+│   │   ├── fonts/
+│   │   │   └── BebasNeue.ttf
+│   │   └── templates/
+│   │       └── base_poster.png
 │   ├── database/
 │   │   └── setup_frontend_logic.sql
 │   ├── src/
@@ -376,4 +380,4 @@ playwright install-deps
 
 ---
 
-Este README define el estado operativo objetivo de la versión `0.5.57` y debe tratarse como referencia principal para decisiones de implementación y despliegue.
+Este README define el estado operativo objetivo de la versión `0.5.59` y debe tratarse como referencia principal para decisiones de implementación y despliegue.
