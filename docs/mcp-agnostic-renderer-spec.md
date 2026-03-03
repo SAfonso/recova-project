@@ -124,8 +124,8 @@ La Sección 13 de la SDD formaliza el comportamiento del renderer como motor vis
    - `lineup[n].name` se inyecta exclusivamente en `.slot-(n+1) .name`.
    - `lineup[n].instagram` queda explícitamente fuera del DOM del cartel (dato no visual).
    - `metadata.date_text` y `metadata.venue` solo se inyectan en sus selectores únicos de plantilla.
-   - Para plantillas estáticas con placeholders Jinja sin renderizar (`{{ ... }}` / `{% ... %}`), el script de inyección debe limpiar tokens literales y reemplazar contenido por datos reales antes de la captura.
-   - En la plantilla activa actual, el binding operativo también soporta `.lineup .comico` y fecha en `.footer`/`.event-date`/`[data-event-date]` para evitar carteles con variables sin sustituir.
+   - Para plantillas Jinja (`{{ ... }}` / `{% ... %}`), el servidor debe renderizar HTML con Jinja2 previo a Playwright usando `lineup`, `event_id` y fecha (`date` o `event.date`).
+   - Playwright debe recibir el HTML ya expandido (sin placeholders ni bucles pendientes) y solo encargarse de la captura visual.
 2. **FitText Engine post-inyección**
    - Tras bind de datos, Playwright evalúa cada `.name` comparando `scrollWidth` vs `clientWidth`.
    - Si hay overflow, reduce `font-size` en iteraciones de `1px` hasta encajar o alcanzar `12px` como mínimo de seguridad de layout.
