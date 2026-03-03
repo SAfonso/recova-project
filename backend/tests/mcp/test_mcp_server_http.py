@@ -88,8 +88,8 @@ async def test_mcp_lock_concurrency(
 ) -> None:
     order: list[str] = []
 
-    async def fake_execute_render(*, payload: dict, injection_script: str, browser_context=None) -> dict:
-        del injection_script, browser_context
+    async def fake_execute_render(*, payload: dict, browser_context=None) -> dict:
+        del browser_context
         event_id = payload["event_id"]
         order.append(f"start:{event_id}")
         await asyncio.sleep(0.05)
@@ -106,7 +106,6 @@ async def test_mcp_lock_concurrency(
         }
 
     monkeypatch.setattr(mcp_server, "validate_reference_image", lambda _: {"status": True})
-    monkeypatch.setattr(mcp_server, "generate_injection_js", lambda _: "window.renderReady = true;")
     monkeypatch.setattr(mcp_server, "execute_render", fake_execute_render)
 
     payload_a = {

@@ -41,11 +41,10 @@ def valid_request_payload() -> dict:
 async def test_full_render_success(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, valid_request_payload: dict) -> None:
     """Debe orquestar binder + render + salida PNG en flujo exitoso."""
     validate_mock = Mock(return_value={"status": True, "error_code": None, "recovery_action": None})
-    bind_mock = Mock(return_value="window.renderReady = true;")
 
     generated_png = tmp_path / "rendered_lineup.png"
 
-    async def fake_render(*, payload: dict, injection_script: str, browser_context: object | None = None):
+    async def fake_render(*, payload: dict, browser_context: object | None = None):
         generated_png.write_bytes(b"\x89PNG\r\n\x1a\n")
         return {
             "status": "success",
@@ -63,14 +62,12 @@ async def test_full_render_success(monkeypatch: pytest.MonkeyPatch, tmp_path: Pa
     browser_context_mock = SimpleNamespace(new_page=AsyncMock())
 
     monkeypatch.setattr(mcp_server, "validate_reference_image", validate_mock)
-    monkeypatch.setattr(mcp_server, "generate_injection_js", bind_mock)
     monkeypatch.setattr(mcp_server, "execute_render", fake_render)
     monkeypatch.setattr(mcp_server, "BrowserContext", browser_context_mock)
 
     result = await mcp_server.orchestrate_render(valid_request_payload, workdir=tmp_path)
 
     validate_mock.assert_called_once_with(valid_request_payload["intent"]["reference_image_url"])
-    bind_mock.assert_called_once()
     assert generated_png.exists()
     assert result["output"]["public_url"].endswith(".png")
 
@@ -128,9 +125,8 @@ async def test_concurrency_lock(monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
     monkeypatch.setattr(mcp_server, "render_lock", asyncio.Lock())
     
     monkeypatch.setattr(mcp_server, "validate_reference_image", Mock(return_value={"status": True}))
-    monkeypatch.setattr(mcp_server, "generate_injection_js", Mock(return_value="window.renderReady=true;"))
 
-    async def fake_render(*, payload: dict, injection_script: str, browser_context: object | None = None):
+    async def fake_render(*, payload: dict, browser_context: object | None = None):
         order.append(f"start:{payload['event_id']}")
         await asyncio.sleep(0.05)
         order.append(f"end:{payload['event_id']}")
@@ -161,7 +157,6 @@ async def test_concurrency_lock(monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
 async def test_pure_black_box_invariant(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, valid_request_payload: dict) -> None:
     """La respuesta no debe filtrar score ni IDs internos de base de datos."""
     monkeypatch.setattr(mcp_server, "validate_reference_image", Mock(return_value={"status": True}))
-    monkeypatch.setattr(mcp_server, "generate_injection_js", Mock(return_value="window.renderReady=true;"))
 
     render_mock = AsyncMock(
         return_value={
