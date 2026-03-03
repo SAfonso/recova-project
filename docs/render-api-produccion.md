@@ -23,6 +23,7 @@ La API valida antes de renderizar:
 ## Flujo de ejecución
 1. Recibe JSON y valida el contrato.
 2. Genera `injection_js` con el Data Binder y delega la captura a `capture_screenshot(...)` en `backend/src/core/render.py` (único punto Playwright).
+   - El Data Binder reemplaza placeholders literales de plantilla (`{{ ... }}` / `{% ... %}`) y aplica binding por selectores (`.slot-n .name` y `.lineup .comico`) antes de la captura.
 3. El renderer:
    - genera HTML desde `backend/src/templates/lineup_v1.html`,
    - captura PNG,
