@@ -1,3 +1,31 @@
+## [0.5.56] - 2026-03-03
+
+### Fixed
+- `backend/src/templates/catalog/active/template.html` fuerza render de fondo halftone en captura con `print-color-adjust: exact` y `-webkit-print-color-adjust: exact` dentro de `body`.
+- `backend/src/core/render.py` reemplaza la espera genérica por `await page.wait_for_timeout(2000)` antes del screenshot para dar tiempo a pintar puntos, ráfagas y micrófono.
+- Se mantiene viewport fijo de Playwright `1080x1350` para coherencia con el canvas CSS del cartel.
+
+### Changed
+- `backend/tests/core/test_render.py` actualiza el contrato esperado para validar `page.wait_for_timeout(2000)` en lugar de `asyncio.sleep`.
+- `README.md`, `docs/render-api-produccion.md` y `docs/mcp-agnostic-renderer-spec.md` actualizan documentación de sincronización de render.
+
+### Versioning
+- Bump de versión a `0.5.56` en `package.json`, `pyproject.toml` y `README.md`.
+
+## [0.5.55] - 2026-03-03
+
+### Fixed
+- `backend/src/templates/catalog/active/template.html` ajusta el layout para lineup de 5 nombres: `.lineup` pasa a `height: auto` y `.comico` reduce tamaño a `60px` para evitar recortes.
+- `backend/src/templates/catalog/active/template.html` elimina la dependencia de imagen remota del micrófono y usa un SVG embebido (`data:image/svg+xml`) para garantizar render sin fallos de red.
+- `backend/src/core/render.py` fortalece la captura Playwright con `page.goto(file://..., wait_until="networkidle")`, espera explícita `await asyncio.sleep(2)` antes del screenshot y mantiene viewport `1080x1350` alineado al CSS.
+- `backend/tests/core/test_render.py` actualiza aserciones al nuevo contrato de navegación/carga (`networkidle`, pausa de 2s y viewport fijo).
+
+### Changed
+- `README.md`, `docs/render-api-produccion.md` y `docs/mcp-agnostic-renderer-spec.md` documentan el hardening visual del template activo y la nueva sincronización de captura.
+
+### Versioning
+- Bump de versión a `0.5.55` en `package.json`, `pyproject.toml` y `README.md`.
+
 ## [0.5.54] - 2026-03-03
 
 ### Changed

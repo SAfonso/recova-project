@@ -31,7 +31,9 @@ async def test_capture_screenshot_success(tmp_path: Path, monkeypatch: pytest.Mo
     page = SimpleNamespace(
         goto=AsyncMock(),
         add_script_tag=AsyncMock(),
+        set_viewport_size=AsyncMock(),
         wait_for_function=AsyncMock(),
+        wait_for_timeout=AsyncMock(),
         screenshot=AsyncMock(side_effect=fake_screenshot),
         is_closed=lambda: False,
         close=AsyncMock(),
@@ -48,6 +50,8 @@ async def test_capture_screenshot_success(tmp_path: Path, monkeypatch: pytest.Mo
             return False
 
     monkeypatch.setattr(render, "async_playwright", lambda: _PlaywrightCM())
+    sleep_mock = AsyncMock()
+    monkeypatch.setattr(render.asyncio, "sleep", sleep_mock)
 
     ok = await render.capture_screenshot(
         html_path=html_file,
@@ -57,9 +61,12 @@ async def test_capture_screenshot_success(tmp_path: Path, monkeypatch: pytest.Mo
 
     assert ok is True
     assert output_path.exists()
+    page.goto.assert_awaited_once_with(f"file://{html_file}", wait_until="load")
     page.wait_for_function.assert_awaited_once_with("window.renderReady === true")
+    page.set_viewport_size.assert_awaited_once_with({"width": 1080, "height": 1350})
+    sleep_mock.assert_awaited_once_with(0.5)
     page.screenshot.assert_awaited_once_with(path=str(output_path), full_page=True)
-    browser.new_context.assert_awaited_once_with(viewport={"width": 1080, "height": 1350})
+    browser.new_context.assert_awaited_once_with()
 
 
 async def test_capture_screenshot_timeout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -71,7 +78,9 @@ async def test_capture_screenshot_timeout(tmp_path: Path, monkeypatch: pytest.Mo
     page = SimpleNamespace(
         goto=AsyncMock(),
         add_script_tag=AsyncMock(),
+        set_viewport_size=AsyncMock(),
         wait_for_function=AsyncMock(side_effect=TimeoutError("renderReady not set")),
+        wait_for_timeout=AsyncMock(),
         screenshot=AsyncMock(),
         is_closed=lambda: False,
         close=AsyncMock(),
@@ -88,6 +97,8 @@ async def test_capture_screenshot_timeout(tmp_path: Path, monkeypatch: pytest.Mo
             return False
 
     monkeypatch.setattr(render, "async_playwright", lambda: _PlaywrightCM())
+    sleep_mock = AsyncMock()
+    monkeypatch.setattr(render.asyncio, "sleep", sleep_mock)
 
     ok = await render.capture_screenshot(
         html_path=html_file,
@@ -96,6 +107,7 @@ async def test_capture_screenshot_timeout(tmp_path: Path, monkeypatch: pytest.Mo
     )
 
     assert ok is False
+    page.goto.assert_awaited_once_with(f"file://{html_file}", wait_until="load")
     assert not output_path.exists()
 
 
@@ -111,7 +123,9 @@ async def test_no_sandbox_flag(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     page = SimpleNamespace(
         goto=AsyncMock(),
         add_script_tag=AsyncMock(),
+        set_viewport_size=AsyncMock(),
         wait_for_function=AsyncMock(),
+        wait_for_timeout=AsyncMock(),
         screenshot=AsyncMock(side_effect=fake_screenshot),
         is_closed=lambda: False,
         close=AsyncMock(),
@@ -128,6 +142,8 @@ async def test_no_sandbox_flag(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
             return False
 
     monkeypatch.setattr(render, "async_playwright", lambda: _PlaywrightCM())
+    sleep_mock = AsyncMock()
+    monkeypatch.setattr(render.asyncio, "sleep", sleep_mock)
 
     ok = await render.capture_screenshot(
         html_path=html_file,
@@ -136,6 +152,8 @@ async def test_no_sandbox_flag(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     )
 
     assert ok is True
+    page.set_viewport_size.assert_awaited_once_with({"width": 1080, "height": 1350})
+    sleep_mock.assert_awaited_once_with(0.5)
     chromium.launch.assert_awaited_once()
     launch_args = chromium.launch.await_args.kwargs.get("args", [])
     assert "--no-sandbox" in launch_args
@@ -155,7 +173,9 @@ async def test_capture_screenshot_returns_false_and_logs_error_on_failure(
     page = SimpleNamespace(
         goto=AsyncMock(side_effect=RuntimeError("boom")),
         add_script_tag=AsyncMock(),
+        set_viewport_size=AsyncMock(),
         wait_for_function=AsyncMock(),
+        wait_for_timeout=AsyncMock(),
         screenshot=AsyncMock(),
         is_closed=lambda: False,
         close=AsyncMock(),
@@ -172,6 +192,8 @@ async def test_capture_screenshot_returns_false_and_logs_error_on_failure(
             return False
 
     monkeypatch.setattr(render, "async_playwright", lambda: _PlaywrightCM())
+    sleep_mock = AsyncMock()
+    monkeypatch.setattr(render.asyncio, "sleep", sleep_mock)
 
     ok = await render.capture_screenshot(
         html_path=html_file,
@@ -180,6 +202,7 @@ async def test_capture_screenshot_returns_false_and_logs_error_on_failure(
     )
 
     assert ok is False
+    page.goto.assert_awaited_once_with(f"file://{html_file}", wait_until="load")
     output = capsys.readouterr().out
     assert "Error en render engine:" in output
     assert "boom" in output
