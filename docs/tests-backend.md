@@ -23,6 +23,7 @@
 - `./.venv/bin/python -m pytest -q backend/tests/core/test_data_binder.py`
 - `./.venv/bin/python -m pytest -q backend/tests/core/test_security.py`
 - `./.venv/bin/python -m pytest -q backend/tests/core/test_render.py`
+- `./.venv/bin/python -m pytest -q backend/tests/core/test_svg_composer.py`
 - `./.venv/bin/python -m pytest -q backend/tests/mcp/test_mcp_server_http.py`
 - `./.venv/bin/python -m pytest -q backend/tests/mcp/test_server_integration.py`
 

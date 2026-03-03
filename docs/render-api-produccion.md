@@ -1,5 +1,7 @@
 > Nota v0.5.56: la plantilla activa embebe el micrófono en SVG (sin URL externa), reduce tipografía de `.comico` a 60px, y `capture_screenshot` usa `goto(..., wait_until="networkidle")` + `await page.wait_for_timeout(2000)` con viewport 1080x1350 para evitar capturas incompletas.
 
+> Nota v0.5.57: se incorpora `backend/src/core/svg_composer.py` como núcleo del SDD v2 para composición vectorial pura (Safe Zone `Y=400..1100`), coexistiendo por ahora con el flujo Playwright actual.
+
 # API de producción: Render + Upload (Flask)
 
 ## Objetivo

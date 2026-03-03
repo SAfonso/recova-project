@@ -1,5 +1,7 @@
 > Nota v0.5.56: la plantilla activa embebe el micrófono en SVG (sin URL externa), reduce tipografía de `.comico` a 60px, y `capture_screenshot` usa `goto(..., wait_until="networkidle")` + `await page.wait_for_timeout(2000)` con viewport 1080x1350 para evitar capturas incompletas.
 
+> Nota v0.5.57: se añade `backend/src/core/svg_composer.py` como núcleo de composición SVG (SDD v2 §14.b), manteniendo en paralelo el flujo Playwright mientras se completa la migración.
+
 # MCP Agnostic Renderer: guía técnica de adopción
 
 ## Objetivo
@@ -139,7 +141,7 @@ La Sección 13 de la SDD formaliza el comportamiento del renderer como motor vis
 
 ## Estado
 
-- **Implementación:** pendiente (spec-first).
+- **Implementación:** parcial (spec-first + núcleo SVG v2 en `backend/src/core/svg_composer.py`).
 - **Cobertura documental:** completa para iniciar desarrollo backend con SDD.
 
 

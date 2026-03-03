@@ -1,3 +1,20 @@
+## [0.5.57] - 2026-03-03
+
+### Added
+- `backend/src/core/svg_composer.py` implementa `SVGLineupComposer` (SDD v2 §14.b) con composición vectorial nativa en lienzo `1080x1350` y exportación `SVG -> PNG` mediante `cairosvg`.
+- `backend/tests/core/test_svg_composer.py` añade cobertura de capas base (fondo/patrones/polígonos), posicionamiento dentro de Safe Zone y reducción de `font-size` cuando el lineup supera 5 cómicos.
+- `docs/sdd_v2_svg_renderer.md` define arquitectura V2 del renderer SVG (objetivo, algoritmo adaptativo, capas y riesgos técnicos).
+
+### Changed
+- `backend/src/core/svg_composer.py` formaliza Safe Zone de lineup en `Y=400..1100` con distribución equitativa de `y_center` por número de cómicos.
+- `backend/src/core/svg_composer.py` fija header/footer fuera de Safe Zone para proteger título (`RECOVA MIC`) y fecha del evento.
+- `backend/src/core/svg_composer.py` referencia fuente local absoluta `file:///root/RECOVA/backend/assets/fonts/BebasNeue.ttf`.
+- `README.md`, `docs/render-api-produccion.md` y `docs/mcp-agnostic-renderer-spec.md` documentan el nuevo compositor SVG y su coexistencia con el flujo Playwright actual.
+- `docs/tests-backend.md` incorpora comando focalizado para `backend/tests/core/test_svg_composer.py`.
+
+### Versioning
+- Bump de versión a `0.5.57` en `package.json`, `pyproject.toml` y `README.md`.
+
 ## [0.5.56] - 2026-03-03
 
 ### Fixed

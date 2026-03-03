@@ -1,14 +1,20 @@
 # AI LineUp Architect 🎭
 
 **Estado del Proyecto:** 🛠️ En desarrollo activo
-**Versión:** `0.5.56`
+**Versión:** `0.5.57`
 **Metodología:** Spec-Driven Development (SDD)
 
 Sistema para ingesta, curación y generación automática de cartel de Open Mics, con trazabilidad completa desde formularios hasta artefacto final publicado.
 
-## 1. Fuente de verdad técnica (v0.5.56)
+## 1. Fuente de verdad técnica (v0.5.57)
 
 En esta versión se consolidan los siguientes cambios estructurales:
+
+- **Nuevo compositor vectorial SVG (SDD v2):** se añade `backend/src/core/svg_composer.py` con clase `SVGLineupComposer` y función `export_to_png(...)` para generar carteles sin dependencia de navegador headless.
+- **Safe Zone de lineup implementada en motor SVG:** distribución dinámica de nombres dentro del rango vertical `Y=400..1100`, con reducción proporcional de `font-size` cuando `N > 5`.
+- **Capas de diseño declarativas en SVG:** fondo rojo con patrón de puntos, ráfagas laterales por `<polygon>`, capa de datos y footer en coordenadas fijas para proteger header/footer.
+- **Fuente local absoluta para render estable:** referencia a `file:///root/RECOVA/backend/assets/fonts/BebasNeue.ttf` en `@font-face`, evitando fallos de red/CDN.
+- **Cobertura QA del compositor:** nueva suite `backend/tests/core/test_svg_composer.py` valida patrón/layers, límites Safe Zone y adaptabilidad tipográfica.
 
 - **Plantilla activa ajustada para lineup completo (5 artistas):** `backend/src/templates/catalog/active/template.html` cambia `.lineup` a `height: auto` y reduce `.comico` a `font-size: 60px` para mejorar encaje vertical del cartel.
 - **Micro embebido sin dependencia externa:** la silueta del micrófono deja de cargar una URL remota y usa un SVG embebido (`data:image/svg+xml`) para evitar fallos por recursos caídos/bloqueados.
@@ -225,6 +231,9 @@ playwright install-deps
 ├── backups/
 │   └── .gitkeep
 ├── backend/
+│   ├── assets/
+│   │   └── fonts/
+│   │       └── BebasNeue.ttf
 │   ├── database/
 │   │   └── setup_frontend_logic.sql
 │   ├── src/
@@ -235,7 +244,8 @@ playwright install-deps
 │   │   ├── core/
 │   │   │   ├── data_binder.py
 │   │   │   ├── render.py
-│   │   │   └── security.py
+│   │   │   ├── security.py
+│   │   │   └── svg_composer.py
 │   │   ├── old/
 │   │   │   ├── app.py
 │   │   │   ├── ingestion_cli_backup.py
@@ -259,7 +269,8 @@ playwright install-deps
 │   │   ├── core/
 │   │   │   ├── test_data_binder.py
 │   │   │   ├── test_render.py
-│   │   │   └── test_security.py
+│   │   │   ├── test_security.py
+│   │   │   └── test_svg_composer.py
 │   │   ├── mcp/
 │   │   │   ├── test_mcp_server_http.py
 │   │   │   └── test_server_integration.py
@@ -300,6 +311,7 @@ playwright install-deps
 │   ├── scoring-batch-n8n-fix.md
 │   ├── seed-data-casos-borde.md
 │   ├── seed-unique-comico-fecha-fix.md
+│   ├── sdd_v2_svg_renderer.md
 │   ├── setup-db-backup-local.md
 │   ├── setup-db-backup-reset-seed.md
 │   ├── setup-db-migraciones.md
@@ -356,6 +368,7 @@ playwright install-deps
 - `specs/mcp_agnostic_renderer_spec.md`
 - `specs/frontend_lineup_notebook_spec.md`
 - `docs/mcp-agnostic-renderer-spec.md`
+- `docs/sdd_v2_svg_renderer.md`
 - `docs/curacion-lineup-validacion-estados-gold-silver.md`
 - `docs/render-api-produccion.md`
 - `docs/webhook-listener-n8n-ingesta.md`
@@ -363,4 +376,4 @@ playwright install-deps
 
 ---
 
-Este README define el estado operativo objetivo de la versión `0.5.56` y debe tratarse como referencia principal para decisiones de implementación y despliegue.
+Este README define el estado operativo objetivo de la versión `0.5.57` y debe tratarse como referencia principal para decisiones de implementación y despliegue.
