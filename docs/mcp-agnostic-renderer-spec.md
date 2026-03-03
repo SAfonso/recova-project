@@ -19,6 +19,12 @@ La operación en VPS expone `backend/src/mcp_server.py` en modo HTTP en `127.0.0
 - `POST /mcp` cuando está disponible `mcp[http]` (transporte streamable MCP).
 - Logging por request en `backend/logs/mcp_render.log` incluyendo `event_id` para trazabilidad.
 
+### Respuesta HTTP para n8n
+
+- `POST /tools/render_lineup` devuelve el cartel como binario (`image/png`) mediante streaming (`FileResponse`) cuando el render es exitoso.
+- Si el motor falla, responde `HTTP 500` con JSON `{ "error": "Render engine failed", "details": "..." }`.
+- El contrato JSON rico (`status/output/trace`) se mantiene en la orquestación interna (`orchestrate_render`) y en la integración MCP de servidor, pero el endpoint REST para n8n prioriza entrega directa del artefacto.
+
 ## Qué cambia para integraciones
 
 1. **Contrato de entrada único**
@@ -27,7 +33,8 @@ La operación en VPS expone `backend/src/mcp_server.py` en modo HTTP en `127.0.0
    - Si existe `reference_image_url`, se ejecuta `vision_generated`.
    - Si no existe, se usa `template_catalog` con `template_id`.
 3. **Trazabilidad obligatoria de salida**
-   - El response siempre devuelve `status`, `output.public_url` y `trace`.
+   - La orquestación interna devuelve `status`, `output.public_url` y `trace`.
+   - El endpoint REST para n8n (`POST /tools/render_lineup`) entrega el PNG en streaming y reserva JSON para errores.
 
 ## Invariantes críticos de operación
 
