@@ -1,3 +1,15 @@
+## [0.5.53] - 2026-03-03
+
+### Changed
+- `backend/src/core/data_binder.py` amplía `generate_injection_js(...)` para soportar plantillas estáticas con placeholders Jinja no renderizados: limpieza de tokens `{{ ... }}` y `{% ... %}` en nodos de texto antes del screenshot.
+- `backend/src/core/data_binder.py` añade mapeo dual de datos: mantiene binding por `.slot-n .name` y añade binding para plantilla activa por `.lineup .comico`, creando nodos dinámicos con los nombres del lineup recibido desde n8n.
+- `backend/src/core/data_binder.py` añade inyección de fecha en selectores de evento (`.footer`, `.event-date`, `[data-event-date]`) cuando detecta placeholders de fecha en plantilla.
+- `backend/tests/core/test_data_binder.py` incorpora pruebas para reglas de reemplazo de placeholders Jinja y para soporte de selectores de la plantilla activa.
+- `README.md` y `docs/mcp-agnostic-renderer-spec.md` actualizan contrato operativo del Data Binder para evitar salida con variables sin sustituir.
+
+### Versioning
+- Bump de versión a `0.5.53` en `package.json`, `pyproject.toml` y `README.md`.
+
 ## [0.5.52] - 2026-03-03
 
 ### Changed

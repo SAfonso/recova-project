@@ -1,14 +1,19 @@
 # AI LineUp Architect 🎭
 
 **Estado del Proyecto:** 🛠️ En desarrollo activo
-**Versión:** `0.5.52`
+**Versión:** `0.5.53`
 **Metodología:** Spec-Driven Development (SDD)
 
 Sistema para ingesta, curación y generación automática de cartel de Open Mics, con trazabilidad completa desde formularios hasta artefacto final publicado.
 
-## 1. Fuente de verdad técnica (v0.5.52)
+## 1. Fuente de verdad técnica (v0.5.53)
 
 En esta versión se consolidan los siguientes cambios estructurales:
+
+- **Data Binder compatible con plantillas estáticas con Jinja sin renderizar:** `backend/src/core/data_binder.py` ahora limpia placeholders `{{ ... }}` / `{% ... %}` en nodos de texto y evita que aparezcan literales en la imagen final.
+- **Mapeo dual de lineup en inyección DOM:** el binder mantiene soporte `.slot-n .name` y añade soporte para plantilla activa `.lineup .comico`, generando nodos dinámicos con los nombres recibidos desde n8n.
+- **Sustitución de fecha en selectores de evento:** cuando detecta tokens de plantilla, inyecta fecha en `.footer`, `.event-date` o `[data-event-date]` antes de `window.renderReady`.
+- **Cobertura ampliada del binder:** `backend/tests/core/test_data_binder.py` incorpora validación de reglas de reemplazo de placeholders y de mapeo por selectores de la plantilla activa.
 
 - **Entrega de PNG por streaming en MCP HTTP:** `POST /tools/render_lineup` (FastAPI) devuelve ahora el archivo renderizado directamente como `image/png` mediante `FileResponse` (`filename="cartel.png"`), evitando dependencias de visibilidad de rutas `/tmp` entre contenedores.
 - **Contrato de error explícito para motor de render:** cuando el render falla, el endpoint responde `HTTP 500` con JSON `{"error":"Render engine failed","details":"..."}` para diagnóstico en n8n.
@@ -349,4 +354,4 @@ playwright install-deps
 
 ---
 
-Este README define el estado operativo objetivo de la versión `0.5.52` y debe tratarse como referencia principal para decisiones de implementación y despliegue.
+Este README define el estado operativo objetivo de la versión `0.5.53` y debe tratarse como referencia principal para decisiones de implementación y despliegue.

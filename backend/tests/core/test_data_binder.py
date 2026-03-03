@@ -87,3 +87,27 @@ def test_invalid_lineup_type_returns_safe_ready_script() -> None:
     script = generate_injection_js("invalid-payload", total_slots=8)
 
     assert script.strip() == "window.renderReady = true;"
+
+
+def test_jinja_placeholder_replacement_rules_are_included() -> None:
+    lineup = [{"name": "Ada Torres", "instagram": "adatorres"}]
+
+    script = generate_injection_js(lineup, total_slots=8)
+
+    assert "text.includes('{{')" in script
+    assert "text.includes('{%')" in script
+    assert r"\{\{\s*(comico|comic)\.name\s*\}\}" in script
+    assert r"\{\{\s*event\.date\s*\}\}" in script
+    assert r"\{%\s*for[^%]*%\}" in script
+    assert r"\{%\s*endfor\s*%\}" in script
+
+
+def test_active_template_selector_mapping_is_included() -> None:
+    lineup = [{"name": "Bruno Gil", "instagram": "brunogil"}]
+
+    script = generate_injection_js(lineup, total_slots=8)
+
+    assert "document.querySelector('.lineup')" in script
+    assert "querySelector('.comico')" in script
+    assert "comicEl.className = 'comico'" in script
+    assert "querySelectorAll('.footer, .event-date, [data-event-date]')" in script
