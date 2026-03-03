@@ -1,3 +1,15 @@
+## [0.5.54] - 2026-03-03
+
+### Changed
+- `backend/src/mcp_server.py` renderiza `template.html` con `jinja2` antes de invocar Playwright, inyectando `lineup`, `event_id` y fecha (`date` / `event.date` / `metadata.date_text`) para eliminar bucles `{% for %}` en runtime de navegador.
+- `backend/src/mcp_server.py` elimina la dependencia de `backend/src/core/data_binder.py` en el flujo MCP (`orchestrate_render -> execute_render`) y usa un script mínimo de sincronización (`window.renderReady = true;`).
+- `backend/src/mcp_server.py` genera HTML renderizado en archivo temporal y lo limpia tras la captura para evitar artefactos residuales en `/tmp`.
+- `backend/tests/mcp/test_server_integration.py` y `backend/tests/mcp/test_mcp_server_http.py` actualizan mocks del contrato `execute_render(...)` al retirar `injection_script` del flujo MCP.
+- `README.md`, `docs/render-api-produccion.md` y `docs/mcp-agnostic-renderer-spec.md` documentan el nuevo pipeline server-side con Jinja2 y la retirada del Data Binder en MCP.
+
+### Versioning
+- Bump de versión a `0.5.54` en `package.json`, `pyproject.toml` y `README.md`.
+
 ## [0.5.53] - 2026-03-03
 
 ### Changed

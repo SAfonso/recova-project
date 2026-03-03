@@ -1,14 +1,18 @@
 # AI LineUp Architect 🎭
 
 **Estado del Proyecto:** 🛠️ En desarrollo activo
-**Versión:** `0.5.53`
+**Versión:** `0.5.54`
 **Metodología:** Spec-Driven Development (SDD)
 
 Sistema para ingesta, curación y generación automática de cartel de Open Mics, con trazabilidad completa desde formularios hasta artefacto final publicado.
 
-## 1. Fuente de verdad técnica (v0.5.53)
+## 1. Fuente de verdad técnica (v0.5.54)
 
 En esta versión se consolidan los siguientes cambios estructurales:
+
+- **Render Jinja2 previo a Playwright en MCP:** `backend/src/mcp_server.py` ahora procesa `template.html` con `jinja2.Environment` antes de capturar screenshot, inyectando `lineup`, `event_id` y fecha (`date`/`event.date`/`metadata.date_text`) directamente en el HTML final.
+- **Sin dependencia de Data Binder en servidor MCP:** se elimina `generate_injection_js` del flujo `orchestrate_render -> execute_render`; Playwright recibe HTML ya expandido y solo sincroniza captura con `window.renderReady = true`.
+- **Render temporal seguro:** el HTML renderizado se persiste en un archivo temporal `.html` en `/tmp` y se elimina tras `capture_screenshot(...)` para no dejar artefactos huérfanos.
 
 - **Data Binder compatible con plantillas estáticas con Jinja sin renderizar:** `backend/src/core/data_binder.py` ahora limpia placeholders `{{ ... }}` / `{% ... %}` en nodos de texto y evita que aparezcan literales en la imagen final.
 - **Mapeo dual de lineup en inyección DOM:** el binder mantiene soporte `.slot-n .name` y añade soporte para plantilla activa `.lineup .comico`, generando nodos dinámicos con los nombres recibidos desde n8n.
@@ -354,4 +358,4 @@ playwright install-deps
 
 ---
 
-Este README define el estado operativo objetivo de la versión `0.5.53` y debe tratarse como referencia principal para decisiones de implementación y despliegue.
+Este README define el estado operativo objetivo de la versión `0.5.54` y debe tratarse como referencia principal para decisiones de implementación y despliegue.
