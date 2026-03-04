@@ -1,0 +1,416 @@
+import { useEffect, useState } from 'react';
+import { supabase } from '../supabaseClient';
+
+// ---------------------------------------------------------------------------
+// Valores por defecto — deben mantenerse sincronizados con
+// backend/src/core/scoring_config.py → _DEFAULTS
+// ---------------------------------------------------------------------------
+const DEFAULTS = {
+  available_slots: 8,
+  categories: {
+    standard:   { base_score: 50,   enabled: true },
+    priority:   { base_score: 70,   enabled: true },
+    gold:       { base_score: 90,   enabled: true },
+    restricted: { base_score: null, enabled: true },
+  },
+  recency_penalty: {
+    enabled:          true,
+    last_n_editions:  2,
+    penalty_points:   20,
+  },
+  single_date_boost: {
+    enabled:      true,
+    boost_points: 10,
+  },
+  gender_parity: {
+    enabled:              false,
+    target_female_nb_pct: 40,
+  },
+};
+
+// Actualización inmutable de rutas anidadas en el JSONB.
+// setIn({a:{b:1}}, ['a','b'], 2) → {a:{b:2}}
+function setIn(obj, [key, ...rest], value) {
+  return rest.length === 0
+    ? { ...obj, [key]: value }
+    : { ...obj, [key]: setIn(obj[key] ?? {}, rest, value) };
+}
+
+// Fusiona la config de BD con DEFAULTS para garantizar que no falte ninguna clave.
+function mergeWithDefaults(raw) {
+  return {
+    ...DEFAULTS,
+    ...raw,
+    categories: { ...DEFAULTS.categories, ...(raw?.categories ?? {}) },
+    recency_penalty:   { ...DEFAULTS.recency_penalty,   ...(raw?.recency_penalty   ?? {}) },
+    single_date_boost: { ...DEFAULTS.single_date_boost, ...(raw?.single_date_boost ?? {}) },
+    gender_parity:     { ...DEFAULTS.gender_parity,     ...(raw?.gender_parity     ?? {}) },
+  };
+}
+
+// Validaciones por campo. Devuelve un objeto { campo: 'mensaje' } con los errores.
+function validate(config) {
+  const errors = {};
+  if (!Number.isInteger(config.available_slots) || config.available_slots < 1 || config.available_slots > 20) {
+    errors.available_slots = 'Debe ser un entero entre 1 y 20';
+  }
+  for (const [cat, rule] of Object.entries(config.categories)) {
+    if (cat === 'restricted') continue;
+    if (!Number.isInteger(rule.base_score) || rule.base_score < 0 || rule.base_score > 200) {
+      errors[`categories.${cat}.base_score`] = 'Debe ser un entero entre 0 y 200';
+    }
+  }
+  const rp = config.recency_penalty;
+  if (!Number.isInteger(rp.last_n_editions) || rp.last_n_editions < 1 || rp.last_n_editions > 10) {
+    errors['recency_penalty.last_n_editions'] = 'Debe ser un entero entre 1 y 10';
+  }
+  if (!Number.isInteger(rp.penalty_points) || rp.penalty_points < 1 || rp.penalty_points > 100) {
+    errors['recency_penalty.penalty_points'] = 'Debe ser un entero entre 1 y 100';
+  }
+  const sb = config.single_date_boost;
+  if (!Number.isInteger(sb.boost_points) || sb.boost_points < 1 || sb.boost_points > 50) {
+    errors['single_date_boost.boost_points'] = 'Debe ser un entero entre 1 y 50';
+  }
+  const gp = config.gender_parity;
+  if (!Number.isInteger(gp.target_female_nb_pct) || gp.target_female_nb_pct < 0 || gp.target_female_nb_pct > 100) {
+    errors['gender_parity.target_female_nb_pct'] = 'Debe ser un entero entre 0 y 100';
+  }
+  return errors;
+}
+
+// ---------------------------------------------------------------------------
+// Sub-componentes
+// ---------------------------------------------------------------------------
+
+function SectionCard({ title, children }) {
+  return (
+    <section className="rounded-lg border-[3px] border-[#1a1a1a] bg-[#fff8e7] p-4">
+      <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-[#1a1a1a]">{title}</h3>
+      {children}
+    </section>
+  );
+}
+
+function FieldError({ errors, field }) {
+  if (!errors[field]) return null;
+  return <p className="mt-1 text-xs text-[#DC2626]">{errors[field]}</p>;
+}
+
+function Toggle({ checked, onChange, disabled = false }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      disabled={disabled}
+      onClick={() => !disabled && onChange(!checked)}
+      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-[#1a1a1a] transition-colors
+        ${checked ? 'bg-[#22C55E]' : 'bg-[#D1D5DB]'}
+        ${disabled ? 'cursor-not-allowed opacity-50' : ''}`}
+    >
+      <span
+        className={`inline-block h-4 w-4 rounded-full bg-[#fff8e7] border border-[#1a1a1a] shadow transition-transform
+          ${checked ? 'translate-x-5' : 'translate-x-0.5'}`}
+      />
+    </button>
+  );
+}
+
+function NumberInput({ value, onChange, min, max, disabled = false, error = false }) {
+  return (
+    <input
+      type="number"
+      value={value ?? ''}
+      min={min}
+      max={max}
+      disabled={disabled}
+      onChange={(e) => {
+        const parsed = parseInt(e.target.value, 10);
+        onChange(Number.isNaN(parsed) ? value : parsed);
+      }}
+      className={`w-20 rounded-md border-2 bg-[#F5F0E1] px-2 py-1 text-center text-sm font-bold text-[#1a1a1a] outline-none
+        ${error ? 'border-[#DC2626]' : 'border-[#1a1a1a]'}
+        ${disabled ? 'cursor-not-allowed opacity-50' : 'focus:ring-2 focus:ring-[#1a1a1a]'}`}
+    />
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Componente principal
+// ---------------------------------------------------------------------------
+
+export function ScoringConfigurator({ openMicId, onSaved }) {
+  const [config, setConfig]   = useState(mergeWithDefaults({}));
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving]   = useState(false);
+  const [saved, setSaved]     = useState(false);   // feedback temporal
+  const [error, setError]     = useState(null);
+  const [fieldErrors, setFieldErrors] = useState({});
+
+  // Carga inicial desde silver.open_mics
+  useEffect(() => {
+    if (!openMicId) return;
+    setLoading(true);
+    setError(null);
+
+    supabase
+      .schema('silver')
+      .from('open_mics')
+      .select('config')
+      .eq('id', openMicId)
+      .single()
+      .then(({ data, error: err }) => {
+        if (err) {
+          setError(err.message);
+        } else {
+          setConfig(mergeWithDefaults(data?.config ?? {}));
+        }
+        setLoading(false);
+      });
+  }, [openMicId]);
+
+  const update = (path, value) =>
+    setConfig((prev) => setIn(prev, path, value));
+
+  const handleSave = async () => {
+    const errors = validate(config);
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+    setFieldErrors({});
+    setSaving(true);
+    setError(null);
+
+    const { error: err } = await supabase
+      .schema('silver')
+      .from('open_mics')
+      .update({ config })
+      .eq('id', openMicId);
+
+    setSaving(false);
+
+    if (err) {
+      setError(err.message);
+      return;
+    }
+
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+    onSaved?.();
+  };
+
+  if (loading) {
+    return (
+      <div className="rounded-lg border-[3px] border-[#1a1a1a] bg-[#fff8e7] p-8 text-center text-sm text-[#6B5C4A]">
+        Cargando configuración...
+      </div>
+    );
+  }
+
+  const CATEGORY_LABELS = {
+    standard:   'Standard',
+    priority:   'Priority',
+    gold:       'Gold',
+    restricted: 'Restricted',
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+
+      {/* Error global */}
+      {error && (
+        <p className="rounded-md border-2 border-[#7f1d1d] bg-[#fee2e2] p-3 text-sm text-[#7f1d1d]">
+          {error}
+        </p>
+      )}
+
+      {/* ── 1. Slots disponibles ─────────────────────────────────── */}
+      <SectionCard title="Slots disponibles">
+        <div className="flex items-center gap-3">
+          <NumberInput
+            value={config.available_slots}
+            min={1}
+            max={20}
+            error={!!fieldErrors.available_slots}
+            onChange={(v) => update(['available_slots'], v)}
+          />
+          <span className="text-sm text-[#6B5C4A]">plazas por edición</span>
+        </div>
+        <FieldError errors={fieldErrors} field="available_slots" />
+      </SectionCard>
+
+      {/* ── 2. Categorías ────────────────────────────────────────── */}
+      <SectionCard title="Puntuación base por categoría">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b-2 border-[#1a1a1a]/20 text-left text-[10px] uppercase tracking-wide text-[#6B5C4A]">
+                <th className="pb-2 pr-4">Categoría</th>
+                <th className="pb-2 pr-4">Puntos base</th>
+                <th className="pb-2">Activa</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#1a1a1a]/10">
+              {Object.entries(config.categories).map(([cat, rule]) => {
+                const isRestricted = cat === 'restricted';
+                const enabled      = rule.enabled;
+                return (
+                  <tr key={cat} className={`py-2 transition-opacity ${!enabled ? 'opacity-50' : ''}`}>
+                    <td className="py-2 pr-4 font-bold text-[#1a1a1a]">
+                      {CATEGORY_LABELS[cat] ?? cat}
+                    </td>
+                    <td className="py-2 pr-4">
+                      {isRestricted ? (
+                        <span className="text-xs text-[#6B5C4A] italic">bloqueado</span>
+                      ) : (
+                        <>
+                          <NumberInput
+                            value={rule.base_score}
+                            min={0}
+                            max={200}
+                            disabled={!enabled}
+                            error={!!fieldErrors[`categories.${cat}.base_score`]}
+                            onChange={(v) => update(['categories', cat, 'base_score'], v)}
+                          />
+                          <FieldError errors={fieldErrors} field={`categories.${cat}.base_score`} />
+                        </>
+                      )}
+                    </td>
+                    <td className="py-2">
+                      <Toggle
+                        checked={enabled}
+                        onChange={(v) => update(['categories', cat, 'enabled'], v)}
+                      />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </SectionCard>
+
+      {/* ── 3. Penalización de recencia ──────────────────────────── */}
+      <SectionCard title="Penalización por recencia">
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-3">
+            <Toggle
+              checked={config.recency_penalty.enabled}
+              onChange={(v) => update(['recency_penalty', 'enabled'], v)}
+            />
+            <span className="text-sm text-[#1a1a1a]">
+              Penalizar a cómicos que actuaron recientemente en este open mic
+            </span>
+          </div>
+
+          <div className={`flex flex-col gap-2 pl-2 ${!config.recency_penalty.enabled ? 'opacity-50' : ''}`}>
+            <div className="flex items-center gap-3">
+              <label className="w-44 text-xs text-[#6B5C4A]">Últimas N ediciones</label>
+              <NumberInput
+                value={config.recency_penalty.last_n_editions}
+                min={1}
+                max={10}
+                disabled={!config.recency_penalty.enabled}
+                error={!!fieldErrors['recency_penalty.last_n_editions']}
+                onChange={(v) => update(['recency_penalty', 'last_n_editions'], v)}
+              />
+            </div>
+            <FieldError errors={fieldErrors} field="recency_penalty.last_n_editions" />
+
+            <div className="flex items-center gap-3">
+              <label className="w-44 text-xs text-[#6B5C4A]">Puntos de penalización</label>
+              <NumberInput
+                value={config.recency_penalty.penalty_points}
+                min={1}
+                max={100}
+                disabled={!config.recency_penalty.enabled}
+                error={!!fieldErrors['recency_penalty.penalty_points']}
+                onChange={(v) => update(['recency_penalty', 'penalty_points'], v)}
+              />
+            </div>
+            <FieldError errors={fieldErrors} field="recency_penalty.penalty_points" />
+          </div>
+        </div>
+      </SectionCard>
+
+      {/* ── 4. Bono bala única ───────────────────────────────────── */}
+      <SectionCard title="Bono por disponibilidad única">
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-3">
+            <Toggle
+              checked={config.single_date_boost.enabled}
+              onChange={(v) => update(['single_date_boost', 'enabled'], v)}
+            />
+            <span className="text-sm text-[#1a1a1a]">
+              Bonificar cómicos disponibles solo para una fecha
+            </span>
+          </div>
+
+          <div className={`flex items-center gap-3 pl-2 ${!config.single_date_boost.enabled ? 'opacity-50' : ''}`}>
+            <label className="w-44 text-xs text-[#6B5C4A]">Puntos de bono</label>
+            <NumberInput
+              value={config.single_date_boost.boost_points}
+              min={1}
+              max={50}
+              disabled={!config.single_date_boost.enabled}
+              error={!!fieldErrors['single_date_boost.boost_points']}
+              onChange={(v) => update(['single_date_boost', 'boost_points'], v)}
+            />
+          </div>
+          <FieldError errors={fieldErrors} field="single_date_boost.boost_points" />
+        </div>
+      </SectionCard>
+
+      {/* ── 5. Paridad de género ─────────────────────────────────── */}
+      <SectionCard title="Paridad de género">
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-3">
+            <Toggle
+              checked={config.gender_parity.enabled}
+              onChange={(v) => update(['gender_parity', 'enabled'], v)}
+            />
+            <span className="text-sm text-[#1a1a1a]">
+              Activar objetivo de representación femenina / no-binaria
+            </span>
+          </div>
+
+          <div className={`flex items-center gap-3 pl-2 ${!config.gender_parity.enabled ? 'opacity-50' : ''}`}>
+            <label className="w-44 text-xs text-[#6B5C4A]">% objetivo f / nb</label>
+            <NumberInput
+              value={config.gender_parity.target_female_nb_pct}
+              min={0}
+              max={100}
+              disabled={!config.gender_parity.enabled}
+              error={!!fieldErrors['gender_parity.target_female_nb_pct']}
+              onChange={(v) => update(['gender_parity', 'target_female_nb_pct'], v)}
+            />
+            <span className="text-xs text-[#6B5C4A]">%</span>
+          </div>
+          <FieldError errors={fieldErrors} field="gender_parity.target_female_nb_pct" />
+        </div>
+      </SectionCard>
+
+      {/* ── Guardar ──────────────────────────────────────────────── */}
+      <div className="flex items-center justify-end gap-3 pt-1">
+        {saved && (
+          <span className="text-sm font-bold text-[#22C55E]">
+            ✓ Configuración guardada
+          </span>
+        )}
+        <button
+          type="button"
+          disabled={saving || loading}
+          onClick={handleSave}
+          className={`rounded-lg border-[3px] border-[#1a1a1a] px-6 py-2.5 text-sm font-bold transition-all
+            ${saving || loading
+              ? 'cursor-not-allowed bg-[#D1D5DB] text-[#6B5C4A]'
+              : 'bg-[#1a1a1a] text-[#fff8e7] hover:bg-[#DC2626]'
+            }`}
+        >
+          {saving ? 'Guardando...' : 'Guardar configuración'}
+        </button>
+      </div>
+    </div>
+  );
+}
