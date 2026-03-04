@@ -6,6 +6,10 @@
 
 > Nota v0.5.59: el compositor SVG embebe imagen base y fuente en Base64 (`data URI`) para evitar fallos de resolución `file://` en CairoSVG, con caché de lectura única por proceso.
 
+> Nota v0.5.60: se fija orden de capas del híbrido para legibilidad: imagen base como primer nodo pintado y overlay de texto (`lineup` + fecha) al final del SVG, evitando solapes detrás del fondo.
+
+> Nota v0.5.61: fase de validación técnica activa en `svg_composer` con estilos inline por `<text>`, namespace `xlink` + `xlink:href` para fondo y contraste extremo (`#00FF00/#FF00FF`) para confirmar visibilidad del overlay.
+
 # MCP Agnostic Renderer: guía técnica de adopción
 
 ## Objetivo

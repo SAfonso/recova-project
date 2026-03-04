@@ -14,12 +14,12 @@ from backend.src.core.svg_composer import (
 
 
 def _extract_y_values(svg: str) -> list[int]:
-    y_matches = re.findall(r'<text x="540" y="(\d+)" class="comic-name"', svg)
+    y_matches = re.findall(r'<text data-text-role="comic-name" x="540" y="(\d+)"', svg)
     return [int(value) for value in y_matches]
 
 
 def _extract_font_sizes(svg: str) -> list[int]:
-    size_matches = re.findall(r'class="comic-name" font-size="(\d+)"', svg)
+    size_matches = re.findall(r'data-text-role="comic-name" x="540" y="\d+" font-family="\'Bebas Neue\', sans-serif" font-size="(\d+)"', svg)
     return [int(value) for value in size_matches]
 
 
@@ -40,7 +40,8 @@ def test_generate_poster_includes_required_layers_and_assets(tmp_path: Path) -> 
     )
 
     assert 'width="1080" height="1350"' in svg
-    assert '<image href="data:image/png;base64,' in svg
+    assert 'xmlns:xlink="http://www.w3.org/1999/xlink"' in svg
+    assert '<image xlink:href="data:image/png;base64,' in svg
     assert '<pattern id="halftone"' not in svg
     assert "<polygon" not in svg
     assert '<rect x="0" y="0"' not in svg
@@ -48,12 +49,36 @@ def test_generate_poster_includes_required_layers_and_assets(tmp_path: Path) -> 
     assert "file://" not in svg
     assert "ADA TORRES" in svg
     assert "BRUNO GIL" in svg
+    assert 'data-text-role="comic-name"' in svg
     assert 'text-anchor="middle"' in svg
     assert 'textLength="900"' in svg
     assert 'lengthAdjust="spacingAndGlyphs"' in svg
-    assert "stroke-width: 2;" in svg
+    assert '<g id="overlay-text">' in svg
+    assert 'fill="#ffffff"' in svg
+    assert 'stroke="#000000"' in svg
+    assert 'stroke-width="3"' in svg
+    assert 'opacity="0.35"' in svg
     assert "2026-03-10" in svg
-    assert f'y="{FOOTER_DATE_Y}" class="footer-date"' in svg
+    assert f'y="{FOOTER_DATE_Y}"' in svg
+
+
+def test_base_image_is_painted_before_text_overlay(tmp_path: Path) -> None:
+    composer = _build_composer(tmp_path)
+    svg = composer.generate_poster(
+        lineup=[{"name": "Ada Torres"}, {"name": "Bruno Gil"}],
+        date="2026-03-10",
+        event_id="evt-order",
+    )
+
+    image_idx = svg.index('<image xlink:href="data:image/png;base64,')
+    overlay_idx = svg.index('<g id="overlay-text">')
+    name_idx = svg.index("ADA TORRES")
+    date_idx = svg.index("2026-03-10")
+
+    assert image_idx < overlay_idx
+    assert image_idx < name_idx
+    assert image_idx < date_idx
+    assert '<rect x="0" y="0" width="1080" height="1350"' not in svg
 
 
 def test_layout_spacing_is_larger_for_three_than_six_names(tmp_path: Path) -> None:

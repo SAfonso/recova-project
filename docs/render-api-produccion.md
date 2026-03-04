@@ -6,6 +6,10 @@
 
 > Nota v0.5.59: el compositor SVG embebe `base_poster.png` y la fuente TTF como `data URI` en Base64 para que CairoSVG renderice de forma determinista sin depender de rutas `file://`.
 
+> Nota v0.5.60: se blinda el orden de capas en el compositor híbrido: fondo primero y bloque de texto al final del SVG para garantizar que nombres/fecha queden siempre por delante del póster base.
+
+> Nota v0.5.61: en validación SDD v2 el compositor fuerza estilos inline de alto contraste (`fill #00FF00`, `stroke #FF00FF`, `stroke-width 6`) y usa `xlink:href` para asegurar diagnóstico visual inequívoco del overlay textual.
+
 # API de producción: Render + Upload (Flask)
 
 ## Objetivo
