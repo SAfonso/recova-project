@@ -43,7 +43,7 @@ function Root() {
   if (!session)            return <LoginScreen />;
   if (view === 'selector') return <OpenMicSelector session={session} onSelect={handleSelect} />;
   if (view === 'detail')   return <OpenMicDetail session={session} openMicId={openMicId} onBack={handleBack} onEnterLineup={() => setView('lineup')} />;
-  return <App session={session} openMicId={openMicId} />;
+  return <App session={session} openMicId={openMicId} onBack={() => setView('detail')} />;
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(

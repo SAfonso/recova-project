@@ -11,7 +11,7 @@ const CATEGORY_OPTIONS = [
   { value: 'restricted', label: 'Restricted' },
 ];
 
-function App({ session, openMicId }) {
+function App({ session, openMicId, onBack }) {
   const [candidates, setCandidates] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
   const [edits, setEdits] = useState({});
@@ -306,6 +306,7 @@ function App({ session, openMicId }) {
           onEventDateChange={setEventDate}
           selectedCount={selectedIds.length}
           hostEmail={session?.user?.email}
+          onBack={onBack}
         />
 
         {error && (

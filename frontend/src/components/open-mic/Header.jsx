@@ -13,11 +13,22 @@ function formatDateForSheet(value) {
 
 import { supabase } from '../../supabaseClient';
 
-export function Header({ eventDate, onEventDateChange, selectedCount, hostEmail }) {
+export function Header({ eventDate, onEventDateChange, selectedCount, hostEmail, onBack }) {
   const handleLogout = () => supabase.auth.signOut();
 
   return (
     <header className="flex flex-col items-center gap-2 pb-4 pt-6">
+      {onBack && (
+        <div className="w-full">
+          <button
+            type="button"
+            onClick={onBack}
+            className="text-sm font-bold text-[#fff8e7] hover:text-[#DC2626]"
+          >
+            ← Volver al Open Mic
+          </button>
+        </div>
+      )}
       <h1 className="font-['Bangers'] text-4xl tracking-wider text-[#1a1a1a] drop-shadow-[2px_2px_0px_rgba(255,255,255,0.3)] sm:text-5xl">
         AI LINEUP ARCHITECT
       </h1>
