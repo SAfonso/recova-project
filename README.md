@@ -1,24 +1,31 @@
 # AI LineUp Architect 🎭
 
 **Estado del Proyecto:** 🛠️ En desarrollo activo
-**Versión:** `0.5.61`
+**Versión:** `0.6.0`
 **Metodología:** Spec-Driven Development (SDD)
 
 Sistema para ingesta, curación y generación automática de cartel de Open Mics, con trazabilidad completa desde formularios hasta artefacto final publicado.
 
-## 1. Fuente de verdad técnica (v0.5.61)
+## 1. Fuente de verdad técnica (v0.6.0)
 
-En esta versión se consolidan los siguientes cambios estructurales:
+### Sprint 1 — Pivot SaaS Multi-Tenant (completado)
 
-- **Nuevo compositor vectorial SVG (SDD v2):** se añade `backend/src/core/svg_composer.py` con clase `SVGLineupComposer` y función `export_to_png(...)` para generar carteles sin dependencia de navegador headless.
-- **Safe Zone de lineup implementada en motor SVG:** distribución dinámica de nombres dentro del rango vertical `Y=400..1100`, con reducción proporcional de `font-size` cuando `N > 5`.
-- **Modelo híbrido SVG v2:** `backend/src/core/svg_composer.py` reemplaza capas vectoriales de fondo por `<image href="data:image/png;base64,...">` y mantiene solo capa dinámica de texto sobre diseño base.
-- **Orden de capas blindado en SVG:** la capa `<image>` se pinta primero (justo tras abrir `<svg>`) y el bloque de datos (`names_svg` + fecha) se renderiza al final para garantizar texto por delante del fondo.
-- **Validación estricta de assets del compositor:** antes de generar SVG se verifica con `os.path.exists()` la presencia de fuente `.ttf` y póster base `.png`; ante ausencia se lanza `ERR_ASSET_MISSING`.
-- **Modo de depuración visual extrema (fase validación):** la capa de datos se emite en estilo inline por `<text>` con `fill="#00FF00"`, `stroke="#FF00FF"` y `stroke-width="6"` para confirmar render por encima del fondo.
-- **Assets embebidos para CairoSVG robusto:** imagen base y fuente se serializan en Base64 (`data URI`) y se cachean tras la primera lectura para evitar dependencias de resolución `file://`.
-- **Estructura XML de emergencia:** root `<svg>` incluye `xmlns:xlink`, la imagen usa `xlink:href`, y todos los textos se encapsulan en `<g id="overlay-text">`; además `generate_poster(...)` imprime `DEBUG` con el total de nombres renderizados.
-- **Cobertura QA del compositor:** nueva suite `backend/tests/core/test_svg_composer.py` valida patrón/layers, límites Safe Zone y adaptabilidad tipográfica.
+En esta versión se implementa el pivot a arquitectura multi-tenant SaaS sobre el Medallion existente (Bronze/Silver/Gold):
+
+- **Esquema v3 multi-tenant:** `silver.organization_members` (auth bridge), `silver.open_mics` (N por proveedor, config JSONB), `silver.lineup_slots` (fuente de verdad de recencia), `confirm_lineup()` RPC atómica. RLS por host en Silver y Gold.
+- **Auth magic link:** `LoginScreen` con Supabase OTP. Solo hosts pre-registrados. `Root` en `main.jsx` gestiona el flujo `Login → OpenMicSelector → OpenMicDetail → App`.
+- **OpenMicSelector:** el host ve únicamente sus open mics (vía `organization_members`). Roles `host` y `collaborator`. Solo `host` puede crear nuevos open mics.
+- **OpenMicDetail:** hub del open mic — tarjeta de info en modo solo lectura + vista de configuración con `ScoringConfigurator`. Navegación `← Atrás` / `Ver Lineup →`.
+- **ScoringConfig:** módulo `backend/src/core/scoring_config.py` lee la config JSONB de `silver.open_mics` y reemplaza constantes hardcodeadas. 27 tests verdes.
+- **Scoring engine v3:** `execute_scoring(open_mic_id)` — penalización de recencia scoped por `open_mic_id` consultando `silver.lineup_slots`. Usa `ScoringConfig`.
+- **ScoringConfigurator:** componente React para editar config JSONB del open mic. Integrado en `OpenMicDetail` y en la pestaña Config del Lineup.
+- **Ingesta Bronze → Silver v3:** `BronzeRecord` con `open_mic_id`, filtro `IS NOT NULL` para pipeline v3, bifurcación v3/legacy en `insert_silver_rows`. Backward compatible.
+- **Google Form spec:** un Form por open mic, campos estandarizados (`Nombre artístico`, `Instagram (sin @)`, `WhatsApp`, etc.).
+- **Aislamiento multi-tenant:** `lineup_candidates` view incluye `open_mic_id`; el frontend filtra por el open mic activo. RLS garantiza el aislamiento a nivel de BD.
+
+### v0.5.61 — SVG Renderer (anterior)
+
+- Compositor vectorial SVG (`svg_composer.py`) con Safe Zone `Y=400..1100`, embebido Base64 de imagen y fuente, orden de capas blindado y validación de assets.
 
 - **Plantilla activa ajustada para lineup completo (5 artistas):** `backend/src/templates/catalog/active/template.html` cambia `.lineup` a `height: auto` y reduce `.comico` a `font-size: 60px` para mejorar encaje vertical del cartel.
 - **Micro embebido sin dependencia externa:** la silueta del micrófono deja de cargar una URL remota y usa un SVG embebido (`data:image/svg+xml`) para evitar fallos por recursos caídos/bloqueados.
@@ -92,20 +99,21 @@ En esta versión se consolidan los siguientes cambios estructurales:
 
 ```mermaid
 flowchart LR
-    A[Google Forms] --> B[n8n Orquestador]
+    A[Google Forms\nun form por open mic] --> B[n8n Orquestador]
 
-    B --> C[Webhook Ingesta\nFlask :5000]
+    B --> C[bronze_to_silver_ingestion.py]
     C --> D[(Supabase\nBronze/Silver/Gold)]
 
-    B --> E[App de Curación\nReact en Vercel]
+    H[Host — magic link] --> E[App de Curación\nReact local/Vercel]
     E --> D
 
-    B --> F[Renderer API\nFlask + Gunicorn :5050]
-    F --> G[PlaywrightRenderer]
-    G --> H[(Supabase Storage\nBucket posters)]
-    H --> I[public_url PNG]
+    B --> F[Renderer API\nMCP HTTP :8000]
+    F --> G[SVGLineupComposer\nCairoSVG]
+    G --> I[public_url PNG]
 
     I --> B
+
+    D --> E
 ```
 
 ## 3. Stack tecnológico e infraestructura
@@ -382,4 +390,4 @@ playwright install-deps
 
 ---
 
-Este README define el estado operativo objetivo de la versión `0.5.61` y debe tratarse como referencia principal para decisiones de implementación y despliegue.
+Este README define el estado operativo objetivo de la versión `0.6.0` y debe tratarse como referencia principal para decisiones de implementación y despliegue.
