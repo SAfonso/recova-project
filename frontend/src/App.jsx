@@ -40,6 +40,7 @@ function App({ session, openMicId, onBack }) {
     const { data: dataV2, error: errorV2 } = await supabase
       .from('lineup_candidates')
       .select('solicitud_id,fecha_evento,nombre,genero,categoria,estado,score_final,comico_id,contacto,telefono,instagram')
+      .eq('open_mic_id', openMicId)
       .order('score_final', { ascending: false, nullsFirst: false });
 
     if (errorV2) {
