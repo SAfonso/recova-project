@@ -96,11 +96,11 @@ function InfoCard({ openMic }) {
   );
 }
 
-export function OpenMicDetail({ session, openMicId, onBack, onEnterLineup }) {
+export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack, onEnterLineup }) {
   const [openMic,  setOpenMic]  = useState(null);
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState(null);
-  const [view,     setView]     = useState('info'); // 'info' | 'config'
+  const [view,     setView]     = useState(initialView); // 'info' | 'config'
 
   const fetchOpenMic = useCallback(() => {
     setLoading(true);
