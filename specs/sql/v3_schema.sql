@@ -215,13 +215,25 @@ create policy p_open_mics_anon_active
   to anon
   using (active = true);
 
+-- Host puede crear open_mics en su proveedor
+drop policy if exists p_open_mics_insert_own on silver.open_mics;
+create policy p_open_mics_insert_own
+  on silver.open_mics for insert
+  to authenticated
+  with check (
+    proveedor_id in (
+      select proveedor_id from silver.organization_members
+      where user_id = auth.uid() and role = 'host'
+    )
+  );
+
 drop policy if exists p_open_mics_service_role on silver.open_mics;
 create policy p_open_mics_service_role
   on silver.open_mics for all
   to service_role
   using (true) with check (true);
 
-grant select, update on silver.open_mics to authenticated;
+grant select, insert, update on silver.open_mics to authenticated;
 grant select on silver.open_mics to anon;
 
 
