@@ -67,7 +67,7 @@ export function NotebookSheet({
 
         <div className="ml-8 min-h-[240px]">
           {isConfig ? (
-            <ScoringConfigurator openMicId={openMicId} onSaved={() => onTabChange('lineup')} />
+            <ScoringConfigurator openMicId={openMicId} />
           ) : filteredCandidates.length === 0 ? (
             <p className="pt-4 font-['Patrick_Hand'] text-xl text-[#6B5C4A]/70 italic">No hay comicos para esta vista...</p>
           ) : (
