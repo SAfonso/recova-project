@@ -1,3 +1,42 @@
+## [0.6.0] - 2026-03-04
+
+### Added — Sprint 1: Pivot SaaS Multi-Tenant
+
+#### Esquema v3 (Medallion extendido)
+- `specs/sql/v3_schema.sql`: extiende Bronze/Silver/Gold con `silver.organization_members`, `silver.open_mics` (config JSONB), `silver.lineup_slots`, `confirm_lineup()` RPC y RLS por host
+- `specs/sql/migrations/20260304_add_open_mic_id_to_bronze.sql`: añade `open_mic_id` a `bronze.solicitudes`
+- `specs/sql/migrations/20260304_update_lineup_candidates_add_open_mic_id.sql`: añade `open_mic_id` a la view `lineup_candidates` para filtrado multi-tenant
+
+#### Auth (magic link)
+- `frontend/src/components/LoginScreen.jsx`: pantalla de login con Supabase OTP; solo hosts pre-registrados (`shouldCreateUser: false`)
+- `frontend/src/main.jsx`: componente `Root` con flujo `Login → OpenMicSelector → OpenMicDetail → App`
+
+#### Selección y creación de Open Mics
+- `frontend/src/components/OpenMicSelector.jsx`: lista open mics del host vía `organization_members`; soporta roles `host` y `collaborator`; solo `host` puede crear nuevos
+- `frontend/src/components/OpenMicDetail.jsx`: hub del open mic — tarjeta info (solo lectura) con resumen de config + vista de edición con `ScoringConfigurator`
+
+#### Scoring configurable por Open Mic
+- `backend/src/core/scoring_config.py`: `ScoringConfig.from_dict(open_mic_id, raw)` lee config JSONB de `silver.open_mics`; reemplaza constantes hardcodeadas
+- `backend/tests/core/test_scoring_config.py`: 27 tests
+- `frontend/src/components/ScoringConfigurator.jsx`: formulario React para editar config JSONB del open mic; integrado en `OpenMicDetail` y pestaña Config del Lineup
+
+#### Scoring engine v3
+- `backend/src/scoring_engine.py`: refactorizado — `execute_scoring(open_mic_id)`, penalización de recencia scoped por `open_mic_id` via `silver.lineup_slots`, usa `ScoringConfig`
+
+#### Ingesta Bronze → Silver v3
+- `backend/src/bronze_to_silver_ingestion.py`: `BronzeRecord` con `open_mic_id`, `fetch_pending_bronze_rows` filtra `open_mic_id IS NOT NULL`, `insert_silver_rows` bifurca v3/legacy
+- `specs/google_form_campos_spec.md`: un Google Form por open mic, campos estandarizados
+- `specs/sql/seed_data.sql`: actualizado con `silver.open_mics`, `open_mic_id` en bronze/silver
+
+#### Frontend — aislamiento y navegación
+- `frontend/src/App.jsx`: filtra `lineup_candidates` por `open_mic_id`; recibe `openMicId` y `onBack` como props
+- `frontend/src/components/open-mic/Header.jsx`: botón "← Volver al Open Mic" y logout
+- `frontend/src/components/open-mic/NotebookSheet.jsx`: pestaña Config integrada con `ScoringConfigurator`
+- `setup_db.py`: `v3_schema.sql` y migración bronze añadidos a `SQL_SEQUENCE`
+
+### Versioning
+- Bump de versión a `0.6.0` en `package.json`, `pyproject.toml` y `README.md`
+
 ## [0.5.61] - 2026-03-03
 
 ### Fixed
