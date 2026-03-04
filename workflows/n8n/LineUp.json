@@ -1,0 +1,193 @@
+{
+  "name": "LineUp",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generar-poster-lineup",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "b6e17ec0-5021-473e-a1a9-c661f487be62",
+      "name": "Webhook",
+      "webhookId": "9282d6dc-a7d3-4d22-bcbe-4b9936a2054f"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SUPABASE_URL + '/rest/v1/lineup_candidates' }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "fecha_evento",
+              "value": "=eq.{{ $json.body.fecha }}"
+            },
+            {
+              "name": "estado",
+              "value": "=eq.aprobado"
+            },
+            {
+              "name": "select",
+              "value": "nombre,instagram,fecha_evento"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.SUPABASE_KEY }}"
+            },
+            {
+              "name": "Accept-Profile",
+              "value": "gold"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        208,
+        0
+      ],
+      "id": "2fc9db60-4ad0-45cf-96b9-16c2e8b3e315",
+      "name": "HTTP Request3",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\n// Si no hay cómicos aprobados, devolvemos un error controlado o array vacío\nif (items.length === 0) return { error: \"No hay cómicos aprobados para esta fecha\" };\n\n// Mapeamos los cómicos al formato SDD §2.2\nconst lineup = items.map((item, index) => ({\n  order: index + 1,\n  name: item.json.nombre,\n  instagram: (item.json.instagram || \"\").replace('@', '').trim()\n}));\n\nreturn {\n  // Sacamos la fecha y el request_id del primer ítem (son comunes a todos)\n  request_id: items[0].json.request_id || \"7f3e82b0-1234-4a5b-8c9d-123456789abc\",\n  fecha_evento: items[0].json.fecha_evento,\n  lineup: lineup,\n  ahora_iso: new Date().toISOString()\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "06dacea3-e632-470c-afa8-951c71de132d",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.N8N_BACKEND_RENDER_URL }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"schema_version\": \"1.0\",\n  \"request_id\": \"{{ $json.request_id || 'n8n-' + $now.format('X') }}\",\n  \"template\": {\n    \"template_id\": \"lineup_default_v1\",\n    \"width\": 1080,\n    \"height\": 1350,\n    \"format\": \"png\",\n    \"theme\": \"default\",\n    \"quality\": 100\n  },\n  \"storage\": {\n    \"bucket\": \"posters\",\n    \"path_prefix\": \"{{ $now.format('YYYY-MM') }}\"\n  },\n  \"render\": {\n    \"format\": \"png\",\n    \"quality\": 100,\n    \"scale\": 1,\n    \"timeout_ms\": 30000,\n    \"use_cache\": false,\n    \"include_mcp\": true\n  },\n  \"metadata\": {\n  \"author\": \"n8n_curator\",\n  \"project\": \"RECOVA\",\n  \"initiated_at\": \"{{ $json.ahora_iso }}\", \n  \"trace_id\": \"n8n_{{ $execution.id }}\",\n  \"version\": \"0.5.30\"\n  },\n  \"event\": {\n    \"date\": \"{{ $json.fecha_evento }}\",\n    \"title\": \"LA RECOVA OPEN MIC\",\n    \"timezone\": \"Europe/Madrid\"\n  },\n  \"lineup\": {{ JSON.stringify($json.lineup) }}\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        624,
+        0
+      ],
+      "id": "0a9240fe-5ae8-433c-89aa-2c3154b49e61",
+      "name": "HTTP Request",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "U6Zl7maf7G6oJoUl",
+          "name": "Header Auth account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "sendPhoto",
+        "chatId": "4088898",
+        "file": "={{ $json.mcp.storage.public_url }}",
+        "additionalFields": {
+          "caption": "=✅ ¡Cartel Generado!  \n📅 Fecha: {{ $('Code in JavaScript').item.json.fecha_evento }}"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        832,
+        0
+      ],
+      "id": "3e85b5d5-b012-44bb-b448-5598452031e8",
+      "name": "Send a photo message",
+      "webhookId": "06f3ab03-4e79-4372-b1e0-7e4dcfde6574",
+      "credentials": {
+        "telegramApi": {
+          "id": "6Ab7xKZYHk0wK6KP",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request3": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Send a photo message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "0872be25-6459-4aed-8da4-4571bf8033ff",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0a875fbb3d2fbb10ab816e54655a603076a1de35a069a813489d324e1ea27d6a"
+  },
+  "id": "D9rZBKXdVsr3kOTR",
+  "tags": []
+}

@@ -1,0 +1,208 @@
+from __future__ import annotations
+
+import uuid
+from copy import deepcopy
+
+import pytest
+
+from playwright_renderer import PlaywrightRenderer, _DummyPage, _DummyBrowser
+
+
+@pytest.fixture(autouse=True)
+def _stub_supabase_upload(monkeypatch):
+    def _upload(*_args, **_kwargs):
+        return (
+            "2026-02-26/lineup_stub.png",
+            "https://example.supabase.co/storage/v1/object/public/posters/2026-02-26/lineup_stub.png",
+        )
+
+    monkeypatch.setattr(PlaywrightRenderer, "_upload_to_supabase", _upload)
+
+
+def _valid_payload() -> dict:
+    return {
+        "request_id": str(uuid.uuid4()),
+        "schema_version": "1.0",
+        "event": {
+            "date": "2026-02-26",
+            "venue": "Sala Recova",
+            "city": "Madrid",
+            "title": "LineUp Semanal",
+            "timezone": "Europe/Madrid",
+        },
+        "lineup": [
+            {"order": 1, "name": "Comica Uno", "instagram": "comica_uno"},
+            {"order": 2, "name": "Comico Dos", "instagram": "comico_dos"},
+            {"order": 3, "name": "Comica Tres", "instagram": "comica_tres"},
+            {"order": 4, "name": "Comico Cuatro", "instagram": "comico_cuatro"},
+            {"order": 5, "name": "Comica Cinco", "instagram": "comica_cinco"},
+        ],
+        "template": {
+            "template_id": "lineup_default_v1",
+            "width": 1080,
+            "height": 1350,
+            "theme": "default",
+        },
+        "render": {
+            "format": "png",
+            "quality": 100,
+            "scale": 2,
+            "timeout_ms": 15000,
+        },
+        "metadata": {
+            "source": "n8n.LineUp",
+            "initiated_at": "2026-02-26T10:00:00Z",
+            "trace_id": "trace-1234",
+        },
+    }
+
+
+
+def _assert_success_output_contract(result: dict, request_id: str) -> None:
+    assert result["status"] == "success"
+    assert result["request_id"] == request_id
+    assert isinstance(result["render_id"], str) and result["render_id"]
+
+    storage = result["storage"]
+    assert set(["provider", "bucket", "path", "storage_url", "public_url", "public"]).issubset(storage)
+
+    artifact = result["artifact"]
+    assert artifact["format"] == "png"
+    assert set(["dimensions", "size_bytes", "checksum_sha256"]).issubset(artifact)
+    assert artifact["dimensions"]["width"] == 1080
+    assert artifact["dimensions"]["height"] == 1350
+
+    timing = result["timing"]
+    assert set(
+        ["execution_time_ms", "browser_launch_ms", "html_injection_ms", "screenshot_ms", "upload_ms"]
+    ).issubset(timing)
+
+    assert isinstance(result["warnings"], list)
+
+    meta = result["meta"]
+    assert meta["schema_version"] == "1.0"
+    assert isinstance(meta["generated_at"], str) and meta["generated_at"]
+    assert meta["engine"] == "playwright-chromium"
+    assert isinstance(meta["engine_version"], str) and meta["engine_version"]
+
+
+
+def test_schema_validation_accepts_valid_payload_from_spec_2_2():
+    payload = _valid_payload()
+
+    renderer = PlaywrightRenderer()
+    result = renderer.render(payload)
+
+    _assert_success_output_contract(result, payload["request_id"])
+
+
+
+def test_lineup_under_minimum_returns_non_blocking_warning_code():
+    payload = _valid_payload()
+    payload["lineup"] = payload["lineup"][:4]
+
+    renderer = PlaywrightRenderer()
+    result = renderer.render(payload)
+
+    assert result["status"] == "success"
+    warnings = result["warnings"]
+    assert any(warning["code"] == "LINEUP_UNDER_MINIMUM" for warning in warnings)
+
+    under_minimum_warning = next(
+        warning for warning in warnings if warning["code"] == "LINEUP_UNDER_MINIMUM"
+    )
+    assert under_minimum_warning["details"]["current_count"] == 4
+    assert under_minimum_warning["details"]["minimum_required"] == 5
+
+
+def test_name_longer_than_32_chars_is_rendered_and_artifact_is_generated():
+    payload = _valid_payload()
+    payload["lineup"][0]["name"] = "Nombre Excesivamente Largo Para Un Slot Del Poster"
+
+    renderer = PlaywrightRenderer()
+    result = renderer.render(payload)
+
+    assert result["status"] == "success"
+    assert result["artifact"]["size_bytes"] > 0
+
+
+
+def test_playwright_launch_failure_maps_to_error_output_from_spec_3_2(monkeypatch):
+    payload = _valid_payload()
+
+    def _raise_launch_error(*_args, **_kwargs):
+        raise RuntimeError("browser launch failed")
+
+    monkeypatch.setattr(PlaywrightRenderer, "_launch_browser", _raise_launch_error)
+
+    renderer = PlaywrightRenderer()
+    result = renderer.render(payload)
+
+    assert result["status"] == "error"
+    assert result["request_id"] == payload["request_id"]
+    assert result["error"]["code"] == "PLAYWRIGHT_BROWSER_LAUNCH_FAILED"
+    assert isinstance(result["error"]["message"], str) and result["error"]["message"]
+    assert result["error"]["details"]["stage"] == "browser_launch"
+    assert result["error"]["details"]["retryable"] is True
+    assert isinstance(result["meta"]["generated_at"], str) and result["meta"]["generated_at"]
+    assert result["meta"]["schema_version"] == "1.0"
+
+
+
+def test_success_output_contract_is_mcp_rich_structure_from_spec_3_1():
+    payload = _valid_payload()
+
+    renderer = PlaywrightRenderer()
+    result = renderer.render(deepcopy(payload))
+
+    _assert_success_output_contract(result, payload["request_id"])
+
+def test_temp_file_is_deleted_after_upload(monkeypatch, tmp_path):
+    payload = _valid_payload()
+    renderer = PlaywrightRenderer()
+    renderer._config = renderer._config.__class__(
+        template_root=renderer._config.template_root,
+        output_root=tmp_path,
+    )
+
+    result = renderer.render(payload)
+
+    assert result["status"] == "success"
+    date_folder = tmp_path / payload["event"]["date"]
+    assert not any(date_folder.glob("*.png"))
+
+
+def test_dummy_page_screenshot_accepts_missing_path_argument():
+    page = _DummyPage()
+
+    png_bytes = PlaywrightRenderer._resolve_screenshot_bytes(page.screenshot())
+
+    assert png_bytes == b"dummy_content"
+
+
+def test_fallback_browser_keeps_success_contract_and_adds_structured_warning(monkeypatch):
+    payload = _valid_payload()
+
+    def _fallback_launch(self):
+        self._last_browser_warning = {
+            "code": "PLAYWRIGHT_FALLBACK_ACTIVE",
+            "message": "Render ejecutado en modo fallback por fallo al iniciar Chromium.",
+            "details": {
+                "stage": "browser_launch",
+                "reason": "no memory left",
+                "retryable": True,
+            },
+        }
+        return _DummyBrowser()
+
+    monkeypatch.setattr(PlaywrightRenderer, "_launch_browser", _fallback_launch)
+
+    renderer = PlaywrightRenderer()
+    result = renderer.render(payload)
+
+    assert result["status"] == "success"
+    fallback_warning = next(
+        warning for warning in result["warnings"] if warning["code"] == "PLAYWRIGHT_FALLBACK_ACTIVE"
+    )
+    assert fallback_warning["details"]["stage"] == "browser_launch"
+    assert fallback_warning["details"]["reason"] == "no memory left"

@@ -1,0 +1,39 @@
+name: Deploy to Hetzner (dev)
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+              set -euo pipefail
+              export PATH=$PATH:/usr/bin:/usr/local/bin
+              cd /root/RECOVA
+
+              # Forzamos la URL de origen a HTTPS usando el Token para no depender de SSH ni de contraseñas
+              git remote set-url origin https://${{ secrets.GH_TOKEN }}@github.com/SAfonso/recova-project.git
+              
+              git pull origin dev
+              ./venv/bin/pip install -r requirements.txt
+              
+              # 1. Ejecutamos la suite real del backend antes de reiniciar servicios.
+              ./venv/bin/python3 -m pytest -q backend/tests && \
+              
+              # 2. Solo si el comando anterior (pytest) es exitoso, se ejecuta lo siguiente:
+              (
+                pm2 restart webhook-ingesta || \
+                pm2 start /root/RECOVA/backend/src/triggers/webhook_listener.py \
+                --name "webhook-ingesta" \
+                --interpreter /root/RECOVA/venv/bin/python3
+              )
