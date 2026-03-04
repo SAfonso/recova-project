@@ -135,7 +135,7 @@ create table if not exists silver.open_mics (
   id              uuid primary key default gen_random_uuid(),
   proveedor_id    uuid not null
                     references silver.proveedores(id) on delete restrict,
-  name            text not null,
+  nombre          text not null,
   form_token      text not null unique
                     default encode(gen_random_bytes(16), 'hex'),
   config          jsonb not null default '{
