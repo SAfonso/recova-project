@@ -4,6 +4,10 @@
 .env.*.local
 *.secrets
 secrets.json
+*service-account*.json
+*service_account*.json
+google-sa*.json
+google_sa*.json
 
 # --- Python (PEP 8 & Herramientas) ---
 __pycache__/
