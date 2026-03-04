@@ -2,7 +2,7 @@ module.exports = {
   apps: [
     {
       name: "recova-mcp-http",
-      cwd: "/workspace/recova-project",
+      cwd: "/home/sergio/Desktop/Recova Project/recova-project",
       script: "./.venv/bin/python",
       args: "-m backend.src.mcp_server",
       interpreter: "none",

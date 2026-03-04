@@ -11,7 +11,11 @@ function formatDateForSheet(value) {
   return `${day}-${month}-${year.slice(2)}`;
 }
 
-export function Header({ eventDate, onEventDateChange, selectedCount }) {
+import { supabase } from '../../supabaseClient';
+
+export function Header({ eventDate, onEventDateChange, selectedCount, hostEmail }) {
+  const handleLogout = () => supabase.auth.signOut();
+
   return (
     <header className="flex flex-col items-center gap-2 pb-4 pt-6">
       <h1 className="font-['Bangers'] text-4xl tracking-wider text-[#1a1a1a] drop-shadow-[2px_2px_0px_rgba(255,255,255,0.3)] sm:text-5xl">
@@ -50,6 +54,19 @@ export function Header({ eventDate, onEventDateChange, selectedCount }) {
           {selectedCount}/5
         </span>
       </div>
+
+      {hostEmail && (
+        <div className="flex items-center gap-2 text-xs text-[#6B5C4A]">
+          <span>{hostEmail}</span>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="font-bold underline underline-offset-2 hover:text-[#DC2626]"
+          >
+            Cerrar sesión
+          </button>
+        </div>
+      )}
     </header>
   );
 }

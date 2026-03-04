@@ -11,7 +11,7 @@ const CATEGORY_OPTIONS = [
   { value: 'restricted', label: 'Restricted' },
 ];
 
-function App() {
+function App({ session }) {
   const [candidates, setCandidates] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
   const [edits, setEdits] = useState({});
@@ -304,6 +304,7 @@ function App() {
           eventDate={eventDate}
           onEventDateChange={setEventDate}
           selectedCount={selectedIds.length}
+          hostEmail={session?.user?.email}
         />
 
         {error && (
