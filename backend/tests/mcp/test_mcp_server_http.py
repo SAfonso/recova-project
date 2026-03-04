@@ -88,8 +88,7 @@ async def test_mcp_lock_concurrency(
 ) -> None:
     order: list[str] = []
 
-    async def fake_execute_render(*, payload: dict, browser_context=None) -> dict:
-        del browser_context
+    async def fake_execute_render(*, payload: dict) -> dict:
         event_id = payload["event_id"]
         order.append(f"start:{event_id}")
         await asyncio.sleep(0.05)
