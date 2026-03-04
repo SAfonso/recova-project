@@ -23,6 +23,9 @@ SQL_SEQUENCE = [
     ROOT_DIR / "specs/sql/gold_relacional.sql",
     ROOT_DIR / "specs/sql/migrations/20260218_create_lineup_candidates_and_validate_lineup.sql",
     ROOT_DIR / "specs/sql/migrations/20260217_sync_lineup_validation_states.sql",
+    # v3 multi-tenant
+    ROOT_DIR / "specs/sql/v3_schema.sql",
+    ROOT_DIR / "specs/sql/migrations/20260304_add_open_mic_id_to_bronze.sql",
 ]
 SEED_SQL_PATH = ROOT_DIR / "specs/sql/seed_data.sql"
 ENUM_TYPES = (
