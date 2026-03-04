@@ -201,48 +201,51 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
             </div>
 
             {/* Zona de peligro */}
-            {showDeletePanel ? (
-              <div className="rounded-lg border-[3px] border-[#DC2626] bg-[#fff8e7] p-4">
-                <p className="mb-3 text-sm font-bold text-[#7f1d1d]">
-                  Escribe <span className="font-mono">{openMic.nombre}</span> para confirmar el borrado:
-                </p>
-                <input
-                  type="text"
-                  value={deleteConfirm}
-                  onChange={(e) => { setDeleteConfirm(e.target.value); setDeleteError(''); }}
-                  placeholder={openMic.nombre}
-                  className="mb-3 w-full rounded-md border-2 border-[#DC2626] bg-[#F5F0E1] px-3 py-2 text-sm font-bold text-[#1a1a1a] outline-none focus:ring-2 focus:ring-[#DC2626]"
-                />
-                {deleteError && (
-                  <p className="mb-2 text-xs text-[#DC2626]">{deleteError}</p>
-                )}
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => { setShowDeletePanel(false); setDeleteConfirm(''); setDeleteError(''); }}
-                    className="flex-1 rounded-lg border-[3px] border-[#1a1a1a] bg-[#fff8e7] py-2 text-sm font-bold text-[#1a1a1a] hover:bg-[#C8B89A]"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleDelete}
-                    disabled={deleteConfirm !== openMic.nombre}
-                    className="flex-1 rounded-lg border-[3px] border-[#DC2626] bg-[#DC2626] py-2 text-sm font-bold text-white transition-all hover:bg-[#7f1d1d] disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    Borrar definitivamente
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setShowDeletePanel(true)}
-                className="w-full rounded-lg border-[3px] border-[#DC2626] bg-transparent py-2.5 text-sm font-bold text-[#DC2626] transition-all hover:bg-[#DC2626] hover:text-white"
-              >
-                Borrar open mic
-              </button>
-            )}
+            <div className="rounded-lg border-[3px] border-[#1a1a1a] bg-[#fff8e7] px-6 py-4 shadow-[6px_6px_0px_rgba(0,0,0,0.3)]">
+              <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-[#7f1d1d]">Zona de peligro</h3>
+              {showDeletePanel ? (
+                <>
+                  <p className="mb-3 text-sm text-[#1a1a1a]">
+                    Escribe <span className="font-mono font-bold">{openMic.nombre}</span> para confirmar:
+                  </p>
+                  <input
+                    type="text"
+                    value={deleteConfirm}
+                    onChange={(e) => { setDeleteConfirm(e.target.value); setDeleteError(''); }}
+                    placeholder={openMic.nombre}
+                    className="mb-3 w-full rounded-md border-2 border-[#DC2626] bg-[#F5F0E1] px-3 py-2 text-sm font-bold text-[#1a1a1a] outline-none focus:ring-2 focus:ring-[#DC2626]"
+                  />
+                  {deleteError && (
+                    <p className="mb-2 text-xs text-[#DC2626]">{deleteError}</p>
+                  )}
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { setShowDeletePanel(false); setDeleteConfirm(''); setDeleteError(''); }}
+                      className="flex-1 rounded-lg border-[3px] border-[#1a1a1a] bg-[#fff8e7] py-2 text-sm font-bold text-[#1a1a1a] hover:bg-[#C8B89A]"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDelete}
+                      disabled={deleteConfirm !== openMic.nombre || deleting}
+                      className="flex-1 rounded-lg border-[3px] border-[#DC2626] bg-[#DC2626] py-2 text-sm font-bold text-white transition-all hover:bg-[#7f1d1d] disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      {deleting ? 'Borrando...' : 'Borrar definitivamente'}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowDeletePanel(true)}
+                  className="w-full rounded-lg border-[3px] border-[#DC2626] bg-[#DC2626] py-2.5 text-sm font-bold text-white transition-all hover:bg-[#7f1d1d]"
+                >
+                  Borrar open mic
+                </button>
+              )}
+            </div>
           </>
         ) : (
           <div className="rounded-lg border-[3px] border-[#1a1a1a] bg-[#fff8e7] px-6 py-4 shadow-[6px_6px_0px_rgba(0,0,0,0.3)]">
