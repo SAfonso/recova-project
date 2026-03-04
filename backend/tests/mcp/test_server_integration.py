@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
-from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -44,26 +43,21 @@ async def test_full_render_success(monkeypatch: pytest.MonkeyPatch, tmp_path: Pa
 
     generated_png = tmp_path / "rendered_lineup.png"
 
-    async def fake_render(*, payload: dict, browser_context: object | None = None):
+    async def fake_render(*, payload: dict):
         generated_png.write_bytes(b"\x89PNG\r\n\x1a\n")
         return {
             "status": "success",
             "output": {"public_url": str(generated_png)},
             "trace": {
-                "engine": "playwright-chromium",
-                "generation_mode": "vision_generated",
+                "engine": "pillow-freetype",
+                "generation_mode": "direct_composite",
                 "template_id": payload["intent"]["template_id"],
-                "logs": ["slots.binding.completed", "artifact.generated"],
                 "warnings": [],
             },
         }
 
-    # Se mockea BrowserContext para evitar navegador real en tests.
-    browser_context_mock = SimpleNamespace(new_page=AsyncMock())
-
     monkeypatch.setattr(mcp_server, "validate_reference_image", validate_mock)
     monkeypatch.setattr(mcp_server, "execute_render", fake_render)
-    monkeypatch.setattr(mcp_server, "BrowserContext", browser_context_mock)
 
     result = await mcp_server.orchestrate_render(valid_request_payload, workdir=tmp_path)
 
@@ -126,7 +120,7 @@ async def test_concurrency_lock(monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
     
     monkeypatch.setattr(mcp_server, "validate_reference_image", Mock(return_value={"status": True}))
 
-    async def fake_render(*, payload: dict, browser_context: object | None = None):
+    async def fake_render(*, payload: dict):
         order.append(f"start:{payload['event_id']}")
         await asyncio.sleep(0.05)
         order.append(f"end:{payload['event_id']}")
@@ -163,8 +157,7 @@ async def test_pure_black_box_invariant(monkeypatch: pytest.MonkeyPatch, tmp_pat
             "status": "success",
             "output": {"public_url": str(tmp_path / "black_box.png")},
             "trace": {
-                "engine": "playwright-chromium",
-                "logs": ["artifact.generated"],
+                "engine": "pillow-freetype",
                 "warnings": [],
             },
         }
