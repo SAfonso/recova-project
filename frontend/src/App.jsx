@@ -11,7 +11,7 @@ const CATEGORY_OPTIONS = [
   { value: 'restricted', label: 'Restricted' },
 ];
 
-function App({ session }) {
+function App({ session, openMicId }) {
   const [candidates, setCandidates] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
   const [edits, setEdits] = useState({});
@@ -23,7 +23,6 @@ function App({ session }) {
   const [error, setError] = useState('');
   const [isExpanded, setIsExpanded] = useState(false);
   const [recoveryNotes, setRecoveryNotes] = useState('');
-  const [openMicId, setOpenMicId] = useState(null);
 
   const activeCandidate = useMemo(
     () => candidates.find((candidate) => candidate.row_key === activeId),
@@ -118,28 +117,6 @@ function App({ session }) {
     fetchCandidates();
   }, []);
 
-  useEffect(() => {
-    if (!session?.user?.id) return;
-    supabase
-      .schema('silver')
-      .from('organization_members')
-      .select('proveedor_id')
-      .eq('user_id', session.user.id)
-      .single()
-      .then(({ data: member }) => {
-        if (!member) return;
-        return supabase
-          .schema('silver')
-          .from('open_mics')
-          .select('id')
-          .eq('proveedor_id', member.proveedor_id)
-          .limit(1)
-          .single();
-      })
-      .then((result) => {
-        if (result?.data?.id) setOpenMicId(result.data.id);
-      });
-  }, [session?.user?.id]);
 
   const getDraft = (candidate) => {
     const existing = edits[candidate.row_key];
