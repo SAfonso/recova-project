@@ -85,7 +85,7 @@ export function OpenMicSelector({ session, onSelect }) {
       return;
     }
 
-    onSelect(newMic.id);
+    onSelect(newMic.id, { isNew: true });
   };
 
   const handleLogout = () => supabase.auth.signOut();

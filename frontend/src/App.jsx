@@ -11,12 +11,12 @@ const CATEGORY_OPTIONS = [
   { value: 'restricted', label: 'Restricted' },
 ];
 
-function App({ session, openMicId }) {
+function App({ session, openMicId, initialTab = 'lineup' }) {
   const [candidates, setCandidates] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
   const [edits, setEdits] = useState({});
   const [activeId, setActiveId] = useState(null);
-  const [activeTab, setActiveTab] = useState('lineup');
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [eventDate, setEventDate] = useState('');
