@@ -1,136 +1,138 @@
-# Spec: OpenMicDetail — Vista de detalle y configuración de un Open Mic
+# Spec: OpenMicDetail — Hub de detalle de un Open Mic
 
 **Afecta a:**
-- `frontend/src/components/OpenMicDetail.jsx` (NUEVO)
-- `frontend/src/main.jsx` — añade estado de navegación entre vistas
+- `frontend/src/components/OpenMicDetail.jsx` (REFACTOR)
+- `frontend/src/main.jsx` — sin cambios en navegación externa
 
 **Estado:** pendiente de implementación
-**Versión:** v3.0
+**Versión:** v3.1
 
 ---
 
 ## 1. Contexto
 
-Tras seleccionar o crear un open mic en `OpenMicSelector`, el host accede a
-una vista de detalle antes de entrar al Lineup. Esta vista actúa como hub del
-open mic: muestra su información, permite configurarlo y da acceso al Lineup.
+`OpenMicDetail` es el hub de un open mic concreto. Tiene dos vistas internas:
+
+- **`info`** (por defecto): tarjeta de solo lectura con los datos del open mic
+- **`config`**: formulario de edición de configuración de scoring
+
+El host navega entre ellas sin salir del componente. Para entrar al Lineup
+existe un botón "Ver Lineup →" siempre visible en la vista `info`.
 
 Flujo completo:
 
 ```
-Login → OpenMicSelector → OpenMicDetail → App (Lineup)
-                ↑                |
-                └────── Atrás ───┘
+OpenMicSelector
+      ↓ onSelect
+  OpenMicDetail [info]  ←──────── ← Volver (desde config)
+      │                                  ↑
+      ├── [Configurar] ──────────► [config] → guardar → vuelve a info
+      │
+      └── [Ver Lineup →] ──────► App (Lineup)
 ```
 
 ---
 
-## 2. Responsabilidades
+## 2. Vista `info` — Tarjeta de solo lectura
 
-| Responsabilidad | Descripción |
-|---|---|
-| Info del open mic | Nombre, fecha de creación |
-| Configuración | Embebe `ScoringConfigurator` — el host puede editar y guardar |
-| Navegación atrás | Botón "← Atrás" → vuelve a `OpenMicSelector` |
-| Acceso al Lineup | Botón "Ver Lineup →" → entra a `App` |
+```
+┌─────────────────────────────────────────┐
+│  ← Atrás                   host@...     │
+├─────────────────────────────────────────┤
+│                                         │
+│  ┌─── Tarjeta del Open Mic ───────────┐ │
+│  │                                    │ │
+│  │  Recova Open Mic — Edición 1       │ │  ← nombre
+│  │  Creado el 04/03/2026              │ │  ← fecha
+│  │                                    │ │
+│  │  Slots:      8                     │ │
+│  │  Gold:       90 pts                │ │
+│  │  Priority:   70 pts                │ │
+│  │  Standard:   50 pts                │ │
+│  │  Restricted: bloqueado             │ │
+│  │                                    │ │
+│  │  Recencia:   -20 pts (últimas 2)   │ │
+│  │  Bono fecha única: +10 pts         │ │
+│  │  Paridad:    desactivada           │ │
+│  │                                    │ │
+│  └────────────────────────────────────┘ │
+│                                         │
+│  [Configurar]          [Ver Lineup →]   │
+└─────────────────────────────────────────┘
+```
+
+- Todos los valores son de solo lectura, extraídos del campo `config` JSONB
+- Si `config` está vacío o es `{}`, muestra los valores por defecto de `ScoringConfig`
 
 ---
 
-## 3. Props
+## 3. Vista `config` — Edición de configuración
+
+```
+┌─────────────────────────────────────────┐
+│  ← Volver                  host@...     │
+├─────────────────────────────────────────┤
+│                                         │
+│  Configuración de scoring               │
+│                                         │
+│  <ScoringConfigurator                   │
+│     openMicId={openMicId}               │
+│     onSaved={() => setView('info')}     │
+│  />                                     │
+│                                         │
+└─────────────────────────────────────────┘
+```
+
+- "← Volver" vuelve a `info` sin guardar
+- Guardar en `ScoringConfigurator` llama `onSaved` → vuelve a `info` y recarga los datos
+
+---
+
+## 4. Props
 
 ```jsx
 <OpenMicDetail
-  session={session}           // sesión de Supabase
-  openMicId={openMicId}       // UUID del open mic seleccionado
-  onBack={fn}                 // vuelve a OpenMicSelector (resetea openMicId)
-  onEnterLineup={fn}          // entra a App con el openMicId actual
+  session={session}
+  openMicId={openMicId}
+  onBack={fn}           // ← Atrás → OpenMicSelector
+  onEnterLineup={fn}    // Ver Lineup → App
 />
 ```
 
 ---
 
-## 4. Fetch de datos
+## 5. Estado interno
+
+| Estado | Tipo | Descripción |
+|---|---|---|
+| `view` | `'info' \| 'config'` | Vista activa dentro del componente |
+| `openMic` | objeto | `{ id, nombre, created_at, config }` |
+| `loading` | boolean | Cargando datos del open mic |
+| `error` | string \| null | Error de fetch |
+
+---
+
+## 6. Fetch de datos
 
 ```js
-const { data: openMic } = await supabase
+const { data } = await supabase
   .schema('silver')
   .from('open_mics')
-  .select('id, nombre, created_at')
+  .select('id, nombre, created_at, config')
   .eq('id', openMicId)
   .single();
 ```
 
----
-
-## 5. UI
-
-```
-┌─────────────────────────────────────────┐
-│  ← Atrás          AI LineUp Architect   │
-├─────────────────────────────────────────┤
-│                                         │
-│  Recova Open Mic — Edición principal    │  ← nombre del open mic
-│  Creado el 04/03/2026                   │  ← fecha de creación
-│                                         │
-│  ┌──── Configuración ────────────────┐  │
-│  │  <ScoringConfigurator />          │  │
-│  └───────────────────────────────────┘  │
-│                                         │
-│              [Ver Lineup →]             │
-└─────────────────────────────────────────┘
-```
-
-- `ScoringConfigurator` embebido sin `onSaved` redirect — guardar queda en la misma vista
-- "Ver Lineup →" siempre visible, independientemente de si se ha guardado config
-- "← Atrás" llama `onBack()` → `main.jsx` resetea `openMicId` a `null`
+Se recarga tras `onSaved` para reflejar la config actualizada en la tarjeta.
 
 ---
 
-## 6. Integración en main.jsx
+## 7. Criterios de aceptación
 
-```jsx
-function Root() {
-  const [session,   setSession]   = useState(null);
-  const [checking,  setChecking]  = useState(true);
-  const [openMicId, setOpenMicId] = useState(null);
-  const [view,      setView]      = useState('selector'); // 'selector' | 'detail' | 'lineup'
-
-  // ...auth listener sin cambios...
-
-  if (checking) return <Spinner />;
-  if (!session)               return <LoginScreen />;
-  if (view === 'selector')    return <OpenMicSelector session={session} onSelect={handleSelect} />;
-  if (view === 'detail')      return <OpenMicDetail
-                                        session={session}
-                                        openMicId={openMicId}
-                                        onBack={handleBack}
-                                        onEnterLineup={() => setView('lineup')}
-                                      />;
-  return <App session={session} openMicId={openMicId} />;
-}
-
-const handleSelect = (id) => { setOpenMicId(id); setView('detail'); };
-const handleBack   = ()   => { setOpenMicId(null); setView('selector'); };
-```
-
-> **Nota:** se elimina `initialTab` — ya no es necesario porque Config vive en
-> `OpenMicDetail`, no en `App`. `App` siempre arranca en `lineup`.
-
----
-
-## 7. Cambios en App.jsx
-
-- Eliminar prop `initialTab` (ya no se usa)
-- `activeTab` vuelve a inicializarse siempre como `'lineup'`
-
----
-
-## 8. Criterios de aceptación
-
-- [ ] Tras seleccionar o crear un open mic, se muestra `OpenMicDetail`
-- [ ] El nombre y fecha del open mic se muestran correctamente
-- [ ] `ScoringConfigurator` carga y guarda la config desde esta vista
-- [ ] "← Atrás" vuelve a `OpenMicSelector` y limpia el `openMicId`
-- [ ] "Ver Lineup →" entra a `App` con el `openMicId` correcto
-- [ ] `App` siempre arranca en la pestaña Lineup (sin `initialTab`)
-- [ ] La pestaña Config en `NotebookSheet` sigue accesible dentro del Lineup
+- [ ] La vista `info` muestra nombre, fecha y resumen de config en modo lectura
+- [ ] Si `config` es `{}`, se muestran los valores por defecto
+- [ ] [Configurar] abre la vista `config`
+- [ ] Guardar en config vuelve a `info` y refleja los nuevos valores
+- [ ] "← Volver" desde config vuelve a `info` sin guardar
+- [ ] "← Atrás" vuelve a `OpenMicSelector`
+- [ ] "Ver Lineup →" entra a `App`
