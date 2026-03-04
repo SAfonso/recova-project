@@ -1,3 +1,31 @@
+## [0.5.61] - 2026-03-03
+
+### Fixed
+- `backend/src/core/svg_composer.py` aplica reestructuración de emergencia para visibilidad de texto: root `<svg>` con `xmlns:xlink`, imagen base por `xlink:href` y bloque `<g id="overlay-text">` renderizado al final para asegurar overlay por encima del fondo.
+- `backend/src/core/svg_composer.py` elimina dependencia de clase `.comic-name` en `<style>` y mueve estilos de cómicos a atributos inline en cada `<text>`.
+- `backend/src/core/svg_composer.py` activa contraste extremo de validación (`fill="#00FF00"`, `stroke="#FF00FF"`, `stroke-width="6"`) para confirmar render de nombres/fecha.
+- `backend/src/core/svg_composer.py` añade logging de verificación en runtime: `DEBUG: Generando {len(safe_lineup)} nombres sobre el fondo`.
+- `backend/tests/core/test_svg_composer.py` actualiza aserciones al nuevo contrato (`xlink:href`, `data-text-role`, estilos inline y orden de capas).
+
+### Changed
+- `README.md`, `docs/sdd_v2_svg_renderer.md`, `docs/mcp-agnostic-renderer-spec.md` y `docs/render-api-produccion.md` documentan la fase de validación visual extrema del SDD v2.
+
+### Versioning
+- Bump de versión a `0.5.61` en `package.json`, `pyproject.toml` y `README.md`.
+
+## [0.5.60] - 2026-03-03
+
+### Fixed
+- `backend/src/core/svg_composer.py` fuerza orden de pintado por capas para evitar texto oculto: `<image>` base se emite primero tras abrir `<svg>` y el bloque de overlay (`names_svg` + `safe_date`) se renderiza al final en `<g id="overlay-text">`.
+- `backend/src/core/svg_composer.py` mantiene el overlay en blanco con trazo negro fino (`fill: #ffffff`, `stroke: #000000`, `stroke-width: 2`) y asegura que no se inyecta ningún `<rect>` intermedio entre fondo y texto.
+- `backend/tests/core/test_svg_composer.py` añade prueba de orden de capas para validar que la imagen base se pinta antes del texto.
+
+### Changed
+- `README.md`, `docs/sdd_v2_svg_renderer.md`, `docs/mcp-agnostic-renderer-spec.md` y `docs/render-api-produccion.md` documentan explícitamente el orden de capas del modelo híbrido.
+
+### Versioning
+- Bump de versión a `0.5.60` en `package.json`, `pyproject.toml` y `README.md`.
+
 ## [0.5.59] - 2026-03-03
 
 ### Changed

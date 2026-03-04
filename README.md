@@ -1,21 +1,23 @@
 # AI LineUp Architect 🎭
 
 **Estado del Proyecto:** 🛠️ En desarrollo activo
-**Versión:** `0.5.59`
+**Versión:** `0.5.61`
 **Metodología:** Spec-Driven Development (SDD)
 
 Sistema para ingesta, curación y generación automática de cartel de Open Mics, con trazabilidad completa desde formularios hasta artefacto final publicado.
 
-## 1. Fuente de verdad técnica (v0.5.59)
+## 1. Fuente de verdad técnica (v0.5.61)
 
 En esta versión se consolidan los siguientes cambios estructurales:
 
 - **Nuevo compositor vectorial SVG (SDD v2):** se añade `backend/src/core/svg_composer.py` con clase `SVGLineupComposer` y función `export_to_png(...)` para generar carteles sin dependencia de navegador headless.
 - **Safe Zone de lineup implementada en motor SVG:** distribución dinámica de nombres dentro del rango vertical `Y=400..1100`, con reducción proporcional de `font-size` cuando `N > 5`.
 - **Modelo híbrido SVG v2:** `backend/src/core/svg_composer.py` reemplaza capas vectoriales de fondo por `<image href="data:image/png;base64,...">` y mantiene solo capa dinámica de texto sobre diseño base.
+- **Orden de capas blindado en SVG:** la capa `<image>` se pinta primero (justo tras abrir `<svg>`) y el bloque de datos (`names_svg` + fecha) se renderiza al final para garantizar texto por delante del fondo.
 - **Validación estricta de assets del compositor:** antes de generar SVG se verifica con `os.path.exists()` la presencia de fuente `.ttf` y póster base `.png`; ante ausencia se lanza `ERR_ASSET_MISSING`.
-- **Estilo de texto optimizado para overlay:** la capa de datos usa `fill: #ffffff` y `stroke: #000000` con grosor fino (`2px`) para legibilidad sin destruir el diseño base.
+- **Modo de depuración visual extrema (fase validación):** la capa de datos se emite en estilo inline por `<text>` con `fill="#00FF00"`, `stroke="#FF00FF"` y `stroke-width="6"` para confirmar render por encima del fondo.
 - **Assets embebidos para CairoSVG robusto:** imagen base y fuente se serializan en Base64 (`data URI`) y se cachean tras la primera lectura para evitar dependencias de resolución `file://`.
+- **Estructura XML de emergencia:** root `<svg>` incluye `xmlns:xlink`, la imagen usa `xlink:href`, y todos los textos se encapsulan en `<g id="overlay-text">`; además `generate_poster(...)` imprime `DEBUG` con el total de nombres renderizados.
 - **Cobertura QA del compositor:** nueva suite `backend/tests/core/test_svg_composer.py` valida patrón/layers, límites Safe Zone y adaptabilidad tipográfica.
 
 - **Plantilla activa ajustada para lineup completo (5 artistas):** `backend/src/templates/catalog/active/template.html` cambia `.lineup` a `height: auto` y reduce `.comico` a `font-size: 60px` para mejorar encaje vertical del cartel.
@@ -380,4 +382,4 @@ playwright install-deps
 
 ---
 
-Este README define el estado operativo objetivo de la versión `0.5.59` y debe tratarse como referencia principal para decisiones de implementación y despliegue.
+Este README define el estado operativo objetivo de la versión `0.5.61` y debe tratarse como referencia principal para decisiones de implementación y despliegue.

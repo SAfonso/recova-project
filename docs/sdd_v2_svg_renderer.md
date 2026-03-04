@@ -76,6 +76,10 @@ Ruta obligatoria del MVP:
 Invariante: si falta la fuente local requerida (o el PNG base), el render debe abortar con error estructurado (`ERR_ASSET_MISSING`).
 
 ### 4.4 Modelo Híbrido (Base Image + Text Overlay)
+- Orden obligatorio de pintado:
+  - 1) `<image>` de fondo inmediatamente después de `<svg>`,
+  - 2) bloque de texto dinámico (`lineup` + fecha) al final del documento, justo antes de `</svg>`.
+- El nodo raíz debe declarar `xmlns:xlink="http://www.w3.org/1999/xlink"` y la imagen base debe inyectarse con `xlink:href`.
 - El `<svg>` debe abrir con una capa `<image>` de fondo:
   - `href="data:image/png;base64,{...}"`
   - `width="1080" height="1350"`
@@ -88,6 +92,8 @@ Invariante: si falta la fuente local requerida (o el PNG base), el render debe a
   - base poster PNG.
 - Si falta cualquiera, el engine debe fallar con `ERR_ASSET_MISSING`.
 - Optimización: el motor cachea el Base64 de PNG/fuente tras la primera lectura para no penalizar rendimiento por render repetido.
+- Restricción de overlay: no se permite `<rect>` opaco entre la imagen base y el bloque de texto.
+- En fase de validación técnica se permite "martillo visual" con estilo inline de alto contraste en cada `<text>`: `fill="#00FF00"`, `stroke="#FF00FF"`, `stroke-width="6"`.
 
 ## 5. Algoritmo de Adaptabilidad
 
@@ -136,7 +142,8 @@ Invariante: `safe_zone_top <= y_center(i) <= safe_zone_bottom` para todo `i`.
 ### Capa 2: Datos Dinámicos
 - Nombres de cómicos (obligatorio).
 - Instagrams (si el template activo los requiere).
-- Estilo mínimo de contraste: `fill: #ffffff`, `stroke: #000000`, `stroke-width: 2px`.
+- Estilo inline obligatorio por nodo `<text>` (sin clase CSS compartida).
+- Fase validación: `fill: #00FF00`, `stroke: #FF00FF`, `stroke-width: 6px`.
 
 ### Capa 3: Footer
 - Fecha del evento (ej. `event.date`).
@@ -185,6 +192,9 @@ Errores estructurados recomendados:
 - `ERR_SVG_TEMPLATE_NOT_FOUND`
 - `ERR_SVG_COMPOSITION_FAILED`
 - `ERR_RASTERIZATION_FAILED`
+
+Telemetría mínima de validación:
+- Log en `generate_poster(...)`: `DEBUG: Generando {N} nombres sobre el fondo`.
 
 ## 10. Riesgos Técnicos
 

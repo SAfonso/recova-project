@@ -105,9 +105,11 @@ class SVGLineupComposer:
         name_layout = self._compute_name_layout(safe_lineup)
         names_svg = "\n".join(
             (
-                f'<text x="{item.x}" y="{item.y}" class="comic-name" '
-                f'font-size="{item.font_size}" dominant-baseline="middle" '
-                f'text-anchor="middle" textLength="900" lengthAdjust="spacingAndGlyphs">'
+                f'<text data-text-role="comic-name" x="{item.x}" y="{item.y}" '
+                f'font-family="\'Bebas Neue\', sans-serif" font-size="{item.font_size}" '
+                f'fill="#ffffff" stroke="#000000" stroke-width="3" paint-order="stroke" '
+                f'dominant-baseline="middle" text-anchor="middle" '
+                f'textLength="900" lengthAdjust="spacingAndGlyphs">'
                 f"{xml_escape(item.text)}</text>"
             )
             for item in name_layout
@@ -117,45 +119,19 @@ class SVGLineupComposer:
         base_image_uri = f"data:image/png;base64,{self._base_image_base64}"
 
         return f"""<?xml version=\"1.0\" encoding=\"UTF-8\"?>
-<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{CANVAS_WIDTH}\" height=\"{CANVAS_HEIGHT}\" viewBox=\"0 0 {CANVAS_WIDTH} {CANVAS_HEIGHT}\" role=\"img\" aria-label=\"Cartel de lineup\">
-  <image href=\"{base_image_uri}\" x=\"0\" y=\"0\" width=\"{CANVAS_WIDTH}\" height=\"{CANVAS_HEIGHT}\" preserveAspectRatio=\"xMidYMid slice\"/>
-  <defs>
+<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" width=\"{CANVAS_WIDTH}\" height=\"{CANVAS_HEIGHT}\" viewBox=\"0 0 {CANVAS_WIDTH} {CANVAS_HEIGHT}\" role=\"img\" aria-label=\"Cartel de lineup\">
+  <image xlink:href=\"{base_image_uri}\" x=\"0\" y=\"0\" width=\"{CANVAS_WIDTH}\" height=\"{CANVAS_HEIGHT}\" preserveAspectRatio=\"xMidYMid slice\"/>
+  <g id=\"overlay-text\">
     <style>
       @font-face {{
         font-family: 'Bebas Neue';
         src: url('{font_uri}') format('truetype');
       }}
-      .comic-name {{
-        font-family: 'Bebas Neue', sans-serif;
-        fill: #ffffff;
-        stroke: #000000;
-        stroke-width: 2;
-        paint-order: stroke;
-        text-transform: uppercase;
-      }}
-      .footer-date {{
-        font-family: 'Bebas Neue', sans-serif;
-        font-size: 150px;
-        fill: #ffffff;
-        stroke: #000000;
-        stroke-width: 2;
-        paint-order: stroke;
-      }}
-      .event-id {{
-        font-family: monospace;
-        font-size: 12px;
-        fill: #ffffff;
-        opacity: 0.35;
-      }}
     </style>
-  </defs>
-
-  <!-- Layer 2: Data -->
-  {names_svg}
-
-  <!-- Layer 3: Footer -->
-  <text x=\"540\" y=\"{FOOTER_DATE_Y}\" class=\"footer-date\" text-anchor=\"middle\">{safe_date}</text>
-  <text x=\"28\" y=\"{FOOTER_EVENT_ID_Y}\" class=\"event-id\">event_id: {safe_event_id}</text>
+    {names_svg}
+    <text x=\"540\" y=\"{FOOTER_DATE_Y}\" font-family=\"'Bebas Neue', sans-serif\" font-size=\"150\" fill=\"#ffffff\" stroke=\"#000000\" stroke-width=\"3\" paint-order=\"stroke\" text-anchor=\"middle\">{safe_date}</text>
+    <text x=\"28\" y=\"{FOOTER_EVENT_ID_Y}\" font-family=\"'Bebas Neue', sans-serif\" font-size=\"24\" fill=\"#ffffff\" opacity=\"0.35\">event_id: {safe_event_id}</text>
+  </g>
 </svg>
 """
 
