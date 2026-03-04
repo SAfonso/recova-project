@@ -7,9 +7,10 @@ import { supabase } from './supabaseClient';
 import './index.css';
 
 function Root() {
-  const [session,   setSession]   = useState(null);
-  const [checking,  setChecking]  = useState(true);
-  const [openMicId, setOpenMicId] = useState(null);
+  const [session,      setSession]      = useState(null);
+  const [checking,     setChecking]     = useState(true);
+  const [openMicId,    setOpenMicId]    = useState(null);
+  const [initialTab,   setInitialTab]   = useState('lineup');
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -35,9 +36,14 @@ function Root() {
     );
   }
 
+  const handleSelectOpenMic = (id, options = {}) => {
+    setOpenMicId(id);
+    setInitialTab(options.isNew ? 'config' : 'lineup');
+  };
+
   if (!session) return <LoginScreen />;
-  if (!openMicId) return <OpenMicSelector session={session} onSelect={setOpenMicId} />;
-  return <App session={session} openMicId={openMicId} />;
+  if (!openMicId) return <OpenMicSelector session={session} onSelect={handleSelectOpenMic} />;
+  return <App session={session} openMicId={openMicId} initialTab={initialTab} />;
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(
