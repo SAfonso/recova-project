@@ -9,5 +9,5 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   db: { schema: 'gold' },
-  auth: { persistSession: false },
+  auth: { persistSession: true },
 });
