@@ -26,6 +26,10 @@ const DEFAULTS = {
     enabled:              false,
     target_female_nb_pct: 40,
   },
+  poster: {
+    enabled:         false,
+    base_image_url:  null,
+  },
 };
 
 // Actualización inmutable de rutas anidadas en el JSONB.
@@ -45,6 +49,7 @@ function mergeWithDefaults(raw) {
     recency_penalty:   { ...DEFAULTS.recency_penalty,   ...(raw?.recency_penalty   ?? {}) },
     single_date_boost: { ...DEFAULTS.single_date_boost, ...(raw?.single_date_boost ?? {}) },
     gender_parity:     { ...DEFAULTS.gender_parity,     ...(raw?.gender_parity     ?? {}) },
+    poster:            { ...DEFAULTS.poster,            ...(raw?.poster            ?? {}) },
   };
 }
 
@@ -146,6 +151,7 @@ export function ScoringConfigurator({ openMicId, onSaved }) {
   const [saved, setSaved]     = useState(false);   // feedback temporal
   const [error, setError]     = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
+  const [uploading, setUploading] = useState(false);
 
   // Carga inicial desde silver.open_mics
   useEffect(() => {
@@ -171,6 +177,26 @@ export function ScoringConfigurator({ openMicId, onSaved }) {
 
   const update = (path, value) =>
     setConfig((prev) => setIn(prev, path, value));
+
+  const handlePosterUpload = async (file) => {
+    if (!file) return;
+    setUploading(true);
+    setError(null);
+    const path = `${openMicId}/background.png`;
+    const { error: uploadError } = await supabase.storage
+      .from('poster-backgrounds')
+      .upload(path, file, { upsert: true, contentType: 'image/png' });
+    if (uploadError) {
+      setError(`Error subiendo imagen: ${uploadError.message}`);
+      setUploading(false);
+      return;
+    }
+    const { data: { publicUrl } } = supabase.storage
+      .from('poster-backgrounds')
+      .getPublicUrl(path);
+    update(['poster', 'base_image_url'], publicUrl);
+    setUploading(false);
+  };
 
   const handleSave = async () => {
     const errors = validate(config);
@@ -388,6 +414,54 @@ export function ScoringConfigurator({ openMicId, onSaved }) {
             <span className="text-xs text-[#6B5C4A]">%</span>
           </div>
           <FieldError errors={fieldErrors} field="gender_parity.target_female_nb_pct" />
+        </div>
+      </SectionCard>
+
+      {/* ── 6. Póster del evento ─────────────────────────────────── */}
+      <SectionCard title="Póster del evento">
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-3">
+            <Toggle
+              checked={config.poster.enabled}
+              onChange={(v) => update(['poster', 'enabled'], v)}
+            />
+            <span className="text-sm text-[#1a1a1a]">
+              Generar póster SVG al validar el lineup
+            </span>
+          </div>
+
+          {config.poster.enabled && (
+            <div className="flex flex-col gap-3 pl-2">
+              {config.poster.base_image_url && (
+                <img
+                  src={config.poster.base_image_url}
+                  alt="Fondo del póster"
+                  className="h-32 w-auto self-start rounded-md border-2 border-[#1a1a1a] object-cover"
+                />
+              )}
+              <label className={`flex cursor-pointer items-center gap-2 self-start rounded-lg border-[3px] border-[#1a1a1a] px-4 py-2 text-sm font-bold transition-all
+                ${uploading ? 'cursor-not-allowed bg-[#D1D5DB] text-[#6B5C4A]' : 'bg-[#fff8e7] text-[#1a1a1a] hover:bg-[#C8B89A]'}`}
+              >
+                <input
+                  type="file"
+                  accept="image/png"
+                  className="hidden"
+                  disabled={uploading}
+                  onChange={(e) => handlePosterUpload(e.target.files?.[0])}
+                />
+                {uploading
+                  ? 'Subiendo...'
+                  : config.poster.base_image_url
+                    ? 'Cambiar imagen de fondo'
+                    : 'Subir imagen de fondo (PNG)'}
+              </label>
+              {!config.poster.base_image_url && (
+                <p className="text-xs text-[#6B5C4A]">
+                  Sin imagen de fondo — se usará el template por defecto del servidor.
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </SectionCard>
 
