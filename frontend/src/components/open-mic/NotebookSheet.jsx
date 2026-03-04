@@ -1,8 +1,11 @@
+import { ScoringConfigurator } from '../ScoringConfigurator';
+
 const TABS = [
   { value: 'lineup', label: 'Line Up', bg: 'bg-[#fff8e7]', activeText: 'text-[#1a1a1a]' },
   { value: 'gold', label: 'Gold', bg: 'bg-[#D4A017]', activeText: 'text-[#1a1a1a]' },
   { value: 'priority', label: 'Priority', bg: 'bg-[#A0A0A0]', activeText: 'text-[#fff8e7]' },
   { value: 'restricted', label: 'Restricted', bg: 'bg-[#DC2626]', activeText: 'text-[#fff8e7]' },
+  { value: 'config', label: 'Config', bg: 'bg-[#4B5563]', activeText: 'text-[#fff8e7]' },
 ];
 
 function getFilteredCandidates({ activeTab, candidates, selectedCandidates, getDraft }) {
@@ -20,13 +23,12 @@ export function NotebookSheet({
   selectedCandidates,
   getDraft,
   onOpenExpanded,
+  openMicId,
 }) {
-  const filteredCandidates = getFilteredCandidates({
-    activeTab,
-    candidates,
-    selectedCandidates,
-    getDraft,
-  });
+  const isConfig = activeTab === 'config';
+  const filteredCandidates = isConfig
+    ? []
+    : getFilteredCandidates({ activeTab, candidates, selectedCandidates, getDraft });
 
   return (
     <section className="relative mx-auto w-full max-w-lg lg:max-w-4xl">
@@ -64,7 +66,9 @@ export function NotebookSheet({
         </div>
 
         <div className="ml-8 min-h-[240px]">
-          {filteredCandidates.length === 0 ? (
+          {isConfig ? (
+            <ScoringConfigurator openMicId={openMicId} />
+          ) : filteredCandidates.length === 0 ? (
             <p className="pt-4 font-['Patrick_Hand'] text-xl text-[#6B5C4A]/70 italic">No hay comicos para esta vista...</p>
           ) : (
             <ol className="flex flex-col gap-1">
@@ -91,17 +95,19 @@ export function NotebookSheet({
           )}
         </div>
 
-        <div className="absolute bottom-3 left-3 right-3 flex justify-center">
-          <button
-            type="button"
-            onClick={onOpenExpanded}
-            className="comic-shadow flex items-center gap-1 rounded-md border-2 border-[#1a1a1a] bg-[#C8B89A] px-4 py-1.5 font-bold text-[#1a1a1a] transition-all hover:bg-[#B8A88A]"
-            aria-label="Abrir vista ampliada"
-          >
-            <span className="text-lg leading-none">...</span>
-            <span>Editar</span>
-          </button>
-        </div>
+        {!isConfig && (
+          <div className="absolute bottom-3 left-3 right-3 flex justify-center">
+            <button
+              type="button"
+              onClick={onOpenExpanded}
+              className="comic-shadow flex items-center gap-1 rounded-md border-2 border-[#1a1a1a] bg-[#C8B89A] px-4 py-1.5 font-bold text-[#1a1a1a] transition-all hover:bg-[#B8A88A]"
+              aria-label="Abrir vista ampliada"
+            >
+              <span className="text-lg leading-none">...</span>
+              <span>Editar</span>
+            </button>
+          </div>
+        )}
       </div>
     </section>
   );
