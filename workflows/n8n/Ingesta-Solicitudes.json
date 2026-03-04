@@ -54,6 +54,10 @@
               "fieldValue": "10000000-0000-0000-0000-000000000001"
             },
             {
+              "fieldId": "open_mic_id",
+              "fieldValue": "={{ $json['open_mic_id'] }}"
+            },
+            {
               "fieldId": "nombre_raw",
               "fieldValue": "={{ $json['¿Nombre?'] }}"
             },
