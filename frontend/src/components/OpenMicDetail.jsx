@@ -77,12 +77,10 @@ function InfoRow({ label, value, dot }) {
 }
 
 function InfoCard({ openMic }) {
-  const cfg = mergeDefaults(openMic.config);
+  const info = openMic.config?.info ?? {};
   const createdAt = new Date(openMic.created_at).toLocaleDateString('es-ES', {
     day: '2-digit', month: '2-digit', year: 'numeric',
   });
-
-  const CATEGORY_LABELS = { standard: 'Standard', priority: 'Priority', gold: 'Gold', restricted: 'Restricted' };
 
   return (
     <div className="animate-pop-in comic-panel rounded-lg border-[3px] border-[#1a1a1a] bg-[#fff8e7] px-6 py-4 shadow-[6px_6px_0px_rgba(0,0,0,0.3)]">
@@ -92,53 +90,24 @@ function InfoCard({ openMic }) {
       <p className="mb-4 mt-1 text-xs text-[#6B5C4A]">Creado el {createdAt}</p>
 
       <div className="flex flex-col">
-        <InfoRow label="Slots disponibles" value={cfg.available_slots} />
-        {Object.entries(cfg.categories).map(([cat, rule]) => (
+        {info.local     && <InfoRow label="Local"       value={info.local} />}
+        {info.direccion && <InfoRow label="Dirección"   value={info.direccion} />}
+        {info.hosts?.length > 0 && (
+          <InfoRow label="Host(s)" value={info.hosts.join(', ')} />
+        )}
+        {info.dia_semana && (
           <InfoRow
-            key={cat}
-            label={CATEGORY_LABELS[cat] ?? cat}
-            dot={CATEGORY_DOT[cat]}
-            value={
-              cat === 'restricted'
-                ? 'bloqueado'
-                : rule.enabled
-                  ? `${rule.base_score} pts`
-                  : 'desactivado'
-            }
+            label="Día"
+            value={info.hora ? `${info.dia_semana} · ${info.hora}` : info.dia_semana}
           />
-        ))}
-        <InfoRow
-          label="Penalización recencia"
-          value={
-            cfg.recency_penalty.enabled
-              ? `-${cfg.recency_penalty.penalty_points} pts (últimas ${cfg.recency_penalty.last_n_editions})`
-              : 'desactivada'
-          }
-        />
-        <InfoRow
-          label="Bono fecha única"
-          value={
-            cfg.single_date_boost.enabled
-              ? `+${cfg.single_date_boost.boost_points} pts`
-              : 'desactivado'
-          }
-        />
-        <InfoRow
-          label="Paridad de género"
-          value={
-            cfg.gender_parity.enabled
-              ? `${cfg.gender_parity.target_female_nb_pct}% objetivo f/nb`
-              : 'desactivada'
-          }
-        />
-        <InfoRow
-          label="Póster SVG"
-          value={
-            cfg.poster?.enabled
-              ? (cfg.poster?.base_image_url ? 'activado (fondo personalizado)' : 'activado (fondo por defecto)')
-              : 'desactivado'
-          }
-        />
+        )}
+        {!info.dia_semana && info.hora && <InfoRow label="Hora" value={info.hora} />}
+        {info.instagram && <InfoRow label="Instagram" value={`@${info.instagram}`} />}
+        {!info.local && !info.direccion && !info.hosts?.length && !info.dia_semana && !info.instagram && (
+          <p className="py-2 text-sm italic text-[#6B5C4A]">
+            Sin información adicional — edita en Configurar → Info
+          </p>
+        )}
       </div>
     </div>
   );
