@@ -1,3 +1,22 @@
+## [0.7.0] - 2026-03-05
+
+### Added — Sprint 2: Google Forms + Integración Backend
+
+#### Auto-creación de Google Form al crear open mic
+- `backend/src/core/google_form_builder.py`: migración de service account a OAuth2 con refresh token; crea Sheet propia vía Sheets API (la Forms API no genera `linkedSheetId` por API); Sheet incluye cabeceras estándar (9 campos) + columna `open_mic_id` con ARRAYFORMULA en col J
+- `backend/scripts/google_oauth_setup.py`: script de autorización OAuth2 de un solo uso para obtener el refresh token
+- `backend/src/triggers/webhook_listener.py`: añade `flask-cors` (CORS habilitado para llamadas desde el navegador)
+- `frontend/src/components/OpenMicSelector.jsx`: auto-crea el form en segundo plano (fire-and-forget) al insertar un nuevo open mic
+- `frontend/src/components/OpenMicDetail.jsx`: botón manual "Crear Google Form" como fallback; muestra enlaces a form y sheet si ya existen en `config.form`
+- `frontend/src/main.jsx`: `handleSelect` acepta `options.isNew` para navegar a vista `config` al crear un open mic nuevo
+
+### Variables de entorno añadidas
+- `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `GOOGLE_OAUTH_REFRESH_TOKEN` en `backend/.env`
+- `VITE_BACKEND_URL`, `VITE_WEBHOOK_API_KEY` en `frontend/.env`
+
+### Versioning
+- Bump de versión a `0.7.0` en `package.json`, `pyproject.toml` y `README.md`
+
 ## [0.6.0] - 2026-03-04
 
 ### Added — Sprint 1: Pivot SaaS Multi-Tenant

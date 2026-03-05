@@ -1,12 +1,24 @@
 # AI LineUp Architect 🎭
 
 **Estado del Proyecto:** 🛠️ En desarrollo activo
-**Versión:** `0.6.0`
+**Versión:** `0.7.0`
 **Metodología:** Spec-Driven Development (SDD)
 
 Sistema para ingesta, curación y generación automática de cartel de Open Mics, con trazabilidad completa desde formularios hasta artefacto final publicado.
 
-## 1. Fuente de verdad técnica (v0.6.0)
+## 1. Fuente de verdad técnica (v0.7.0)
+
+### Sprint 2 — Google Forms + Integración Backend (completado)
+
+Auto-creación de Google Form y Sheet vinculada al crear un open mic, con integración completa frontend → backend:
+
+- **GoogleFormBuilder con OAuth2:** migración de service account a OAuth2 con refresh token (`GOOGLE_OAUTH_CLIENT_ID/SECRET/REFRESH_TOKEN`). Las service accounts no tienen cuota de Drive, por lo que la creación de archivos requería un usuario real.
+- **Sheet propia vía Sheets API:** la Forms API no genera `linkedSheetId` por API; se crea una Spreadsheet independiente con cabeceras estándar (9 campos del form + columna `open_mic_id` con ARRAYFORMULA).
+- **Auto-creación al crear open mic:** `OpenMicSelector` llama al backend en segundo plano al insertar el nuevo open mic; no bloquea la UI.
+- **Botón manual de fallback:** `OpenMicDetail` mantiene el botón "Crear Google Form" para open mics existentes o si la auto-creación falla.
+- **CORS habilitado:** `flask-cors` añadido al Flask para permitir llamadas desde el navegador.
+- **Script de autorización OAuth2:** `backend/scripts/google_oauth_setup.py` para obtener el refresh token en una sola ejecución.
+- **`config.form` en Supabase:** `form_id`, `form_url`, `sheet_id`, `sheet_url` almacenados en `silver.open_mics.config.form`.
 
 ### Sprint 1 — Pivot SaaS Multi-Tenant (completado)
 
