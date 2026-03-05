@@ -170,11 +170,17 @@ cd frontend && npm install && npm run dev
 
 → Historial completo: [`docs/sprints.md`](docs/sprints.md)
 
-| Sprint | Versión | Estado |
-|--------|---------|--------|
+| Fase | Versión | Estado |
+|------|---------|--------|
 | Sprint 2 — Google Forms + Backend integration | 0.7.0 | Completado |
 | Sprint 1 — Pivot SaaS Multi-Tenant | 0.6.0 | Completado |
-| SVG Renderer + MCP | 0.5.x | Completado |
+| SVG Renderer | 0.5.57–0.5.61 | Completado |
+| MCP Renderer + Frontend UI | 0.5.33–0.5.56 | Completado |
+| Playwright Renderer v1 | 0.5.25–0.5.32 | Completado |
+| Canva Integration *(deprecada)* | 0.5.16–0.5.24 | Completado |
+| Pipeline Inicial + Gold Layer | 0.5.0–0.5.15 | Completado |
+| Ingesta + Infraestructura | 0.4.x | Completado |
+| Bronze + Silver + Seed | 0.1.0–0.3.0 | Completado |
 
 **Próximo:**
 - `confirm_lineup()` RPC → `silver.lineup_slots`
