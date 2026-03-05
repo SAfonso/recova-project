@@ -16,7 +16,10 @@ from backend.src.scoring_engine import execute_scoring
 app = Flask(__name__)
 CORS(app)
 
-load_dotenv()
+# Busca .env relativo a este archivo (backend/.env) o desde CWD como fallback
+_ENV_PATH = os.path.join(os.path.dirname(__file__), "../../../backend/.env")
+load_dotenv(dotenv_path=_ENV_PATH, override=False)
+load_dotenv(override=False)
 INGEST_SCRIPT_PATH = "/root/RECOVA/backend/src/bronze_to_silver_ingestion.py"
 SCORING_SCRIPT_PATH = "/root/RECOVA/backend/src/scoring_engine.py"
 API_KEY_HEADER = "X-API-KEY"
