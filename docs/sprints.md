@@ -79,8 +79,43 @@ Renderer de carteles via Playwright con servidor HTTP y spec SDD completa.
 
 ---
 
-## Fases anteriores (v0.5.32 y antes)
+## Fase Playwright Renderer v1 (v0.5.25–0.5.32) — 2026-02-26/27
 
-- **v0.5.32:** Hardening de secretos en workflows n8n (variables de entorno `$env`)
-- **Canva integration** (deprecada): builder OAuth2 PKCE para generación de carteles → reemplazada por motor propio
-- **Pipeline inicial:** ingesta Bronze→Silver, scoring v1/v2, webhook n8n, setup_db.py
+Primera implementación del renderer de carteles con Playwright + Supabase Storage.
+
+- **PlaywrightRenderer TDD** (`playwright_renderer.py`): spec-first — tests antes de implementación, contrato MCP-ready, normalización/truncado de nombres, warning `LINEUP_UNDER_MINIMUM`
+- **Template `lineup_v1.html`**: diseño Dark Premium (Bebas Neue, gradientes, hasta 8 slots nombre+instagram)
+- **Supabase Storage:** upload a bucket `posters` con naming `YYYY-MM-DD/lineup_{request_id}.png`, limpieza del PNG temporal post-upload
+- **Flask API** (`app.py`): `POST /render-lineup`, validación de payload SDD §2.2, respuesta con `public_url`
+- **Chromium headless:** flags `--no-sandbox`, `--disable-setuid-sandbox`, `--disable-dev-shm-usage` para entorno root/VPS; fallback `_DummyBrowser` cuando Playwright no puede arrancar
+- **Hardening secretos n8n** (v0.5.32): workflows `LineUp.json`, `Ingesta-Solicitudes.json`, `Scoring & Draft.json` migran URLs y API keys a variables `$env.*`; `.env.example` con placeholders
+
+---
+
+## Fase Canva Integration (v0.5.16–0.5.24) — 2026-02-25/26 *(deprecada)*
+
+Integración con Canva API para generación de carteles — reemplazada por motor Playwright propio.
+
+- **`canva_auth_utils.py`**: OAuth2 PKCE flow completo (authorize → exchange → refresh), CLI `authorize`/`exchange`/`refresh`, persistencia de tokens en `.env` con `dotenv.set_key`
+- **`canva_builder.py`**: entrypoint para n8n — valida payload (5 cómicos + fecha), resuelve token (refresh-first), ejecuta autofill contra Canva API, devuelve URL por stdout
+- **Autofill asíncrono**: polling por `job_id` con reintentos ante timeout/ConnectionError, límite de intentos, feedback de progreso
+- **Sanitización**: `_sanitize_text()` limpia caracteres de control/emojis; padding automático a 5 slots con `" "`
+- **Hardening secretos n8n** (v0.5.24): spec SDD + test automático para detectar secretos hardcodeados en `workflows/n8n/*.json`
+
+---
+
+## Fase Pipeline Inicial + Gold Layer (v0.5.0–0.5.15) — 2026-02-16/18
+
+Construcción del pipeline Bronze→Silver→Gold, scoring engine y curación de lineup.
+
+### Medallion Schema (v0.5.0–0.5.7)
+- **Capa Gold** (`gold_relacional.sql`): enums `genero_comico`/`categoria_comico`/`estado_solicitud`, tablas `gold.comicos` y `gold.solicitudes`, índices de recencia/estado
+- **Scoring engine v1** (`scoring_engine.py`): ranking Silver→Gold con persistencia, descarte de blacklist, salida JSON `top_10_sugeridos`
+- **Normalización Silver** (v0.5.4): `nombre_artistico → nombre`, `instagram_user → instagram` en `silver.comicos`; campo `genero` añadido a Silver y Gold
+- **RLS y políticas** (v0.5.5–0.5.7): grants `anon` en Silver, políticas `p_anon_select/update_silver_comicos`, migraciones idempotentes
+
+### Scoring y Lineup Validation (v0.5.8–0.5.15)
+- **Scoring fixes** (v0.5.8–0.5.10): intercalado estricto por género (F/NB → M → Unknown) con punteros independientes; deduplicación por `comico_id`; `build_ranking` con continuidad al agotar bucket
+- **Vista `gold.lineup_candidates`** + RPC `gold.validate_lineup` (v0.5.11–0.5.13): sincroniza estados `aprobado`/`no_seleccionado` en Gold y Silver; GRANT a `anon`/`authenticated`; vista expone `estado` y `contacto`
+- **Estado `scorado`** (v0.5.15): persistencia del scoring en `gold.solicitudes.estado`, actualiza `gold.comicos.score_actual`; `App.jsx` prioriza candidatos `scorado` en el draft inicial
+- **`setup_db.py`**: gestión completa del ciclo Bronze/Silver/Gold; `SQL_SEQUENCE` con todas las migraciones
