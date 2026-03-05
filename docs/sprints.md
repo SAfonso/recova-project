@@ -104,6 +104,50 @@ Integración con Canva API para generación de carteles — reemplazada por moto
 
 ---
 
+## Fase Ingesta + Infraestructura (v0.4.0–0.4.9) — 2026-02-14/15
+
+Maduración del pipeline de ingesta y despliegue en producción.
+
+- **Ingesta atómica para n8n** (v0.4.0): migración de batch a CLI atómico con `argparse`, inserta primero en Bronze con `SAVEPOINT` y rollback parcial por fila
+- **Proveedor default** (v0.4.1): `DEFAULT_PROVEEDOR_ID` constante global, elimina argumento CLI; unicidad `(comico_id, fecha_evento)` con constraint idempotente
+- **Webhook listener** (v0.4.6): Flask `POST /ingest` con validación `X-API-KEY`, arranca ingesta vía `subprocess`
+- **GitHub Actions deploy** (v0.4.7): `.github/workflows/deploy.yml` — push a `dev` → SSH → PM2 restart de `webhook-ingesta`; gate de pytest previo al deploy (v0.5.0)
+- **Ingesta batch sobre cola Bronze** (v0.4.5): vuelta a modo batch procesando `bronze.solicitudes WHERE procesado = false`; error por fila en `metadata.error_ingesta`
+- **Logs rotativos y auditoría** (v0.4.8): `TimedRotatingFileHandler` diario, retención 7 días, `detalles_descarte` en salida JSON
+- **Normalización WhatsApp/Instagram** (v0.4.9): `clean_phone()` con regex E.164, prefijo `+34` por defecto; extracción de username desde URL de Instagram
+
+---
+
+## Fase Bronze + Silver + Seed (v0.1.0–0.3.0) — 2026-02-10/13
+
+Construcción desde cero del esquema Medallion y el pipeline de ingesta.
+
+### Proyecto inicial (v0.1.0)
+- `AGENTS.md`: roles y responsabilidades del sistema
+- Estructura de versionado híbrida (`package.json` + `pyproject.toml`)
+- Roadmap inicial del MVP
+
+### Esquema SQL Bronze + Silver (v0.1.1–0.1.2)
+- **Capa Bronze** (`bronze_multi_proveedor_master.sql`): infraestructura multi-proveedor, master data de cómicos
+- **Capa Silver** (`silver_relacional.sql`): tablas `comicos_master` y `solicitudes_silver`, restricciones de calidad, unicidad semanal de aprobados, RLS `service_role`
+
+### Ingesta Bronze → Silver v1 (v0.1.3–0.1.4)
+- **`bronze_to_silver_ingestion.py`**: normalización de identidad, explosión de fechas, anti-duplicados `(comico_id, fecha_evento)`, expiración de reservas a 60 días
+- **`setup_db.py`**: despliegue secuencial de SQL, opción `--reset`, backup automático a CSV con timestamp, flag `--seed`
+- **Seed data** (v0.1.5): 2 proveedores, 11 cómicos, 18 solicitudes con casos de borde (spammer, doblete, restringido)
+
+### Schemas por esquema real (v0.2.0)
+- Separación física Bronze/Silver en esquemas `bronze.*` y `silver.*` (antes en `public.*`)
+- Enums migrados a `silver.tipo_categoria` / `silver.tipo_status`
+- `setup_db.py` y `bronze_to_silver_ingestion.py` actualizados a tablas schema-qualified
+
+### Simplificación del linaje (v0.3.0)
+- Eliminación de `bronze.comicos` — solo `bronze.solicitudes` como tabla cruda
+- FK obligatoria `bronze_id → bronze.solicitudes(id)` en Silver
+- Consolidación maestras Silver: `silver.comicos`, `silver.proveedores`, `silver.solicitudes`
+
+---
+
 ## Fase Pipeline Inicial + Gold Layer (v0.5.0–0.5.15) — 2026-02-16/18
 
 Construcción del pipeline Bronze→Silver→Gold, scoring engine y curación de lineup.
