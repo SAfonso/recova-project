@@ -10,16 +10,88 @@ SaaS multi-tenant para gestión de open mics de comedia. Automatiza la recogida 
 
 ## Arquitectura
 
-```
-Google Forms → Google Sheets → n8n → Flask (:5000) → Supabase (Bronze/Silver/Gold)
-                                                              ↑
-                                        Frontend React ───────┘
-                                        (auth + curación + config)
+```mermaid
+flowchart TD
+    classDef google fill:#4285F4,color:#fff,stroke:#2a6dd9
+    classDef supabase fill:#3ECF8E,color:#fff,stroke:#29a870
+    classDef flask fill:#FF6B35,color:#fff,stroke:#cc5520
+    classDef frontend fill:#61DAFB,color:#1a1a1a,stroke:#38b2cc
+    classDef n8n fill:#EA4B71,color:#fff,stroke:#c73059
+    classDef storage fill:#9B59B6,color:#fff,stroke:#7d3f9e
 
-Lineup validado → n8n → Renderer Flask (:5050) → Playwright PNG → Supabase Storage
+    Host(["👤 Host\n(magic link)"])
+    Comico(["🎤 Cómico\n(formulario)"])
+
+    subgraph FE ["🖥️ Frontend React/Vite"]
+        Login["🔐 Login"]
+        Selector["📋 OpenMicSelector"]
+        Detail["🎯 OpenMicDetail"]
+        App["✏️ Lineup App\n(curación)"]
+    end
+
+    subgraph BE ["⚙️ Backend Flask :5000"]
+        WH["🪝 webhook_listener"]
+        FB["📝 GoogleFormBuilder\n(OAuth2)"]
+    end
+
+    subgraph Google ["🔵 Google"]
+        GF["📋 Google Forms"]
+        GS["📊 Google Sheets"]
+    end
+
+    subgraph Pipe ["🔄 n8n Orquestador"]
+        Ingesta["📥 Ingesta"]
+        Scoring["🧮 Scoring"]
+        Render["🎨 Render"]
+    end
+
+    subgraph DB ["🗄️ Supabase"]
+        Bronze["🥉 Bronze\n(raw)"]
+        Silver["🥈 Silver\n(clean)"]
+        Gold["🥇 Gold\n(scoring)"]
+    end
+
+    subgraph Renderer ["🖼️ Renderer :5050"]
+        PW["🎭 Playwright\nPNG"]
+    end
+
+    Storage[("☁️ Supabase Storage\nposters / poster-backgrounds")]
+
+    %% Flujo de formulario
+    Comico -->|rellena| GF
+    Host -->|gestiona| FE
+    Selector -->|"POST /create-form"| WH
+    WH --> FB
+    FB -->|"Forms+Sheets API"| GF
+    GF -->|respuestas| GS
+
+    %% Ingesta
+    GS -->|trigger| Ingesta
+    Ingesta -->|"POST /ingest"| WH
+    WH --> Bronze --> Silver --> Gold
+
+    %% Curación y scoring
+    Gold --> App
+    App -->|valida lineup| Scoring
+    Scoring --> Silver
+
+    %% Render
+    App -->|"dispara render"| Render
+    Render -->|"POST /render-lineup"| PW
+    PW --> Storage
+
+    %% Auth
+    FE <-->|auth + data| DB
+
+    class GF,GS google
+    class Bronze,Silver,Gold supabase
+    class WH,FB flask
+    class Login,Selector,Detail,App frontend
+    class Ingesta,Scoring,Render n8n
+    class Storage storage
 ```
 
-→ Diagrama completo y detalle de capas: [`docs/architecture.md`](docs/architecture.md)
+→ Detalle de capas y variables de entorno: [`docs/architecture.md`](docs/architecture.md)
 
 ---
 
