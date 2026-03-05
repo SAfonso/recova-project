@@ -28,10 +28,48 @@ function mergeDefaults(config) {
   };
 }
 
-function InfoRow({ label, value }) {
+const CATEGORY_DOT = {
+  gold:       'bg-[#D4A017]',
+  priority:   'bg-[#A0A0A0]',
+  restricted: 'bg-[#DC2626]',
+  standard:   'bg-[#6B5C4A]',
+};
+
+const BackIcon = () => (
+  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <polyline points="15 18 9 12 15 6" />
+  </svg>
+);
+
+const ChevronRightIcon = () => (
+  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <polyline points="9 18 15 12 9 6" />
+  </svg>
+);
+
+const LinkIcon = () => (
+  <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+    <polyline points="15 3 21 3 21 9" />
+    <line x1="10" y1="14" x2="21" y2="3" />
+  </svg>
+);
+
+const UploadIcon = () => (
+  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <polyline points="16 16 12 12 8 16" />
+    <line x1="12" y1="12" x2="12" y2="21" />
+    <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" />
+  </svg>
+);
+
+function InfoRow({ label, value, dot }) {
   return (
-    <div className="flex items-center justify-between border-b border-[#C8B89A] py-1.5 last:border-0">
-      <span className="text-xs text-[#6B5C4A]">{label}</span>
+    <div className="flex items-center justify-between border-b border-[#C8B89A] py-2 last:border-0">
+      <div className="flex items-center gap-2">
+        {dot && <span className={`h-2 w-2 shrink-0 rounded-full border border-[#1a1a1a]/20 ${dot}`} />}
+        <span className="text-xs text-[#6B5C4A]">{label}</span>
+      </div>
       <span className="text-sm font-bold text-[#1a1a1a]">{value}</span>
     </div>
   );
@@ -46,7 +84,7 @@ function InfoCard({ openMic }) {
   const CATEGORY_LABELS = { standard: 'Standard', priority: 'Priority', gold: 'Gold', restricted: 'Restricted' };
 
   return (
-    <div className="rounded-lg border-[3px] border-[#1a1a1a] bg-[#fff8e7] px-6 py-4 shadow-[6px_6px_0px_rgba(0,0,0,0.3)]">
+    <div className="animate-pop-in comic-panel rounded-lg border-[3px] border-[#1a1a1a] bg-[#fff8e7] px-6 py-4 shadow-[6px_6px_0px_rgba(0,0,0,0.3)]">
       <h1 className="font-['Bangers'] text-3xl tracking-wide text-[#1a1a1a]">
         {openMic.nombre}
       </h1>
@@ -54,11 +92,11 @@ function InfoCard({ openMic }) {
 
       <div className="flex flex-col">
         <InfoRow label="Slots disponibles" value={cfg.available_slots} />
-
         {Object.entries(cfg.categories).map(([cat, rule]) => (
           <InfoRow
             key={cat}
             label={CATEGORY_LABELS[cat] ?? cat}
+            dot={CATEGORY_DOT[cat]}
             value={
               cat === 'restricted'
                 ? 'bloqueado'
@@ -68,7 +106,6 @@ function InfoCard({ openMic }) {
             }
           />
         ))}
-
         <InfoRow
           label="Penalización recencia"
           value={
@@ -107,10 +144,10 @@ function InfoCard({ openMic }) {
 }
 
 export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack, onEnterLineup }) {
-  const [openMic,       setOpenMic]       = useState(null);
-  const [loading,       setLoading]       = useState(true);
-  const [error,         setError]         = useState(null);
-  const [view,          setView]          = useState(initialView); // 'info' | 'config'
+  const [openMic,         setOpenMic]         = useState(null);
+  const [loading,         setLoading]         = useState(true);
+  const [error,           setError]           = useState(null);
+  const [view,            setView]            = useState(initialView);
   const [showDeletePanel, setShowDeletePanel] = useState(false);
   const [deleting,        setDeleting]        = useState(false);
   const [deleteConfirm,   setDeleteConfirm]   = useState('');
@@ -158,7 +195,7 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
         return;
       }
       fetchOpenMic();
-    } catch (err) {
+    } catch {
       setFormError('No se pudo conectar con el backend.');
     } finally {
       setCreatingForm(false);
@@ -188,64 +225,74 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
 
         {/* Header */}
         <div className="flex items-center justify-between pt-6">
-          <button
-            type="button"
-            onClick={view === 'config' ? () => setView('info') : onBack}
-            className="flex items-center gap-1 text-sm font-bold text-[#fff8e7] hover:text-[#DC2626]"
-          >
-            ← {view === 'config' ? 'Volver' : 'Atrás'}
+          <button type="button" onClick={view === 'config' ? () => setView('info') : onBack} className="btn-back">
+            <BackIcon />
+            {view === 'config' ? 'Volver' : 'Atrás'}
           </button>
           <p className="text-xs font-bold text-[#fff8e7]/60">{session.user.email}</p>
         </div>
 
         {loading ? (
-          <div className="rounded-lg border-[3px] border-[#1a1a1a] bg-[#fff8e7] p-8 text-center text-sm text-[#6B5C4A]">
-            Cargando...
+          <div className="animate-pop-in rounded-lg border-[3px] border-[#1a1a1a] bg-[#fff8e7] p-8">
+            <div className="flex flex-col gap-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="flex items-center justify-between border-b border-[#C8B89A] py-2">
+                  <div className="h-3 w-24 rounded" style={{ background: 'linear-gradient(90deg, #e8dfc8 25%, #f5f0e1 50%, #e8dfc8 75%)', backgroundSize: '200% 100%', animation: `shimmer 1.4s infinite ${i * 0.1}s` }} />
+                  <div className="h-3 w-16 rounded" style={{ background: 'linear-gradient(90deg, #e8dfc8 25%, #f5f0e1 50%, #e8dfc8 75%)', backgroundSize: '200% 100%', animation: `shimmer 1.4s infinite ${i * 0.1 + 0.2}s` }} />
+                </div>
+              ))}
+            </div>
+            <style>{`@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }`}</style>
           </div>
         ) : error ? (
-          <div className="rounded-lg border-[3px] border-[#1a1a1a] bg-[#fee2e2] p-6 text-sm text-[#7f1d1d]">
+          <div className="rounded-lg border-[3px] border-[#DC2626] bg-[#fee2e2] p-6 text-sm text-[#7f1d1d]">
             {error}
           </div>
         ) : view === 'info' ? (
           <>
             <InfoCard openMic={openMic} />
+
+            {/* Acciones principales */}
             <div className="flex gap-3">
               <button
                 type="button"
                 onClick={() => setView('config')}
-                className="flex-1 rounded-lg border-[3px] border-[#1a1a1a] bg-[#fff8e7] py-3 font-bold text-[#1a1a1a] transition-all hover:bg-[#C8B89A]"
+                className="flex-1 cursor-pointer rounded-lg border-[3px] border-[#1a1a1a] bg-[#fff8e7] py-3 font-bold text-[#1a1a1a] transition-all duration-200 hover:bg-[#C8B89A] hover:shadow-[3px_3px_0px_rgba(0,0,0,0.25)]"
               >
                 Configurar
               </button>
               <button
                 type="button"
                 onClick={onEnterLineup}
-                className="flex-1 rounded-lg border-[3px] border-[#1a1a1a] bg-[#1a1a1a] py-3 font-bold text-[#fff8e7] transition-all hover:bg-[#DC2626]"
+                className="comic-shadow flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border-[3px] border-[#1a1a1a] bg-[#1a1a1a] py-3 font-bold text-[#fff8e7] transition-all duration-200 hover:bg-[#DC2626] hover:scale-[1.02] active:scale-[0.98]"
               >
-                Ver Lineup →
+                Ver Lineup
+                <ChevronRightIcon />
               </button>
             </div>
 
             {/* Google Form */}
-            <div className="rounded-lg border-[3px] border-[#1a1a1a] bg-[#fff8e7] px-6 py-4 shadow-[6px_6px_0px_rgba(0,0,0,0.3)]">
-              <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-[#1a1a1a]">Google Form</h3>
+            <div className="animate-slide-up stagger-1 paper-drop paper-tape"><div className="paper-rough paper-note border-[3px] border-[#1a1a1a] bg-[#fffef5] px-6 py-4">
+              <h3 className="mb-3 font-['Bangers'] text-lg tracking-wide text-[#1a1a1a]">Google Form</h3>
               {openMic.config?.form ? (
                 <div className="flex flex-col gap-2">
                   <a
                     href={openMic.config.form.form_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm font-bold text-[#DC2626] underline hover:text-[#7f1d1d]"
+                    className="flex cursor-pointer items-center gap-1.5 text-sm font-bold text-[#DC2626] underline underline-offset-2 hover:text-[#7f1d1d]"
                   >
-                    Abrir formulario →
+                    <LinkIcon />
+                    Abrir formulario
                   </a>
                   <a
                     href={openMic.config.form.sheet_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm font-bold text-[#DC2626] underline hover:text-[#7f1d1d]"
+                    className="flex cursor-pointer items-center gap-1.5 text-sm font-bold text-[#DC2626] underline underline-offset-2 hover:text-[#7f1d1d]"
                   >
-                    Ver respuestas (Sheet) →
+                    <LinkIcon />
+                    Ver respuestas (Sheet)
                   </a>
                 </div>
               ) : (
@@ -257,17 +304,18 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
                     type="button"
                     onClick={handleCreateForm}
                     disabled={creatingForm}
-                    className="w-full rounded-lg border-[3px] border-[#1a1a1a] bg-[#1a1a1a] py-2.5 text-sm font-bold text-[#fff8e7] transition-all hover:bg-[#DC2626] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="comic-shadow flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border-[3px] border-[#1a1a1a] bg-[#1a1a1a] py-2.5 text-sm font-bold text-[#fff8e7] transition-all duration-200 hover:bg-[#DC2626] disabled:cursor-not-allowed disabled:opacity-50"
                   >
+                    <UploadIcon />
                     {creatingForm ? 'Creando form...' : 'Crear Google Form'}
                   </button>
                 </>
               )}
-            </div>
+            </div></div>
 
             {/* Zona de peligro */}
-            <div className="rounded-lg border-[3px] border-[#1a1a1a] bg-[#fff8e7] px-6 py-4 shadow-[6px_6px_0px_rgba(0,0,0,0.3)]">
-              <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-[#7f1d1d]">Zona de peligro</h3>
+            <div className="animate-slide-up stagger-2 paper-drop paper-tape"><div className="paper-rough paper-note border-[3px] border-[#DC2626]/60 bg-[#fffef5] px-6 py-4">
+              <h3 className="mb-3 font-['Bangers'] text-lg tracking-wide text-[#7f1d1d]">Zona de peligro</h3>
               {showDeletePanel ? (
                 <>
                   <p className="mb-3 text-sm text-[#1a1a1a]">
@@ -287,7 +335,7 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
                     <button
                       type="button"
                       onClick={() => { setShowDeletePanel(false); setDeleteConfirm(''); setDeleteError(''); }}
-                      className="flex-1 rounded-lg border-[3px] border-[#1a1a1a] bg-[#fff8e7] py-2 text-sm font-bold text-[#1a1a1a] hover:bg-[#C8B89A]"
+                      className="flex-1 cursor-pointer rounded-lg border-[3px] border-[#1a1a1a] bg-[#fff8e7] py-2 text-sm font-bold text-[#1a1a1a] transition-all duration-200 hover:bg-[#C8B89A]"
                     >
                       Cancelar
                     </button>
@@ -295,7 +343,7 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
                       type="button"
                       onClick={handleDelete}
                       disabled={deleteConfirm !== openMic.nombre || deleting}
-                      className="flex-1 rounded-lg border-[3px] border-[#DC2626] bg-[#DC2626] py-2 text-sm font-bold text-white transition-all hover:bg-[#7f1d1d] disabled:cursor-not-allowed disabled:opacity-40"
+                      className="flex-1 cursor-pointer rounded-lg border-[3px] border-[#DC2626] bg-[#DC2626] py-2 text-sm font-bold text-white transition-all duration-200 hover:bg-[#7f1d1d] disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       {deleting ? 'Borrando...' : 'Borrar definitivamente'}
                     </button>
@@ -305,19 +353,21 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
                 <button
                   type="button"
                   onClick={() => setShowDeletePanel(true)}
-                  className="w-full rounded-lg border-[3px] border-[#DC2626] bg-[#DC2626] py-2.5 text-sm font-bold text-white transition-all hover:bg-[#7f1d1d]"
+                  className="w-full cursor-pointer rounded-lg border-[3px] border-[#DC2626] bg-[#DC2626] py-2.5 text-sm font-bold text-white transition-all duration-200 hover:bg-[#7f1d1d]"
                 >
                   Borrar open mic
                 </button>
               )}
-            </div>
+            </div></div>
           </>
         ) : (
-          <div className="rounded-lg border-[3px] border-[#1a1a1a] bg-[#fff8e7] px-6 py-4 shadow-[6px_6px_0px_rgba(0,0,0,0.3)]">
-            <h2 className="mb-4 font-['Bangers'] text-xl tracking-wide text-[#1a1a1a]">
-              Configuración de scoring
-            </h2>
-            <ScoringConfigurator openMicId={openMicId} onSaved={handleSaved} />
+          <div className="animate-pop-in paper-drop paper-tape">
+            <div className="paper-rough paper-note border-[3px] border-[#1a1a1a] bg-[#fffef5] px-6 py-4">
+              <h2 className="mb-4 font-['Bangers'] text-2xl tracking-wide text-[#1a1a1a]">
+                Configuración de scoring
+              </h2>
+              <ScoringConfigurator openMicId={openMicId} onSaved={handleSaved} />
+            </div>
           </div>
         )}
 

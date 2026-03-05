@@ -18,27 +18,191 @@ body {
   font-family: 'Patrick Hand', 'Comic Sans MS', cursive;
 }
 
-.notebook-lines {
-  background-image: repeating-linear-gradient(
-    transparent,
-    transparent 31px,
-    #c8b89a 31px,
-    #c8b89a 32px
-  );
-  background-size: 100% 32px;
+/* ══════════════════════════════════════════════════════
+   PAPEL ARRUGADO — estilo nota pegada con cinta
+   ══════════════════════════════════════════════════════ */
+
+/*
+  Wrapper:
+  - Sombra realista elevada (el papel flota sobre la superficie)
+  - position: relative para que la cinta ::before se posicione aquí
+*/
+.paper-drop {
+  position: relative;
+  filter:
+    drop-shadow(1px 2px 3px rgba(0,0,0,0.20))
+    drop-shadow(4px 8px 12px rgba(0,0,0,0.22))
+    drop-shadow(8px 14px 6px rgba(0,0,0,0.08));
 }
+
+/*
+  Cinta adhesiva (masking tape) en la parte superior.
+  Se aplica al wrapper (paper-drop) para que NO sea recortada por el clip-path.
+*/
+.paper-tape::before {
+  content: '';
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-1.5deg);
+  width: 64px;
+  height: 24px;
+  /* Gradiente vertical para dar grosor y translucidez realista */
+  background: linear-gradient(
+    to bottom,
+    rgba(245, 232, 168, 0.60) 0%,
+    rgba(218, 204, 138, 0.50) 50%,
+    rgba(200, 185, 120, 0.42) 100%
+  );
+  border-left:  1px solid rgba(180, 165, 110, 0.30);
+  border-right: 1px solid rgba(180, 165, 110, 0.30);
+  box-shadow:
+    inset 0 1px 3px rgba(255,255,255,0.45),
+    inset 0 -1px 2px rgba(0,0,0,0.06),
+    0 2px 6px rgba(0,0,0,0.16);
+  pointer-events: none;
+  z-index: 20;
+}
+
+/*
+  Forma del papel — bordes ligeramente irregulares (recortado a mano).
+  Variación suave: 0–3% para simular papel rasgado/cortado, no agresivo.
+*/
+.paper-rough {
+  clip-path: polygon(
+    /* Superior */
+    0.2% 2.0%,  2.5% 0.4%,  5.0% 2.2%,  7.5% 0.1%,  10.0% 1.8%,
+   13.0% 0.5%, 16.0% 2.5%, 19.0% 0.2%, 22.5% 1.9%, 26.0% 0.4%,
+   29.5% 2.3%, 33.0% 0.1%, 36.5% 2.0%, 40.0% 0.6%, 43.5% 2.4%,
+   47.0% 0.2%, 50.5% 2.1%, 54.0% 0.5%, 57.5% 2.4%, 61.0% 0.1%,
+   64.5% 1.9%, 68.0% 0.4%, 71.5% 2.2%, 75.0% 0.3%, 78.5% 2.0%,
+   82.0% 0.1%, 85.5% 2.5%, 89.0% 0.4%, 92.5% 2.1%, 96.0% 0.2%,
+   98.8% 1.7%,
+    /* Derecha */
+   99.8%  4.5%, 99.2%  9.5%, 100.0% 14.5%, 99.4% 19.5%, 99.9% 25.0%,
+   99.2% 30.5%, 100.0% 36.0%, 99.4% 41.5%, 99.9% 47.0%, 99.2% 52.5%,
+   100.0% 58.0%, 99.4% 63.5%, 99.9% 69.0%, 99.2% 74.5%, 100.0% 80.0%,
+   99.4% 85.5%, 99.9% 91.0%, 99.2% 96.0%,
+    /* Inferior */
+   97.0% 99.6%, 93.5% 97.8%, 90.0% 99.8%, 86.5% 97.5%, 83.0% 99.7%,
+   79.5% 97.3%, 76.0% 99.8%, 72.5% 97.6%, 69.0% 99.7%, 65.5% 97.4%,
+   62.0% 99.8%, 58.5% 97.5%, 55.0% 99.7%, 51.5% 97.3%, 48.0% 99.8%,
+   44.5% 97.6%, 41.0% 99.7%, 37.5% 97.4%, 34.0% 99.8%, 30.5% 97.5%,
+   27.0% 99.7%, 23.5% 97.3%, 20.0% 99.8%, 16.5% 97.6%, 13.0% 99.7%,
+    9.5% 97.4%,  6.0% 99.8%,  2.8% 97.8%,  0.5% 99.2%,
+    /* Izquierda */
+   0.1% 94.5%,  0.8% 88.5%,  0.0% 83.0%,  0.9% 77.0%,  0.0% 71.5%,
+   0.8% 65.5%,  0.0% 60.0%,  0.9% 54.0%,  0.0% 48.5%,  0.8% 42.5%,
+   0.0% 37.0%,  0.9% 31.0%,  0.0% 25.5%,  0.8% 19.5%,  0.0% 14.0%,
+   0.9% 8.5%,   0.0%  3.5%
+  );
+}
+
+/*
+  Textura de papel arrugado.
+  Múltiples gradientes diagonales en distintas direcciones
+  simulan los pliegues/arrugas del papel físico.
+*/
+.paper-note {
+  background-image:
+    /* Pliegue diagonal principal — arriba-izquierda a abajo-derecha */
+    linear-gradient(
+      130deg,
+      transparent 20%, rgba(0,0,0,0.050) 24%,
+      rgba(255,255,255,0.060) 26%, transparent 31%
+    ),
+    /* Arruga secundaria oblicua */
+    linear-gradient(
+      68deg,
+      transparent 36%, rgba(0,0,0,0.035) 39%,
+      rgba(255,255,255,0.040) 40.5%, transparent 44%
+    ),
+    /* Pliegue vertical-izquierda */
+    linear-gradient(
+      158deg,
+      transparent 48%, rgba(255,255,255,0.055) 51%,
+      rgba(0,0,0,0.030) 52.5%, transparent 56%
+    ),
+    /* Sombra esquina inferior-derecha (papel doblado) */
+    linear-gradient(
+      40deg,
+      transparent 60%, rgba(0,0,0,0.030) 63%,
+      transparent 67%
+    ),
+    /* Luz rasante esquina superior */
+    linear-gradient(
+      108deg,
+      rgba(255,255,255,0.055) 0%, transparent 14%
+    ),
+    /* Oscurecimiento leve esquina inferior */
+    radial-gradient(
+      ellipse 60% 40% at 80% 95%,
+      rgba(0,0,0,0.04) 0%, transparent 70%
+    );
+}
+
+/*
+  Libreta: arrugas + franja de encuadernación + líneas azules.
+  Combina paper-note + notebook ruling en un solo background-image.
+*/
+.notebook-lines {
+  background-image:
+    /* Pliegue diagonal */
+    linear-gradient(
+      130deg,
+      transparent 20%, rgba(0,0,0,0.04) 24%,
+      rgba(255,255,255,0.05) 26%, transparent 31%
+    ),
+    /* Arruga lateral */
+    linear-gradient(
+      72deg,
+      transparent 42%, rgba(0,0,0,0.028) 44%,
+      transparent 48%
+    ),
+    /* Franja de encuadernación izquierda */
+    linear-gradient(
+      90deg,
+      rgba(0,0,0,0.042) 0px, rgba(0,0,0,0.042) 40px,
+      transparent 40px
+    ),
+    /* Líneas horizontales azul pálido */
+    repeating-linear-gradient(
+      transparent,
+      transparent 29px,
+      rgba(100, 170, 220, 0.38) 29px,
+      rgba(100, 170, 220, 0.38) 30px
+    );
+  background-size:
+    100% 100%,
+    100% 100%,
+    100% 100%,
+    100% 30px;
+  background-repeat:
+    no-repeat,
+    no-repeat,
+    no-repeat,
+    repeat;
+}
+
+/* ══════════════════════════════════════════════════════
+   FONDO — focos amarillos sobre rojo oscuro
+   ══════════════════════════════════════════════════════ */
 
 .paint-bg {
   background:
-    radial-gradient(ellipse 120px 100px at 15% 20%, rgba(249, 115, 22, 0.5) 0%, transparent 70%),
-    radial-gradient(ellipse 80px 120px at 85% 15%, rgba(245, 158, 11, 0.4) 0%, transparent 70%),
-    radial-gradient(ellipse 150px 80px at 70% 80%, rgba(249, 115, 22, 0.35) 0%, transparent 70%),
-    radial-gradient(ellipse 100px 60px at 25% 75%, rgba(245, 158, 11, 0.45) 0%, transparent 70%),
-    radial-gradient(ellipse 60px 90px at 50% 45%, rgba(251, 146, 60, 0.3) 0%, transparent 70%),
-    radial-gradient(ellipse 90px 50px at 90% 55%, rgba(245, 158, 11, 0.35) 0%, transparent 70%),
-    radial-gradient(ellipse 70px 100px at 10% 50%, rgba(249, 115, 22, 0.25) 0%, transparent 70%),
-    #dc2626;
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12'%3E%3Ccircle cx='6' cy='6' r='1' fill='rgba(0,0,0,0.07)'/%3E%3C/svg%3E"),
+    radial-gradient(ellipse 62% 58% at  8% 12%, rgba(234,179,8,0.78) 0%, rgba(234,179,8,0.28) 42%, transparent 70%),
+    radial-gradient(ellipse 55% 65% at 93%  8%, rgba(245,158,11,0.72) 0%, rgba(245,158,11,0.22) 48%, transparent 72%),
+    radial-gradient(ellipse 70% 52% at 52% 96%, rgba(234,179,8,0.68) 0%, rgba(234,179,8,0.18) 50%, transparent 74%),
+    radial-gradient(ellipse 42% 55% at  3% 60%, rgba(249,115,22,0.55) 0%, rgba(249,115,22,0.14) 55%, transparent 76%),
+    radial-gradient(ellipse 38% 48% at 97% 72%, rgba(245,158,11,0.50) 0%, rgba(245,158,11,0.12) 55%, transparent 75%),
+    radial-gradient(ellipse 80% 70% at 50% 40%, rgba(200,30,30,0.28) 0%, transparent 68%),
+    #8b1212;
 }
+
+/* ══════════════════════════════════════════════════════
+   UTILIDADES COMICS
+   ══════════════════════════════════════════════════════ */
 
 .comic-shadow {
   box-shadow: 4px 4px 0 #1a1a1a;
@@ -68,17 +232,102 @@ body {
   z-index: 1;
 }
 
-.cartoon-scroll::-webkit-scrollbar {
-  width: 10px;
+.cartoon-scroll::-webkit-scrollbar { width: 10px; }
+.cartoon-scroll::-webkit-scrollbar-track { background: #f5f0e1; border-radius: 5px; }
+.cartoon-scroll::-webkit-scrollbar-thumb { background: #c8b89a; border: 2px solid #f5f0e1; border-radius: 5px; }
+
+/* ══════════════════════════════════════════════════════
+   ACCESIBILIDAD
+   ══════════════════════════════════════════════════════ */
+
+:focus-visible {
+  outline: 3px solid #DC2626;
+  outline-offset: 2px;
 }
 
-.cartoon-scroll::-webkit-scrollbar-track {
-  background: #f5f0e1;
-  border-radius: 5px;
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
-.cartoon-scroll::-webkit-scrollbar-thumb {
-  background: #c8b89a;
-  border: 2px solid #f5f0e1;
-  border-radius: 5px;
+/* ══════════════════════════════════════════════════════
+   ANIMACIONES
+   ══════════════════════════════════════════════════════ */
+
+@keyframes slide-up {
+  from { transform: translateY(18px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
 }
+
+@keyframes pop-in {
+  0%   { transform: scale(0.88); opacity: 0; }
+  65%  { transform: scale(1.04); opacity: 1; }
+  100% { transform: scale(1);    opacity: 1; }
+}
+
+@keyframes stamp-in {
+  0%   { transform: scale(1.7);  opacity: 0; filter: blur(4px); }
+  60%  { transform: scale(0.95); filter: blur(0); }
+  100% { transform: scale(1);    opacity: 1; }
+}
+
+@keyframes spark-pulse {
+  0%, 100% { opacity: 1;   transform: scale(1) rotate(0deg); }
+  50%       { opacity: 0.6; transform: scale(1.2) rotate(15deg); }
+}
+
+.animate-slide-up { animation: slide-up  0.28s ease-out both; }
+.animate-pop-in   { animation: pop-in    0.4s  cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.animate-stamp-in { animation: stamp-in  0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.animate-spark    { animation: spark-pulse 1.8s ease-in-out infinite; }
+
+.stagger-1 { animation-delay: 0.04s; }
+.stagger-2 { animation-delay: 0.09s; }
+.stagger-3 { animation-delay: 0.14s; }
+.stagger-4 { animation-delay: 0.19s; }
+.stagger-5 { animation-delay: 0.24s; }
+.stagger-6 { animation-delay: 0.29s; }
+
+/* ══════════════════════════════════════════════════════
+   BOTÓN VOLVER — visible sobre fondo rojo
+   ══════════════════════════════════════════════════════ */
+
+.btn-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 9999px;
+  border: 3px solid #fff8e7;
+  background: rgba(26, 26, 26, 0.25);
+  color: #fff8e7;
+  font-family: 'Bangers', Impact, sans-serif;
+  font-size: 1.1rem;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, transform 0.15s;
+  backdrop-filter: blur(4px);
+}
+.btn-back:hover  { background: #fff8e7; color: #DC2626; transform: scale(1.04); }
+.btn-back:active { transform: scale(0.97); }
+
+/* ══════════════════════════════════════════════════════
+   COMIC PANEL — corner tick marks (decorativo)
+   ══════════════════════════════════════════════════════ */
+
+.comic-panel { position: relative; }
+.comic-panel::before, .comic-panel::after {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-color: #1a1a1a;
+  border-style: solid;
+  pointer-events: none;
+  z-index: 2;
+}
+.comic-panel::before { top: 6px; right: 6px; border-width: 2px 2px 0 0; }
+.comic-panel::after  { bottom: 6px; left: 6px; border-width: 0 0 2px 2px; }
