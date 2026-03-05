@@ -1,3 +1,18 @@
+## [0.8.0] - 2026-03-05
+
+### Added — Sprint 3: Telegram Lineup Agent
+
+#### Spec
+- `specs/telegram_lineup_agent_spec.md`: SDD completa del agente LLM para gestión de lineup por Telegram — arquitectura, endpoints MCP, tools Claude API, flujo n8n, tabla `silver.telegram_users`, tests requeridos
+
+#### Pendiente de implementación
+- `backend/src/triggers/webhook_listener.py`: endpoints `/mcp/lineup`, `/mcp/candidates`, `/mcp/run-scoring`, `/mcp/reopen-lineup`, `/mcp/open-mics`
+- `backend/tests/mcp/test_lineup_mcp_endpoints.py`: 7 tests unitarios
+- Migración SQL: `silver.telegram_users`
+- Workflow n8n: `telegram-lineup-agent`
+
+---
+
 ## [0.7.0] - 2026-03-05
 
 ### Added — Sprint 2: Google Forms + Integración Backend
