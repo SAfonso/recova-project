@@ -115,6 +115,8 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
   const [deleting,        setDeleting]        = useState(false);
   const [deleteConfirm,   setDeleteConfirm]   = useState('');
   const [deleteError,     setDeleteError]     = useState('');
+  const [creatingForm,    setCreatingForm]    = useState(false);
+  const [formError,       setFormError]       = useState('');
 
   const fetchOpenMic = useCallback(() => {
     setLoading(true);
@@ -137,6 +139,30 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
   const handleSaved = () => {
     fetchOpenMic();
     setView('info');
+  };
+
+  const handleCreateForm = async () => {
+    const backendUrl = import.meta.env.VITE_BACKEND_URL;
+    const apiKey = import.meta.env.VITE_WEBHOOK_API_KEY;
+    setCreatingForm(true);
+    setFormError('');
+    try {
+      const res = await fetch(`${backendUrl}/api/open-mic/create-form`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-API-KEY': apiKey },
+        body: JSON.stringify({ open_mic_id: openMicId, nombre: openMic.nombre }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setFormError(data.message ?? 'Error creando el form');
+        return;
+      }
+      fetchOpenMic();
+    } catch (err) {
+      setFormError('No se pudo conectar con el backend.');
+    } finally {
+      setCreatingForm(false);
+    }
   };
 
   const handleDelete = async () => {
@@ -198,6 +224,45 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
               >
                 Ver Lineup →
               </button>
+            </div>
+
+            {/* Google Form */}
+            <div className="rounded-lg border-[3px] border-[#1a1a1a] bg-[#fff8e7] px-6 py-4 shadow-[6px_6px_0px_rgba(0,0,0,0.3)]">
+              <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-[#1a1a1a]">Google Form</h3>
+              {openMic.config?.form ? (
+                <div className="flex flex-col gap-2">
+                  <a
+                    href={openMic.config.form.form_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm font-bold text-[#DC2626] underline hover:text-[#7f1d1d]"
+                  >
+                    Abrir formulario →
+                  </a>
+                  <a
+                    href={openMic.config.form.sheet_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm font-bold text-[#DC2626] underline hover:text-[#7f1d1d]"
+                  >
+                    Ver respuestas (Sheet) →
+                  </a>
+                </div>
+              ) : (
+                <>
+                  {formError && (
+                    <p className="mb-2 text-xs text-[#DC2626]">{formError}</p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleCreateForm}
+                    disabled={creatingForm}
+                    className="w-full rounded-lg border-[3px] border-[#1a1a1a] bg-[#1a1a1a] py-2.5 text-sm font-bold text-[#fff8e7] transition-all hover:bg-[#DC2626] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {creatingForm ? 'Creando form...' : 'Crear Google Form'}
+                  </button>
+                </>
+              )}
             </div>
 
             {/* Zona de peligro */}
