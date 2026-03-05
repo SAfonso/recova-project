@@ -241,4 +241,4 @@ El trigger de Google Sheets se configura con ese ID (no hardcodeado en el workfl
 - [x] Botón manual en `OpenMicDetail` como fallback
 - [x] Error `409` si se intenta crear form para un open mic que ya lo tiene
 - [x] CORS habilitado en Flask para llamadas desde el navegador
-- [ ] Tests unitarios de `GoogleFormBuilder` con mocks de Google APIs
+- [x] Tests unitarios de `GoogleFormBuilder` con mocks de Google APIs (23 tests)
