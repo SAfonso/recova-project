@@ -11,6 +11,7 @@ from flask_cors import CORS
 from supabase import create_client
 
 from backend.src.core.google_form_builder import GoogleFormBuilder
+from backend.src.scoring_engine import execute_scoring
 
 app = Flask(__name__)
 CORS(app)
@@ -158,6 +159,164 @@ def create_form() -> tuple:
         "sheet_id": result.sheet_id,
         "sheet_url": result.sheet_url,
         "form_id": result.form_id,
+    }), 200
+
+
+# ---------------------------------------------------------------------------
+# MCP endpoints — Telegram Lineup Agent
+# ---------------------------------------------------------------------------
+
+def _sb_client():
+    return create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+
+
+@app.route("/mcp/open-mics", methods=["GET"])
+def mcp_list_open_mics():
+    """Lista los open mics del host."""
+    if not _is_authorized():
+        return jsonify({"status": "error", "message": "unauthorized"}), 401
+
+    host_id = request.args.get("host_id", "").strip()
+    if not host_id:
+        return jsonify({"status": "error", "message": "host_id es obligatorio"}), 400
+
+    sb = _sb_client()
+    rows = (
+        sb.schema("silver")
+        .from_("open_mics")
+        .select("id, nombre, config")
+        .eq("host_id", host_id)
+        .execute()
+    ).data or []
+
+    open_mics = []
+    for row in rows:
+        config = row.get("config") or {}
+        open_mics.append({
+            "id":     row.get("id"),
+            "nombre": row.get("nombre"),
+            "icon":   (config.get("info") or {}).get("icon", "mic"),
+        })
+
+    return jsonify({"open_mics": open_mics}), 200
+
+
+@app.route("/mcp/lineup", methods=["GET"])
+def mcp_get_lineup():
+    """Devuelve el lineup confirmado para un open mic y fecha."""
+    if not _is_authorized():
+        return jsonify({"status": "error", "message": "unauthorized"}), 401
+
+    open_mic_id  = request.args.get("open_mic_id", "").strip()
+    fecha_evento = request.args.get("fecha_evento", "").strip()
+    if not open_mic_id or not fecha_evento:
+        return jsonify({"status": "error", "message": "open_mic_id y fecha_evento son obligatorios"}), 400
+
+    sb = _sb_client()
+    rows = (
+        sb.schema("silver")
+        .from_("lineup_slots")
+        .select("slot_order, solicitud_id, silver_solicitudes(categoria_silver, silver_comicos(nombre, instagram))")
+        .eq("open_mic_id", open_mic_id)
+        .eq("fecha_evento", fecha_evento)
+        .eq("status", "confirmed")
+        .order("slot_order")
+        .execute()
+    ).data or []
+
+    slots = []
+    for row in rows:
+        sol  = row.get("silver_solicitudes") or {}
+        comic = sol.get("silver_comicos") or {}
+        slots.append({
+            "slot_order": row.get("slot_order"),
+            "nombre":     comic.get("nombre"),
+            "instagram":  comic.get("instagram"),
+            "categoria":  sol.get("categoria_silver"),
+        })
+
+    return jsonify({
+        "open_mic_id":  open_mic_id,
+        "fecha_evento": fecha_evento,
+        "slots":        slots,
+        "total":        len(slots),
+        "validado":     len(slots) > 0,
+    }), 200
+
+
+@app.route("/mcp/candidates", methods=["GET"])
+def mcp_get_candidates():
+    """Devuelve candidatos ordenados por score para un open mic."""
+    if not _is_authorized():
+        return jsonify({"status": "error", "message": "unauthorized"}), 401
+
+    open_mic_id = request.args.get("open_mic_id", "").strip()
+    limit       = int(request.args.get("limit", 10))
+    if not open_mic_id:
+        return jsonify({"status": "error", "message": "open_mic_id es obligatorio"}), 400
+
+    sb = _sb_client()
+    rows = (
+        sb.schema("gold")
+        .from_("solicitudes")
+        .select("score_aplicado, estado, categoria, gold_comicos(nombre, instagram)")
+        .eq("open_mic_id", open_mic_id)
+        .order("score_aplicado", desc=True)
+        .limit(limit)
+        .execute()
+    ).data or []
+
+    candidates = []
+    for row in rows:
+        comic = row.get("gold_comicos") or {}
+        candidates.append({
+            "nombre":      comic.get("nombre"),
+            "instagram":   comic.get("instagram"),
+            "score_final": row.get("score_aplicado"),
+            "categoria":   row.get("categoria"),
+            "estado":      row.get("estado"),
+        })
+
+    return jsonify({"candidates": candidates}), 200
+
+
+@app.route("/mcp/run-scoring", methods=["POST"])
+def mcp_run_scoring():
+    """Ejecuta el motor de scoring para un open mic."""
+    if not _is_authorized():
+        return jsonify({"status": "error", "message": "unauthorized"}), 401
+
+    body = request.get_json(silent=True) or {}
+    open_mic_id = body.get("open_mic_id", "").strip()
+    if not open_mic_id:
+        return jsonify({"status": "error", "message": "open_mic_id es obligatorio"}), 400
+
+    try:
+        result = execute_scoring(open_mic_id)
+    except Exception as exc:
+        return jsonify({"status": "error", "message": str(exc)}), 500
+
+    return jsonify(result), 200
+
+
+@app.route("/mcp/reopen-lineup", methods=["POST"])
+def mcp_reopen_lineup():
+    """Resetea los slots confirmados de un lineup para permitir cambios."""
+    if not _is_authorized():
+        return jsonify({"status": "error", "message": "unauthorized"}), 401
+
+    body = request.get_json(silent=True) or {}
+    open_mic_id  = body.get("open_mic_id", "").strip()
+    fecha_evento = body.get("fecha_evento", "").strip()
+    if not open_mic_id or not fecha_evento:
+        return jsonify({"status": "error", "message": "open_mic_id y fecha_evento son obligatorios"}), 400
+
+    sb = _sb_client()
+    sb.rpc("reset_lineup_slots", {"p_open_mic_id": open_mic_id, "p_fecha_evento": fecha_evento})
+
+    return jsonify({
+        "status":  "ok",
+        "message": f"Lineup reabierto para {fecha_evento}",
     }), 200
 
 
