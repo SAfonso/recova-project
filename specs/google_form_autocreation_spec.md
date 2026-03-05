@@ -1,61 +1,80 @@
 # Spec: Auto-creación de Google Form al crear un Open Mic
 
 **Afecta a:**
-- `backend/src/triggers/webhook_listener.py` — nuevo endpoint `POST /api/open-mic/create-form`
-- `backend/src/core/google_form_builder.py` — módulo nuevo, lógica de creación de Form + Sheet
-- `frontend/src/components/OpenMicDetail.jsx` — botón "Crear Form" y display de link
-- `silver.open_mics.config` — almacena `form_url` y `sheet_id`
+- `backend/src/triggers/webhook_listener.py` — endpoint `POST /api/open-mic/create-form`
+- `backend/src/core/google_form_builder.py` — lógica de creación de Form + Sheet
+- `frontend/src/components/OpenMicSelector.jsx` — auto-crea form al insertar open mic
+- `frontend/src/components/OpenMicDetail.jsx` — botón manual fallback + display de links
+- `silver.open_mics.config` — almacena `form_url`, `sheet_url`, `form_id`, `sheet_id`
 - `workflows/n8n/Ingesta-Solicitudes.json` — Sheet ID viene del config del open mic
 
-**Estado:** pendiente de implementación
-**Versión:** v1.0
+**Estado:** implementado (v1.1)
+**Versión:** v1.1 — migración a OAuth2, Sheet propia
 
 ---
 
 ## 1. Contexto
 
 Al crear un open mic, el host necesita un Google Form para recoger solicitudes de cómicos.
-Actualmente el form se crea manualmente y el `open_mic_id` se añade a mano en la Sheet.
+El form se crea automáticamente al crear el open mic, sin intervención manual del host.
 
-Este spec define la auto-creación del Form vía Google Forms API usando una **service account**
-compartida del sistema. El host no necesita vincular su cuenta de Google.
+### Limitaciones descubiertas en implementación (v1.0 → v1.1)
+
+| Problema | Causa | Solución adoptada |
+|----------|-------|-------------------|
+| `forms().create()` devuelve HTTP 500 con service account | Bug conocido de Google Forms API | Migración a OAuth2 con refresh token |
+| `drive.files().create()` devuelve 403 storage quota exceeded | Las service accounts tienen `quota: 0` en Drive | OAuth2 usa la cuenta real del host |
+| `linkedSheetId` nunca se genera vía API | Forms API solo crea el linked sheet desde la UI | Sheet propia creada con Sheets API |
 
 ---
 
 ## 2. Arquitectura
 
 ```
-Frontend (OpenMicDetail)
-    → POST /api/open-mic/create-form  { open_mic_id }
-        → google_form_builder.py
-            → Google Forms API  →  crea Form con campos estándar
-            → Google Sheets API →  añade columna open_mic_id (ARRAYFORMULA)
-            → Google Drive API  →  comparte Sheet con host (opcional)
-        → PATCH silver.open_mics SET config.form = { form_url, sheet_id }
-    ← { form_url, sheet_id }
+OpenMicSelector (frontend)
+    → INSERT silver.open_mics
+    → POST /api/open-mic/create-form  (fire-and-forget, no bloquea UI)
+        → GoogleFormBuilder (OAuth2)
+            → Forms API   → forms().create()      → form_id
+            → Forms API   → forms().batchUpdate() → añade 8 preguntas
+            → Forms API   → forms().get()         → intentar leer linkedSheetId
+            → Sheets API  → spreadsheets().create() → sheet propia (si no hay linkedSheetId)
+            → Sheets API  → values().update()     → cabeceras en A1
+            → Sheets API  → values().update()     → open_mic_id + ARRAYFORMULA en J1-J2
+        → PATCH silver.open_mics SET config.form = { form_id, form_url, sheet_id, sheet_url }
+    ← { status, form_url, sheet_url, form_id, sheet_id }
 
-Frontend: muestra link del Form en InfoCard
-n8n Ingesta: lee sheet_id desde config del open mic (no hardcodeado)
+OpenMicDetail: muestra links o botón manual de creación (fallback)
+n8n Ingesta: lee sheet_id desde config.form del open mic
 ```
 
 ---
 
 ## 3. Configuración Google Cloud
 
-### 3.1 Service Account
+### 3.1 OAuth2 (cuenta del host)
 
-1. Google Cloud Console → IAM → Service Accounts → Crear cuenta
-2. Nombre: `recova-form-builder`
-3. Descargar JSON de credenciales → guardar en servidor como `GOOGLE_SA_CREDENTIALS_PATH`
-4. APIs a habilitar en el proyecto GCP:
-   - Google Forms API
-   - Google Sheets API
-   - Google Drive API
+1. Google Cloud Console → APIs y servicios → Credenciales → Crear ID de cliente OAuth 2.0
+2. Tipo: **Aplicación de escritorio**
+3. Descargar JSON de credenciales
+4. Ejecutar script de autorización (una sola vez):
+   ```bash
+   python backend/scripts/google_oauth_setup.py --client-secrets /ruta/client_secret.json
+   ```
+5. Copiar los valores impresos al `.env`
 
-### 3.2 Variables de entorno (backend `.env`)
+### 3.2 APIs a habilitar en Google Cloud Console
+
+- Google Forms API
+- Google Sheets API
+- Google Drive API
+
+### 3.3 Variables de entorno (`backend/.env`)
 
 ```
-GOOGLE_SA_CREDENTIALS_PATH=/path/to/service-account.json
+GOOGLE_OAUTH_CLIENT_ID=...
+GOOGLE_OAUTH_CLIENT_SECRET=...
+GOOGLE_OAUTH_REFRESH_TOKEN=...
 ```
 
 ---
@@ -83,33 +102,54 @@ Opciones campo 6: `Sí`, `No`
 ## 5. Módulo `backend/src/core/google_form_builder.py`
 
 ```python
-class GoogleFormBuilder:
-    def __init__(self, credentials_path: str): ...
+@dataclass
+class FormCreationResult:
+    form_id: str
+    form_url: str
+    sheet_id: str
+    sheet_url: str
 
-    def create_form_for_open_mic(
-        self,
-        open_mic_id: str,
-        nombre: str,
-    ) -> dict:
-        """
-        Crea un Google Form con los campos estándar.
-        Vincula la Sheet de respuestas.
-        Añade ARRAYFORMULA de open_mic_id en columna I de la Sheet.
-        Devuelve { form_url, sheet_id, form_id }.
-        """
+class GoogleFormBuilder:
+    def __init__(self) -> None:
+        """Lee GOOGLE_OAUTH_CLIENT_ID/SECRET/REFRESH_TOKEN del entorno.
+        Refresca el access token. Construye clientes Forms, Sheets y Drive."""
+
+    def create_form_for_open_mic(self, open_mic_id: str, nombre: str) -> FormCreationResult:
+        """Flujo completo: crea form, añade preguntas, obtiene/crea sheet,
+        inyecta columna open_mic_id. Devuelve FormCreationResult."""
 ```
 
 ### 5.1 Flujo interno
 
-1. `forms.create()` — crea form con título `f"Solicitudes — {nombre}"`
-2. `forms.batchUpdate()` — añade los 8 campos del §4
-3. Leer `linkedSheetId` de la respuesta (Google Forms auto-crea la Sheet)
-4. `sheets.spreadsheets.values.update()` — escribe cabecera `open_mic_id` en celda `I1`
-5. `sheets.spreadsheets.values.update()` — escribe ARRAYFORMULA en `I2`:
-   ```
-   =ARRAYFORMULA(IF(B2:B<>"","<open_mic_id>",""))
-   ```
-6. Devolver `{ form_url, sheet_id, form_id }`
+1. `_create_form(nombre)` — `forms().create()` con título `"Solicitudes — {nombre}"` → `form_id`
+2. `_add_questions(form_id)` — `forms().batchUpdate()` con los 8 campos del §4
+3. `_get_linked_sheet_id(form_id, nombre)`:
+   - Intenta leer `linkedSheetId` del form (`forms().get()`)
+   - Si no existe → `sheets.spreadsheets().create()` con título `"Respuestas — {nombre}"` y hoja `"Respuestas"` → escribe cabeceras (9 cols A-I) en `A1`
+4. `_inject_open_mic_id_column(sheet_id, open_mic_id)`:
+   - Lee el nombre de la primera hoja
+   - Escribe en col J: cabecera `open_mic_id` en `J1` y ARRAYFORMULA en `J2`:
+     ```
+     =ARRAYFORMULA(IF(B2:B<>"","<open_mic_id>",""))
+     ```
+5. Construye URLs y devuelve `FormCreationResult`
+
+### 5.2 Cabeceras de la Sheet (cols A-I)
+
+```
+A: Marca temporal
+B: Nombre artístico
+C: Instagram (sin @)
+D: WhatsApp
+E: ¿Cuántas veces has actuado en un open mic?
+F: ¿Qué fechas te vienen bien?
+G: ¿Estarías disponible si nos falla alguien de última hora?
+H: ¿Tienes algún show próximo que quieras mencionar?
+I: ¿Cómo nos conociste?
+J: open_mic_id  (ARRAYFORMULA — col J)
+```
+
+> **Nota:** ARRAYFORMULA usa col B (`Nombre artístico`) como señal de fila no vacía.
 
 ---
 
@@ -120,88 +160,85 @@ class GoogleFormBuilder:
 ```
 POST /api/open-mic/create-form
 Headers: X-API-KEY: <WEBHOOK_API_KEY>
+         Content-Type: application/json
 Body: { "open_mic_id": "<uuid>", "nombre": "<nombre del open mic>" }
 ```
 
-**Respuesta OK:**
+**Respuesta OK (200):**
 ```json
 {
   "status": "success",
-  "form_url": "https://docs.google.com/forms/d/...",
+  "form_id": "...",
+  "form_url": "https://docs.google.com/forms/d/.../viewform",
   "sheet_id": "...",
-  "form_id": "..."
+  "sheet_url": "https://docs.google.com/spreadsheets/d/..."
 }
 ```
 
 **Errores:**
-- `401` — API key inválida
+- `401` — API key inválida o ausente
 - `400` — `open_mic_id` o `nombre` ausentes
-- `409` — el open mic ya tiene form creado (`config.form` no está vacío)
-- `500` — error en Google API
+- `409` — el open mic ya tiene `config.form` (no se sobreescribe)
+- `500` — error en Google API o Supabase
 
-**Tras éxito:** el endpoint hace PATCH en `silver.open_mics` vía Supabase service role:
+**Tras éxito:** PATCH en `silver.open_mics` vía Supabase service role:
 ```json
 config.form = {
+  "form_id": "...",
   "form_url": "...",
   "sheet_id": "...",
-  "form_id": "..."
+  "sheet_url": "..."
 }
 ```
 
 ---
 
-## 7. Frontend — OpenMicDetail
+## 7. Frontend
 
-### 7.1 InfoCard
+### 7.1 OpenMicSelector — auto-creación (fire-and-forget)
 
-Añade sección condicional tras los InfoRows existentes:
+Al insertar el open mic, llama al endpoint sin await ni bloqueo de UI:
+```js
+fetch(`${VITE_BACKEND_URL}/api/open-mic/create-form`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json', 'X-API-KEY': VITE_WEBHOOK_API_KEY },
+  body: JSON.stringify({ open_mic_id: newMic.id, nombre: newMic.nombre }),
+}).catch(() => {}); // silencioso si falla
+```
+
+### 7.2 OpenMicDetail — fallback manual
 
 ```
 Si config.form existe:
-  → InfoRow "Google Form" → link clickable a form_url
-  → InfoRow "Respuestas"  → link a Sheet (https://docs.google.com/spreadsheets/d/{sheet_id})
+  → Link "Abrir formulario →"   → form_url
+  → Link "Ver respuestas (Sheet) →" → sheet_url
 
 Si config.form NO existe:
   → Botón "Crear Google Form" → llama al endpoint
-  → Estado: 'idle' | 'creating' | 'error'
+  → Estados: idle | creando... | error
 ```
 
-### 7.2 Llamada al endpoint
-
-El frontend llama directamente al backend (`VITE_BACKEND_URL`):
-
-```js
-POST ${VITE_BACKEND_URL}/api/open-mic/create-form
-Headers: { 'X-API-KEY': VITE_WEBHOOK_API_KEY }
-Body: { open_mic_id, nombre: openMic.nombre }
-```
-
-Tras respuesta OK: recarga el open mic (`fetchOpenMic()`) para mostrar el link.
+Tras respuesta OK: `fetchOpenMic()` para refrescar y mostrar los links.
 
 ---
 
 ## 8. n8n — Ingesta Sheet dinámica
 
-El workflow `Ingesta-Solicitudes.json` necesita saber el `sheet_id` del open mic activo.
-
-**Opción adoptada:** el trigger de Google Sheets usa el `sheet_id` almacenado en
-`silver.open_mics.config.form.sheet_id`. El nodo trigger se configura con el Sheet ID
-del open mic correspondiente.
-
-> Por ahora el workflow sigue siendo uno por open mic en n8n (distintos triggers apuntando
-> a distintas Sheets), pero el Sheet ID ya no es hardcodeado en el workflow — se obtiene
-> de la BD al configurar el trigger.
+El workflow `Ingesta-Solicitudes.json` lee el `sheet_id` de `silver.open_mics.config.form.sheet_id`.
+El trigger de Google Sheets se configura con ese ID (no hardcodeado en el workflow).
 
 ---
 
 ## 9. Criterios de aceptación
 
-- [ ] Service account configurada en Google Cloud con Forms + Sheets + Drive APIs
-- [ ] `GOOGLE_SA_CREDENTIALS_PATH` en `.env` del backend
-- [ ] `google_form_builder.py` crea Form con los 8 campos del contrato
-- [ ] La Sheet tiene columna `open_mic_id` con ARRAYFORMULA auto-rellenada
-- [ ] Endpoint `POST /api/open-mic/create-form` devuelve `form_url` y `sheet_id`
-- [ ] `silver.open_mics.config.form` se actualiza tras la creación
-- [ ] InfoCard muestra link al Form y a la Sheet si `config.form` existe
-- [ ] Si el form ya existe, el botón no aparece (sin duplicados)
-- [ ] Error `409` si se intenta crear form para un open mic que ya lo tiene
+- [x] OAuth2 configurado con `GOOGLE_OAUTH_CLIENT_ID/SECRET/REFRESH_TOKEN`
+- [x] `GoogleFormBuilder` crea Form con los 8 campos del contrato
+- [x] Sheet propia creada con cabeceras A-I cuando no hay `linkedSheetId`
+- [x] Columna `open_mic_id` con ARRAYFORMULA en col J
+- [x] Endpoint `POST /api/open-mic/create-form` devuelve `form_url`, `sheet_url`, `form_id`, `sheet_id`
+- [x] `silver.open_mics.config.form` se actualiza tras la creación
+- [x] Auto-creación en segundo plano al crear open mic desde `OpenMicSelector`
+- [x] Botón manual en `OpenMicDetail` como fallback
+- [x] Error `409` si se intenta crear form para un open mic que ya lo tiene
+- [x] CORS habilitado en Flask para llamadas desde el navegador
+- [ ] Tests unitarios de `GoogleFormBuilder` con mocks de Google APIs
