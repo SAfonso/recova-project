@@ -1,7 +1,7 @@
 # AI LineUp Architect
 
 **Estado:** En desarrollo activo
-**Versión:** `0.7.0`
+**Versión:** `0.8.0`
 **Metodología:** Spec-Driven Development (SDD) + TDD
 
 SaaS multi-tenant para gestión de open mics de comedia. Automatiza la recogida de solicitudes de cómicos (Google Forms), el scoring y la selección del lineup, y la generación del cartel en PNG.
@@ -172,6 +172,7 @@ cd frontend && npm install && npm run dev
 
 | Fase | Versión | Estado |
 |------|---------|--------|
+| Sprint 3 — Telegram Lineup Agent (LLM + MCP) | 0.8.0 | En progreso |
 | Sprint 2 — Google Forms + Backend integration | 0.7.0 | Completado |
 | Sprint 1 — Pivot SaaS Multi-Tenant | 0.6.0 | Completado |
 | SVG Renderer | 0.5.57–0.5.61 | Completado |
@@ -182,10 +183,11 @@ cd frontend && npm install && npm run dev
 | Ingesta + Infraestructura | 0.4.x | Completado |
 | Bronze + Silver + Seed | 0.1.0–0.3.0 | Completado |
 
-**Próximo:**
-- `confirm_lineup()` RPC → `silver.lineup_slots`
-- Renderer lee `config.poster.base_image_url`
-- Deploy frontend en producción
+**Próximo (Sprint 3):**
+- Endpoints `/mcp/*` en Flask para lineup agent
+- Workflow n8n `telegram-lineup-agent`
+- Migración `silver.telegram_users`
+- Tests `test_lineup_mcp_endpoints.py`
 
 ---
 

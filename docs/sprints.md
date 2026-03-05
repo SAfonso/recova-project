@@ -1,5 +1,24 @@
 # Historial de Sprints y Fases
 
+## Sprint 3 — Telegram Lineup Agent (v0.8.0) — 2026-03-05
+
+### Objetivo
+Permitir al host consultar y gestionar el lineup desde Telegram en lenguaje natural, usando un agente Claude con tools MCP expuestas como endpoints REST.
+
+### Completado
+- **Spec SDD** — `specs/telegram_lineup_agent_spec.md`: arquitectura, 5 tools, endpoints Flask, flujo n8n, tabla `silver.telegram_users`, 7 tests requeridos
+
+### Pendiente
+- [ ] Migración SQL: `silver.telegram_users`
+- [ ] Endpoints Flask `/mcp/*` (5 endpoints, auth con X-API-Key)
+- [ ] Tests unitarios: `backend/tests/mcp/test_lineup_mcp_endpoints.py`
+- [ ] Workflow n8n: `telegram-lineup-agent` (Telegram → Claude API → tools → respuesta)
+- [ ] Registro manual del host en `silver.telegram_users`
+
+→ Spec: `specs/telegram_lineup_agent_spec.md`
+
+---
+
 ## Sprint 2 — Google Forms + Integración Backend (v0.7.0) — 2026-03-05
 
 ### Completado
