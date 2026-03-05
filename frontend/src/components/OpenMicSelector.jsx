@@ -1,16 +1,10 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
+import { OpenMicIcon } from './open-mic/openmic-icons';
 
 const PlusIcon = () => (
   <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
     <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-  </svg>
-);
-const MicIcon = () => (
-  <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-    <line x1="12" y1="19" x2="12" y2="23" /><line x1="8" y1="23" x2="16" y2="23" />
   </svg>
 );
 
@@ -40,7 +34,7 @@ export function OpenMicSelector({ session, onSelect }) {
       if (proveedorIds.length === 0) { setOpenMics([]); setLoading(false); return; }
       const { data: micsData, error: micsError } = await supabase
         .schema('silver').from('open_mics')
-        .select('id, nombre, proveedor_id, created_at')
+        .select('id, nombre, proveedor_id, created_at, config')
         .in('proveedor_id', proveedorIds).order('created_at', { ascending: true });
       if (micsError) setError(micsError.message);
       else setOpenMics(micsData ?? []);
@@ -113,7 +107,7 @@ export function OpenMicSelector({ session, onSelect }) {
                       onClick={() => onSelect(mic.id)}
                       className="group flex w-full cursor-pointer items-center gap-3 rounded-lg border-[3px] border-[#1a1a1a] bg-[#F5F0E1] px-4 py-3 text-left font-bold text-[#1a1a1a] transition-all duration-200 hover:bg-[#DC2626] hover:text-[#fff8e7] hover:shadow-[3px_3px_0px_rgba(0,0,0,0.3)]"
                     >
-                      <MicIcon />
+                      <OpenMicIcon iconId={mic.config?.info?.icono} className="h-4 w-4 shrink-0" />
                       <span className="flex-1 truncate">{mic.nombre}</span>
                       <svg className="h-4 w-4 opacity-40 transition-opacity group-hover:opacity-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
                         <polyline points="9 18 15 12 9 6" />

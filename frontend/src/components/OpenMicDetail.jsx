@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { InfoConfigurator } from './open-mic/InfoConfigurator';
 import { ScoringConfigurator } from './ScoringConfigurator';
 import { supabase } from '../supabaseClient';
 
@@ -148,6 +149,7 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
   const [loading,         setLoading]         = useState(true);
   const [error,           setError]           = useState(null);
   const [view,            setView]            = useState(initialView);
+  const [configTab,       setConfigTab]       = useState('info');
   const [showDeletePanel, setShowDeletePanel] = useState(false);
   const [deleting,        setDeleting]        = useState(false);
   const [deleteConfirm,   setDeleteConfirm]   = useState('');
@@ -175,7 +177,6 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
 
   const handleSaved = () => {
     fetchOpenMic();
-    setView('info');
   };
 
   const handleCreateForm = async () => {
@@ -363,10 +364,34 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
         ) : (
           <div className="animate-pop-in paper-drop paper-tape">
             <div className="paper-rough paper-note border-[3px] border-[#1a1a1a] bg-[#fffef5] px-6 py-4">
-              <h2 className="mb-4 font-['Bangers'] text-2xl tracking-wide text-[#1a1a1a]">
-                Configuración de scoring
-              </h2>
-              <ScoringConfigurator openMicId={openMicId} onSaved={handleSaved} />
+              {/* Subtabs Info / Scoring */}
+              <div className="mb-4 flex gap-1 border-b-2 border-[#C8B89A] pb-0">
+                {[{ id: 'info', label: 'Info' }, { id: 'scoring', label: 'Scoring' }].map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setConfigTab(tab.id)}
+                    className={`cursor-pointer rounded-t-md border-2 border-b-0 border-[#1a1a1a] px-5 py-1.5 text-sm font-bold transition-all duration-150
+                      ${configTab === tab.id
+                        ? 'relative z-10 -mb-[2px] bg-[#1a1a1a] text-[#fff8e7]'
+                        : 'bg-[#F5F0E1] text-[#6B5C4A] hover:bg-[#E8DFC8]'
+                      }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {configTab === 'info' ? (
+                <InfoConfigurator openMicId={openMicId} openMic={openMic} onSaved={handleSaved} />
+              ) : (
+                <>
+                  <h2 className="mb-4 font-['Bangers'] text-xl tracking-wide text-[#1a1a1a]">
+                    Configuración de scoring
+                  </h2>
+                  <ScoringConfigurator openMicId={openMicId} onSaved={handleSaved} />
+                </>
+              )}
             </div>
           </div>
         )}
