@@ -10,8 +10,9 @@ import './index.css';
 function Root() {
   const [session,   setSession]   = useState(null);
   const [checking,  setChecking]  = useState(true);
-  const [openMicId, setOpenMicId] = useState(null);
-  const [view,      setView]      = useState('selector'); // 'selector' | 'detail' | 'lineup'
+  const [openMicId,    setOpenMicId]    = useState(null);
+  const [view,         setView]         = useState('selector'); // 'selector' | 'detail' | 'lineup'
+  const [initialView,  setInitialView]  = useState('info');     // vista inicial de OpenMicDetail
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -37,12 +38,16 @@ function Root() {
     );
   }
 
-  const handleSelect = (id) => { setOpenMicId(id); setView('detail'); };
+  const handleSelect = (id, options = {}) => {
+    setOpenMicId(id);
+    setInitialView(options.isNew ? 'config' : 'info');
+    setView('detail');
+  };
   const handleBack   = ()   => { setOpenMicId(null); setView('selector'); };
 
   if (!session)            return <LoginScreen />;
   if (view === 'selector') return <OpenMicSelector session={session} onSelect={handleSelect} />;
-  if (view === 'detail')   return <OpenMicDetail session={session} openMicId={openMicId} onBack={handleBack} onEnterLineup={() => setView('lineup')} />;
+  if (view === 'detail')   return <OpenMicDetail session={session} openMicId={openMicId} initialView={initialView} onBack={handleBack} onEnterLineup={() => setView('lineup')} />;
   return <App session={session} openMicId={openMicId} onBack={() => setView('detail')} />;
 }
 

@@ -78,13 +78,24 @@ export function OpenMicSelector({ session, onSelect }) {
       .select('id, nombre')
       .single();
 
-    setSaving(false);
-
     if (insertError) {
+      setSaving(false);
       setError(insertError.message);
       return;
     }
 
+    // Auto-crear Google Form + Sheet en segundo plano (no bloqueante)
+    const backendUrl = import.meta.env.VITE_BACKEND_URL;
+    const apiKey     = import.meta.env.VITE_WEBHOOK_API_KEY;
+    if (backendUrl && apiKey) {
+      fetch(`${backendUrl}/api/open-mic/create-form`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-API-KEY': apiKey },
+        body: JSON.stringify({ open_mic_id: newMic.id, nombre: newMic.nombre }),
+      }).catch(() => {}); // silencioso — el usuario puede crearlo desde OpenMicDetail si falla
+    }
+
+    setSaving(false);
     onSelect(newMic.id, { isNew: true });
   };
 

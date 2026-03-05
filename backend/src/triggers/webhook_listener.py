@@ -7,11 +7,13 @@ import subprocess
 from dotenv import load_dotenv
 
 from flask import Flask, jsonify, request
+from flask_cors import CORS
 from supabase import create_client
 
 from backend.src.core.google_form_builder import GoogleFormBuilder
 
 app = Flask(__name__)
+CORS(app)
 
 load_dotenv()
 INGEST_SCRIPT_PATH = "/root/RECOVA/backend/src/bronze_to_silver_ingestion.py"

@@ -1,15 +1,18 @@
 """GoogleFormBuilder — crea un Google Form con campos estándar para un open mic.
 
-Usa una service account del sistema (sin OAuth por usuario).
+Usa OAuth2 con refresh token (cuenta del usuario).
 Tras crear el form, vincula la Sheet de respuestas e inyecta la columna
 open_mic_id con ARRAYFORMULA para que el workflow n8n la lea automáticamente.
 
 Dependencias:
     google-api-python-client>=2.100.0
     google-auth>=2.23.0
+    google-auth-oauthlib>=1.0.0
 
 Variables de entorno:
-    GOOGLE_SA_CREDENTIALS_PATH — ruta al JSON de la service account
+    GOOGLE_OAUTH_CLIENT_ID
+    GOOGLE_OAUTH_CLIENT_SECRET
+    GOOGLE_OAUTH_REFRESH_TOKEN
 """
 
 from __future__ import annotations
@@ -17,7 +20,8 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 
-from google.oauth2 import service_account
+from google.oauth2.credentials import Credentials
+from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 
 
@@ -108,18 +112,30 @@ class FormCreationResult:
 class GoogleFormBuilder:
     """Crea Google Forms con campos estándar usando una service account."""
 
-    def __init__(self, credentials_path: str | None = None) -> None:
-        path = credentials_path or os.environ.get("GOOGLE_SA_CREDENTIALS_PATH")
-        if not path:
+    def __init__(self) -> None:
+        client_id     = os.environ.get("GOOGLE_OAUTH_CLIENT_ID", "")
+        client_secret = os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET", "")
+        refresh_token = os.environ.get("GOOGLE_OAUTH_REFRESH_TOKEN", "")
+
+        if not all([client_id, client_secret, refresh_token]):
             raise ValueError(
-                "GOOGLE_SA_CREDENTIALS_PATH no definido y no se pasó credentials_path."
+                "Faltan variables de entorno: GOOGLE_OAUTH_CLIENT_ID, "
+                "GOOGLE_OAUTH_CLIENT_SECRET, GOOGLE_OAUTH_REFRESH_TOKEN"
             )
 
-        creds = service_account.Credentials.from_service_account_file(
-            path, scopes=SCOPES
+        creds = Credentials(
+            token=None,
+            refresh_token=refresh_token,
+            token_uri="https://oauth2.googleapis.com/token",
+            client_id=client_id,
+            client_secret=client_secret,
+            scopes=SCOPES,
         )
+        creds.refresh(Request())
+
         self._forms = build("forms", "v1", credentials=creds, cache_discovery=False)
         self._sheets = build("sheets", "v4", credentials=creds, cache_discovery=False)
+        self._drive  = build("drive",  "v3", credentials=creds, cache_discovery=False)
 
     # ------------------------------------------------------------------
 
@@ -136,7 +152,7 @@ class GoogleFormBuilder:
         """
         form_id = self._create_form(nombre)
         self._add_questions(form_id)
-        sheet_id = self._get_linked_sheet_id(form_id)
+        sheet_id = self._get_linked_sheet_id(form_id, nombre)
         self._inject_open_mic_id_column(sheet_id, open_mic_id)
 
         form_url = f"https://docs.google.com/forms/d/{form_id}/viewform"
@@ -200,31 +216,44 @@ class GoogleFormBuilder:
 
         return item
 
-    def _get_linked_sheet_id(self, form_id: str) -> str:
+    def _get_linked_sheet_id(self, form_id: str, nombre: str) -> str:
         """
-        Google Forms crea automáticamente una Sheet al activar respuestas.
-        La Sheet se crea al llamar a la API de Forms — leemos su ID del form.
-        Si aún no existe, la creamos explícitamente via batchUpdate.
+        Devuelve el linkedSheetId del form si existe.
+        Si no existe (Forms API no lo crea automáticamente vía API),
+        crea una Spreadsheet propia con las cabeceras correctas.
         """
         form = self._forms.forms().get(formId=form_id).execute()
         linked = form.get("linkedSheetId")
         if linked:
             return linked
 
-        # Forzar creación de Sheet vinculada
-        self._forms.forms().batchUpdate(
-            formId=form_id,
-            body={"requests": [{"createItem": {}}]},
-        )
-        # Re-leer
-        form = self._forms.forms().get(formId=form_id).execute()
-        linked = form.get("linkedSheetId")
-        if not linked:
-            raise RuntimeError(
-                f"No se pudo obtener linkedSheetId para form {form_id}. "
-                "Activa manualmente 'Vincular a Sheets' en Google Forms."
-            )
-        return linked
+        # La Forms API no crea el linked sheet automáticamente vía API.
+        # Creamos nuestra propia hoja con cabeceras que coinciden con los campos.
+        headers = [
+            "Marca temporal",
+            "Nombre artístico",
+            "Instagram (sin @)",
+            "WhatsApp",
+            "¿Cuántas veces has actuado en un open mic?",
+            "¿Qué fechas te vienen bien?",
+            "¿Estarías disponible si nos falla alguien de última hora?",
+            "¿Tienes algún show próximo que quieras mencionar?",
+            "¿Cómo nos conociste?",
+        ]
+        spreadsheet = self._sheets.spreadsheets().create(body={
+            "properties": {"title": f"Respuestas — {nombre}"},
+            "sheets": [{"properties": {"title": "Respuestas"}}],
+        }).execute()
+        sheet_id = spreadsheet["spreadsheetId"]
+
+        self._sheets.spreadsheets().values().update(
+            spreadsheetId=sheet_id,
+            range="Respuestas!A1",
+            valueInputOption="RAW",
+            body={"values": [headers]},
+        ).execute()
+
+        return sheet_id
 
     def _inject_open_mic_id_column(self, sheet_id: str, open_mic_id: str) -> None:
         """
@@ -245,7 +274,7 @@ class GoogleFormBuilder:
 
         self._sheets.spreadsheets().values().update(
             spreadsheetId=sheet_id,
-            range=f"{sheet_name}!I1",
+            range=f"{sheet_name}!J1",
             valueInputOption="USER_ENTERED",
             body={"values": values},
         ).execute()
