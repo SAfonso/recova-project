@@ -89,10 +89,12 @@ function validate(config) {
 
 function SectionCard({ title, children }) {
   return (
-    <section className="rounded-lg border-[3px] border-[#1a1a1a] bg-[#fff8e7] p-4">
-      <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-[#1a1a1a]">{title}</h3>
-      {children}
-    </section>
+    <div className="paper-drop">
+      <section className="paper-rough paper-note border-[3px] border-[#1a1a1a] bg-[#fffef5] p-4">
+        <h3 className="mb-3 font-['Bangers'] text-lg tracking-wide text-[#1a1a1a]">{title}</h3>
+        {children}
+      </section>
+    </div>
   );
 }
 
@@ -468,18 +470,21 @@ export function ScoringConfigurator({ openMicId, onSaved }) {
       {/* ── Guardar ──────────────────────────────────────────────── */}
       <div className="flex items-center justify-end gap-3 pt-1">
         {saved && (
-          <span className="text-sm font-bold text-[#22C55E]">
-            ✓ Configuración guardada
+          <span className="flex animate-pop-in items-center gap-1.5 text-sm font-bold text-[#22C55E]">
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+            Guardado
           </span>
         )}
         <button
           type="button"
           disabled={saving || loading}
           onClick={handleSave}
-          className={`rounded-lg border-[3px] border-[#1a1a1a] px-6 py-2.5 text-sm font-bold transition-all
+          className={`rounded-lg border-[3px] border-[#1a1a1a] px-6 py-2.5 text-sm font-bold transition-all duration-200
             ${saving || loading
               ? 'cursor-not-allowed bg-[#D1D5DB] text-[#6B5C4A]'
-              : 'bg-[#1a1a1a] text-[#fff8e7] hover:bg-[#DC2626]'
+              : 'comic-shadow cursor-pointer bg-[#1a1a1a] text-[#fff8e7] hover:bg-[#DC2626] hover:scale-[1.02] active:scale-[0.98]'
             }`}
         >
           {saving ? 'Guardando...' : 'Guardar configuración'}
