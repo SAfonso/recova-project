@@ -1,19 +1,23 @@
 # Historial de Sprints y Fases
 
-## Sprint 3 — Telegram Lineup Agent (v0.8.0) — 2026-03-05
+## Sprint 3 — Telegram Lineup Agent (v0.8.0) — 2026-03-06 ✅
 
 ### Objetivo
-Permitir al host consultar y gestionar el lineup desde Telegram en lenguaje natural, usando un agente Claude con tools MCP expuestas como endpoints REST.
+Permitir al host consultar y gestionar el lineup desde Telegram en lenguaje natural, usando un agente LLM con tools MCP expuestas como endpoints REST.
 
 ### Completado
-- **Spec SDD** — `specs/telegram_lineup_agent_spec.md`: arquitectura, 5 tools, endpoints Flask, flujo n8n, tabla `silver.telegram_users`, 7 tests requeridos
-
-### Pendiente
-- [ ] Migración SQL: `silver.telegram_users`
-- [ ] Endpoints Flask `/mcp/*` (5 endpoints, auth con X-API-Key)
-- [ ] Tests unitarios: `backend/tests/mcp/test_lineup_mcp_endpoints.py`
-- [ ] Workflow n8n: `telegram-lineup-agent` (Telegram → Claude API → tools → respuesta)
-- [ ] Registro manual del host en `silver.telegram_users`
+- **Spec SDD** — `specs/telegram_lineup_agent_spec.md`
+- **Migración SQL** — `silver.telegram_users` + `silver.telegram_registration_codes`
+- **Endpoints Flask `/mcp/*`** — 5 endpoints con auth `X-API-Key`
+  - `GET /mcp/open-mics` (query via `organization_members → proveedor_id`)
+  - `GET /mcp/lineup`, `GET /mcp/candidates`, `POST /mcp/run-scoring`, `POST /mcp/reopen-lineup`
+- **Tests** — 11/11 verdes en `backend/tests/mcp/test_lineup_mcp_endpoints.py`
+- **Workflow n8n** — `telegram-lineup-agent` operativo:
+  - LLM: Gemini 2.5 Flash
+  - Validación host en `silver.telegram_users` → rechazo automático si no registrado
+  - 5 tools conectadas al backend Flask
+  - Redirección a web si el host no tiene open mics
+- **Fix deploy servidor** — `.env` en `/root/RECOVA/.env`, `SUPABASE_SERVICE_KEY` correcta
 
 → Spec: `specs/telegram_lineup_agent_spec.md`
 

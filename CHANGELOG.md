@@ -1,15 +1,33 @@
-## [0.8.0] - 2026-03-05
+## [0.8.0] - 2026-03-06
 
-### Added — Sprint 3: Telegram Lineup Agent
+### Added — Sprint 3: Telegram Lineup Agent ✅
 
-#### Spec
-- `specs/telegram_lineup_agent_spec.md`: SDD completa del agente LLM para gestión de lineup por Telegram — arquitectura, endpoints MCP, tools Claude API, flujo n8n, tabla `silver.telegram_users`, tests requeridos
+#### Backend — endpoints MCP Flask
+- `backend/src/triggers/webhook_listener.py`: 5 endpoints `/mcp/*` con auth `X-API-Key`
+  - `GET /mcp/open-mics` — lista open mics del host via `organization_members → proveedor_id`
+  - `GET /mcp/lineup` — lineup confirmado desde `silver.lineup_slots`
+  - `GET /mcp/candidates` — candidatos scoring desde `gold.lineup_candidates`
+  - `POST /mcp/run-scoring` — ejecuta scoring engine
+  - `POST /mcp/reopen-lineup` — resetea slots de lineup
+- Fix: carga de `.env` con búsqueda en múltiples rutas candidatas (`backend/.env`, `../../.env`, `../../../.env`)
 
-#### Pendiente de implementación
-- `backend/src/triggers/webhook_listener.py`: endpoints `/mcp/lineup`, `/mcp/candidates`, `/mcp/run-scoring`, `/mcp/reopen-lineup`, `/mcp/open-mics`
-- `backend/tests/mcp/test_lineup_mcp_endpoints.py`: 7 tests unitarios
-- Migración SQL: `silver.telegram_users`
-- Workflow n8n: `telegram-lineup-agent`
+#### Tests
+- `backend/tests/mcp/test_lineup_mcp_endpoints.py`: 11/11 tests verdes
+- Mock actualizado para query en dos pasos en `GET /mcp/open-mics`
+
+#### Infraestructura DB
+- Migración `specs/sql/migrations/20260305_telegram_users.sql`: tablas `silver.telegram_users` y `silver.telegram_registration_codes`
+
+#### Workflow n8n
+- Workflow `telegram-lineup-agent` operativo con Gemini 2.5 Flash
+- 5 nodos tool (`tool_open_mics`, `tool_lineup`, `tool_candidatos`, `tool_run_scoring`, `tool_reopen_lineup`)
+- Validación de host en Supabase (`silver.telegram_users`) antes de llegar al agente
+- System message con regla de redirección a web cuando no hay open mics: `https://recova-project-z5zp.vercel.app`
+
+### Fixed
+- Nombres de nodos tool en n8n: solo caracteres alfanuméricos y underscores (requisito n8n)
+- Nombre del servidor MCP: `recova_mcp_renderer` (guiones reemplazados por underscores)
+- `SUPABASE_SERVICE_KEY` separada de `SUPABASE_KEY` (publishable) en `.env` del servidor
 
 ---
 
