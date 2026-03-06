@@ -41,7 +41,7 @@ else:
     RuntimeFastMCP = _RuntimeFastMCP
 
 
-mcp = RuntimeFastMCP("recova-mcp-renderer")
+mcp = RuntimeFastMCP("recova_mcp_renderer")
 render_lock = asyncio.Lock()
 
 MCP_LOG_PATH = Path(__file__).resolve().parents[1] / "logs" / "mcp_render.log"
