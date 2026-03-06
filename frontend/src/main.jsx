@@ -4,10 +4,13 @@ import App from './App';
 import { LoginScreen } from './components/LoginScreen';
 import { OpenMicDetail } from './components/OpenMicDetail';
 import { OpenMicSelector } from './components/OpenMicSelector';
+import { ValidateView } from './components/ValidateView';
 import { supabase } from './supabaseClient';
 import './index.css';
 
 function Root() {
+  if (window.location.pathname === '/validate') return <ValidateView />;
+
   const [session,   setSession]   = useState(null);
   const [checking,  setChecking]  = useState(true);
   const [openMicId,    setOpenMicId]    = useState(null);
