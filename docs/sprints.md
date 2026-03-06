@@ -12,8 +12,12 @@ Cerrar el loop del QR: procesar el mensaje `/start RCV-XXXX` que envía Telegram
   - Lógica: código existe → usuario ya registrado? → 200 `already_registered:true`; código usado → 409; expirado → 410; nuevo → INSERT + UPDATE used
 - **Idempotencia** — reutilizar el QR no rompe ni duplica el registro
 
-### Pendiente
-- [ ] Configurar nodo n8n: Switch `/start RCV-` + HTTP Request + mensajes de respuesta
+### Completado (continuacion)
+- **Workflow n8n** — `workflows/n8n/Test BOT.json` actualizado:
+  - `If (¿Registro QR?)`: detecta `/start RCV-` antes del flow existente
+  - `HTTP (Register)`: llama `POST /api/telegram/register` con `neverError: true`
+  - `If (¿Registro OK?)` + `If (¿Ya registrado?)`: ramifica respuestas
+  - Mensajes: "Cuenta conectada." / "Tu cuenta ya estaba conectada." / errores diferenciados
 
 → Spec: `specs/telegram_register_spec.md`
 
