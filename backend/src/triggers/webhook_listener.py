@@ -2,6 +2,8 @@
 
 import json
 import os
+import random
+import string
 import sys
 import subprocess
 from dotenv import load_dotenv
@@ -340,6 +342,32 @@ def mcp_reopen_lineup():
         "status":  "ok",
         "message": f"Lineup reabierto para {fecha_evento}",
     }), 200
+
+
+@app.route("/api/telegram/generate-code", methods=["POST"])
+def telegram_generate_code():
+    """Genera un código temporal para self-registration del bot de Telegram."""
+    if not _is_authorized():
+        return jsonify({"status": "error", "message": "unauthorized"}), 401
+
+    body = request.get_json(silent=True) or {}
+    host_id = body.get("host_id", "").strip()
+    if not host_id:
+        return jsonify({"status": "error", "message": "host_id es obligatorio"}), 400
+
+    suffix = "".join(random.choices(string.ascii_uppercase + string.digits, k=4))
+    code = f"RCV-{suffix}"
+
+    bot_username = os.getenv("TELEGRAM_BOT_USERNAME", "")
+    qr_url = f"https://t.me/{bot_username}?start={code}"
+
+    sb = _sb_client()
+    sb.schema("silver").from_("telegram_registration_codes").insert({
+        "code": code,
+        "host_id": host_id,
+    }).execute()
+
+    return jsonify({"code": code, "qr_url": qr_url}), 200
 
 
 if __name__ == "__main__":
