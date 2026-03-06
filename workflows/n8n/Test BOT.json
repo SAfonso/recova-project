@@ -290,7 +290,7 @@
     },
     {
       "parameters": {
-        "url": "=={{ $env.SUPABASE_URL + '/rest/v1/telegram_users' }}",
+        "url": "={{ $env.SUPABASE_URL + '/rest/v1/telegram_users' }}",
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
