@@ -1,5 +1,28 @@
 # Historial de Sprints y Fases
 
+## Sprint 5 — Validación de Lineup via Telegram (v0.10.0) — 2026-03-06 ✅
+
+### Objetivo
+Permitir al host validar el lineup desde Telegram sin acceder a la app web: el cron diario genera un link único (token UUID) que abre una vista standalone `/validate` donde puede seleccionar los 5 cómicos y confirmar. La validación queda reflejada en DB y en la app web.
+
+### Completado
+- **Spec SDD** — `specs/telegram_validate_lineup_spec.md`
+- **Migración SQL** — `silver.validation_tokens`: token UUID, host_id, open_mic_id, fecha_evento, expires_at
+- **Backend**:
+  - `POST /api/lineup/prepare-validation`: scoring + token + validate_url
+  - `GET /api/validate-view/lineup?token=xxx`: candidatos + is_validated
+  - `POST /api/validate-view/validate`: confirma lineup via RPCs Gold+Silver, borra token
+  - `_next_event_datetime(dia_semana, hora)`: calcula próxima ocurrencia semanal
+- **Tests** — `backend/tests/test_validate_lineup_view.py`: 12/12 verdes
+- **Frontend** — `ValidateView.jsx`: vista standalone sin auth (token-based), estética papel arrugado, sello VALIDADO animado
+- **n8n Scoring & Draft** reconstruido multi-tenant: itera hosts→open_mics, llama prepare-validation, envía lineup+link por Telegram
+- **n8n Test BOT** — `Tool_Lineup_Link` conectado al AI Agent: host pide lineup → recibe link de validación
+- **Fix** — URL doble `==` en nodo Supabase del Test BOT
+
+→ Spec: `specs/telegram_validate_lineup_spec.md`
+
+---
+
 ## Sprint 4b — Telegram Register Endpoint (v0.9.1) — 2026-03-06 ✅
 
 ### Objetivo

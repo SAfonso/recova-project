@@ -1,3 +1,48 @@
+## [0.10.0] - 2026-03-06
+
+### Added — Sprint 5: Validación de Lineup via Telegram
+
+#### Backend
+- `POST /api/lineup/prepare-validation`: calcula próximo evento (`_next_event_datetime`), ejecuta scoring, genera token UUID en `silver.validation_tokens`, devuelve `lineup + validate_url`
+- `GET /api/validate-view/lineup?token=xxx`: valida token, devuelve candidatos e `is_validated`
+- `POST /api/validate-view/validate`: valida token, llama `gold.validate_lineup` + `silver.upsert_confirmed_lineup`, elimina token
+- `_next_event_datetime(dia_semana, hora)`: calcula próxima ocurrencia semanal; devuelve `None` si el show ya empezó hoy
+- Endpoints `/api/validate-view/*` sin autenticación API key (acceso por token UUID)
+
+#### DB
+- Migración `specs/sql/migrations/20260306_validation_tokens.sql`: tabla `silver.validation_tokens` (token UUID, host_id, open_mic_id, fecha_evento, expires_at)
+
+#### Frontend
+- `frontend/src/components/ValidateView.jsx`: vista standalone de validación (sin auth de sesión)
+  - Estados: loading → error | ready | validated
+  - Lista de candidatos con toggle (máx 5 seleccionados)
+  - Sello "VALIDADO" animado al confirmar
+  - Misma estética papel arrugado (paper-drop/tape/rough/notebook-lines)
+- `frontend/src/main.jsx`: ruta `/validate` → `<ValidateView />` (sin login)
+
+#### n8n
+- `workflows/n8n/Scoring & Draft.json` reconstruido (multi-tenant):
+  - Schedule Trigger diario 10:00
+  - Obtiene todos los hosts desde `silver.telegram_users`
+  - Por cada host: obtiene open mics vía `/mcp/open-mics`
+  - `Code (flatten)`: expande 1 host en N items (uno por open mic)
+  - Llama `POST /api/lineup/prepare-validation` con `neverError:true`
+  - Si hay `validate_url`: formatea mensaje con lineup + link y envía por Telegram
+- `workflows/n8n/Test BOT.json`: `Tool_Lineup_Link` añadido al AI Agent
+  - Llama `POST /api/lineup/prepare-validation` y devuelve link de validación al host
+  - System prompt actualizado: host pide lineup → Tool_Lineup_Link → link (no navegar por app)
+
+#### Spec y Tests
+- `specs/telegram_validate_lineup_spec.md`: SDD completo Sprint 5
+- `backend/tests/test_validate_lineup_view.py`: 12/12 tests verdes
+
+### Fixed
+- `workflows/n8n/Test BOT.json`: URL doble `==` (`=={{ ... }}` → `={{ ... }}`) en nodo `Supabase (Validar Host)1`
+- `workflows/n8n/Test BOT.json`: filtro Supabase por `telegram_user_id` del usuario actual (evitaba `[{}]` vacío)
+- `backend/tests/unit/test_n8n_workflows_security.py`: contrato Scoring & Draft actualizado a nuevas env vars (`RECOVA_BACKEND_URL`, `SUPABASE_URL`, `WEBHOOK_API_KEY`)
+
+---
+
 ## [0.9.1] - 2026-03-06
 
 ### Added — Sprint 4b: Telegram Register Endpoint
