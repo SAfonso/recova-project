@@ -1,5 +1,24 @@
 # Historial de Sprints y Fases
 
+## Sprint 4a — Telegram QR Self-Registration (v0.9.0) — 2026-03-06 ✅
+
+### Objetivo
+Permitir al host vincular su cuenta de Telegram sin intervención manual en BD, mediante un código temporal y QR.
+
+### Completado
+- **Spec SDD** — `specs/telegram_qr_connect_spec.md`
+- **Tests TDD** — `backend/tests/test_telegram_generate_code.py`: 5/5 verdes
+- **Endpoint Flask** — `POST /api/telegram/generate-code`: genera `RCV-[A-Z0-9]{4}`, inserta en `silver.telegram_registration_codes`
+- **Frontend** — icono Telegram (esquina superior derecha del card), tooltip "¡Click Me!" (localStorage), modal con QR (`qrcode.react`)
+- **Variable de entorno** — `TELEGRAM_BOT_USERNAME=ailineup_bot` en servidor
+
+### Pendiente
+- [ ] Nodo n8n para procesar `/start RCV-XXXX` → registrar en `silver.telegram_users`
+
+→ Spec: `specs/telegram_qr_connect_spec.md`
+
+---
+
 ## Sprint 3 — Telegram Lineup Agent (v0.8.0) — 2026-03-06 ✅
 
 ### Objetivo
