@@ -190,10 +190,37 @@ def test_reopen_lineup_calls_reset_rpc():
 # ---------------------------------------------------------------------------
 
 def test_list_open_mics_filters_by_host():
-    open_mics = [
+    PROVEEDOR_ID = "00000000-0000-0000-0000-000000000099"
+    members_data = [{"proveedor_id": PROVEEDOR_ID}]
+    open_mics_data = [
         {"id": OM_ID, "nombre": "Recova Open Mic", "config": {"info": {"icon": "mic"}}},
     ]
-    sb = _sb_mock(open_mics)
+
+    # La query se hace en dos pasos: organization_members → open_mics
+    # Alternamos las respuestas según el orden de llamada a execute()
+    call_count = {"n": 0}
+    responses = [members_data, open_mics_data]
+
+    def _execute_side_effect():
+        result = MagicMock()
+        result.data = responses[call_count["n"]]
+        call_count["n"] += 1
+        return result
+
+    chain = MagicMock()
+    chain.execute.side_effect = _execute_side_effect
+    chain.eq.return_value = chain
+    chain.in_.return_value = chain
+    chain.select.return_value = chain
+    chain.order.return_value = chain
+    chain.limit.return_value = chain
+    chain.from_.return_value = chain
+
+    schema = MagicMock()
+    schema.from_.return_value = chain
+
+    sb = MagicMock()
+    sb.schema.return_value = schema
 
     with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb):
         with app.test_client() as client:
