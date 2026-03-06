@@ -1,7 +1,7 @@
 # AI LineUp Architect
 
 **Estado:** En desarrollo activo
-**Versión:** `0.8.0`
+**Versión:** `0.9.0`
 **Metodología:** Spec-Driven Development (SDD) + TDD
 
 SaaS multi-tenant para gestión de open mics de comedia. Automatiza la recogida de solicitudes de cómicos (Google Forms), el scoring y la selección del lineup, y la generación del cartel en PNG.
@@ -107,7 +107,9 @@ flowchart TD
 | Orquestación | n8n |
 | Formularios | Google Forms + Sheets API (OAuth2) |
 | Render de carteles | Playwright + Jinja2 |
-| Procesos en producción | PM2 en VPS Ubuntu |
+| Procesos en producción | PM2 en VPS Ubuntu (Hetzner) |
+| Proxy / HTTPS | Traefik vía Coolify — `api.machango.org` |
+| Bot Telegram | `@ailineup_bot` (n8n + Gemini 2.5 Flash) |
 
 ---
 
@@ -172,7 +174,8 @@ cd frontend && npm install && npm run dev
 
 | Fase | Versión | Estado |
 |------|---------|--------|
-| Sprint 3 — Telegram Lineup Agent (LLM + MCP) | 0.8.0 | En progreso |
+| Sprint 4a — Telegram QR Self-Registration | 0.9.0 | Completado |
+| Sprint 3 — Telegram Lineup Agent (LLM + MCP) | 0.8.0 | Completado |
 | Sprint 2 — Google Forms + Backend integration | 0.7.0 | Completado |
 | Sprint 1 — Pivot SaaS Multi-Tenant | 0.6.0 | Completado |
 | SVG Renderer | 0.5.57–0.5.61 | Completado |
@@ -183,11 +186,9 @@ cd frontend && npm install && npm run dev
 | Ingesta + Infraestructura | 0.4.x | Completado |
 | Bronze + Silver + Seed | 0.1.0–0.3.0 | Completado |
 
-**Próximo (Sprint 3):**
-- Endpoints `/mcp/*` en Flask para lineup agent
-- Workflow n8n `telegram-lineup-agent`
-- Migración `silver.telegram_users`
-- Tests `test_lineup_mcp_endpoints.py`
+**Próximo:**
+- Nodo n8n para procesar `/start RCV-XXXX` → registrar en `silver.telegram_users`
+- Sprint 4b — Renderer de póster (SVG → PNG → Supabase Storage)
 
 ---
 

@@ -16,6 +16,12 @@
 - `specs/telegram_qr_connect_spec.md`: SDD completo del flujo de registro
 - `backend/tests/test_telegram_generate_code.py`: 5/5 tests verdes
 
+### Infraestructura
+- Traefik (Coolify) configurado para proxy HTTPS: `api.machango.org → localhost:5000`
+- Config: `/data/coolify/proxy/dynamic/recova-backend.yaml`
+- Dominio: `machango.org` (Porkbun) — subdominio `api` apunta a VPS Hetzner `46.225.120.243`
+- `VITE_BACKEND_URL` actualizado en Vercel a `https://api.machango.org`
+
 ### Fixed
 - Nombre del servidor MCP: `recova_mcp_renderer` (guiones → underscores)
 
