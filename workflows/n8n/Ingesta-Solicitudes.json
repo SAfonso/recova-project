@@ -3,133 +3,45 @@
   "nodes": [
     {
       "parameters": {
-        "pollTimes": {
-          "item": [
-            {
-              "minute": 5
-            }
-          ]
-        },
-        "documentId": {
-          "__rl": true,
-          "value": "1soIv_BjI-8AM7Cnj6qLKWe6tNewkJBVyJczOS6CftUM",
-          "mode": "list",
-          "cachedResultName": "Recova Open Mic",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1soIv_BjI-8AM7Cnj6qLKWe6tNewkJBVyJczOS6CftUM/edit?usp=drivesdk"
-        },
-        "sheetName": {
-          "__rl": true,
-          "value": 866297811,
-          "mode": "list",
-          "cachedResultName": "Respuestas de formulario 1",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1soIv_BjI-8AM7Cnj6qLKWe6tNewkJBVyJczOS6CftUM/edit#gid=866297811"
-        },
-        "event": "rowAdded",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.googleSheetsTrigger",
-      "typeVersion": 1,
-      "position": [
-        -208,
-        0
-      ],
-      "id": "73abb3b4-20c7-47da-96df-2706b06f79d6",
-      "name": "Google Sheets Trigger",
-      "credentials": {
-        "googleSheetsTriggerOAuth2Api": {
-          "id": "0obdRtRmG7yCY0uw",
-          "name": "Google Sheets Trigger account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "useCustomSchema": true,
-        "schema": "bronze",
-        "tableId": "solicitudes",
-        "fieldsUi": {
-          "fieldValues": [
-            {
-              "fieldId": "proveedor_id",
-              "fieldValue": "10000000-0000-0000-0000-000000000001"
-            },
-            {
-              "fieldId": "open_mic_id",
-              "fieldValue": "={{ $json['open_mic_id'] }}"
-            },
-            {
-              "fieldId": "nombre_raw",
-              "fieldValue": "={{ $json['¿Nombre?'] }}"
-            },
-            {
-              "fieldId": "instagram_raw",
-              "fieldValue": "={{ $json['¿Instagram?'] }}"
-            },
-            {
-              "fieldId": "telefono_raw",
-              "fieldValue": "={{ $json.Whatsapp }}"
-            },
-            {
-              "fieldId": "experiencia_raw",
-              "fieldValue": "={{ $json['¿Has actuado alguna vez?'] }}"
-            },
-            {
-              "fieldId": "fechas_seleccionadas_raw",
-              "fieldValue": "={{ $json.Fecha }}"
-            },
-            {
-              "fieldId": "disponibilidad_ultimo_minuto",
-              "fieldValue": "={{ $json['Si nos falla alguien en ultimo momento ¿Te podemos llamar?'] }}"
-            },
-            {
-              "fieldId": "info_show_cercano",
-              "fieldValue": "={{ $json['¿Tienes algun Show cercano o algo?'] }}"
-            },
-            {
-              "fieldId": "origen_conocimiento",
-              "fieldValue": "={{ $json['¿Por donde nos conociste?'] }}"
-            }
-          ]
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 9 * * *" }]
         }
       },
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
-      "position": [
-        -32,
-        0
-      ],
-      "id": "65a6be01-9746-4456-b62f-f5ebc7799888",
-      "name": "Create a row",
-      "credentials": {
-        "supabaseApi": {
-          "id": "vCB4FApPNQmJ57so",
-          "name": "Supabase account"
-        }
-      }
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-400, 200],
+      "id": "a1b2c3d4-0000-0000-0000-000000000001",
+      "name": "Schedule Trigger (09:00)"
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.N8N_BACKEND_INGEST_URL }}",
+        "url": "={{ $env.N8N_BACKEND_INGEST_URL.replace('/ingest', '') + '/api/ingest-from-sheets' }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            {
-              "name": "X-API-KEY",
-              "value": "={{ $env.WEBHOOK_API_KEY }}"
-            }
+            { "name": "X-API-KEY", "value": "={{ $env.WEBHOOK_API_KEY }}" }
           ]
         },
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.3,
-      "position": [
-        176,
-        0
-      ],
-      "id": "30f318b4-489e-46bc-8b93-d02a7a46e72d",
-      "name": "HTTP Request"
+      "position": [-200, 200],
+      "id": "b1c2d3e4-0000-0000-0000-000000000002",
+      "name": "Ingest from Sheets"
+    },
+    {
+      "parameters": {
+        "content": "## Ingesta multi-tenant\nLee Sheets de todos los open mics,\ningesta filas nuevas en bronze y\nlanza bronze→silver.",
+        "height": 128,
+        "width": 220
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-200, 360],
+      "id": "c1d2e3f4-0000-0000-0000-000000000003",
+      "name": "Sticky Note Ingesta"
     },
     {
       "parameters": {
@@ -137,90 +49,53 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            {
-              "name": "genero",
-              "value": "eq.unknown"
-            }
+            { "name": "genero", "value": "eq.unknown" }
           ]
         },
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            {
-              "name": "apikey",
-              "value": "={{ $env.SUPABASE_KEY }}"
-            },
-            {
-              "name": "Authorization",
-              "value": "={{ 'Bearer ' + $env.SUPABASE_KEY }}"
-            },
-            {
-              "name": "Accept-Profile",
-              "value": "silver"
-            }
+            { "name": "apikey", "value": "={{ $env.SUPABASE_KEY }}" },
+            { "name": "Authorization", "value": "={{ 'Bearer ' + $env.SUPABASE_KEY }}" },
+            { "name": "Accept-Profile", "value": "silver" }
           ]
         },
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.3,
-      "position": [
-        -80,
-        304
-      ],
+      "position": [0, 200],
       "id": "525e2430-0a79-4057-b2f1-f1520308643d",
-      "name": "HTTP Request1",
+      "name": "Get Unknown Gender Comics",
       "alwaysOutputData": true
-    },
-    {
-      "parameters": {
-        "content": "## Gent Unknow Gender\n**Get all comics** With no gender set up. ",
-        "height": 128,
-        "width": 192
-      },
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [
-        48,
-        448
-      ],
-      "id": "854c0206-cc73-4434-afba-f8c11e01fb94",
-      "name": "Sticky Note"
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
-            {
-              "id": "915bdf0c-c93b-4814-aac1-f78e78535a21",
-              "name": "id",
-              "value": "={{ $json.id }}",
-              "type": "string"
-            },
-            {
-              "id": "5d49ce6d-7fb8-4da5-b99e-9fa034da3bd3",
-              "name": "nombre",
-              "value": "={{ $json.nombre }}",
-              "type": "string"
-            },
-            {
-              "id": "94364346-8c5f-4316-94a5-5885aa9a7e3d",
-              "name": "instagram",
-              "value": "={{ $json.instagram }}",
-              "type": "string"
-            }
+            { "id": "915bdf0c-c93b-4814-aac1-f78e78535a21", "name": "id",       "value": "={{ $json.id }}",        "type": "string" },
+            { "id": "5d49ce6d-7fb8-4da5-b99e-9fa034da3bd3", "name": "nombre",   "value": "={{ $json.nombre }}",    "type": "string" },
+            { "id": "94364346-8c5f-4316-94a5-5885aa9a7e3d", "name": "instagram", "value": "={{ $json.instagram }}", "type": "string" }
           ]
         },
         "options": {}
       },
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [
-        96,
-        304
-      ],
+      "position": [200, 200],
       "id": "f02b33c4-a255-4289-bb5f-e69ea33f7e38",
       "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [400, 200],
+      "id": "b6803a15-1919-42fc-a5ae-8b3f5421b530",
+      "name": "Aggregate"
     },
     {
       "parameters": {
@@ -230,38 +105,16 @@
       },
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
       "typeVersion": 1.8,
-      "position": [
-        480,
-        128
-      ],
+      "position": [600, 200],
       "id": "3ec0a759-ba9b-4302-a556-883493362d61",
       "name": "Basic LLM Chain",
       "retryOnFail": true
     },
     {
-      "parameters": {
-        "aggregate": "aggregateAllItemData",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.aggregate",
-      "typeVersion": 1,
-      "position": [
-        304,
-        304
-      ],
-      "id": "b6803a15-1919-42fc-a5ae-8b3f5421b530",
-      "name": "Aggregate"
-    },
-    {
-      "parameters": {
-        "options": {}
-      },
+      "parameters": { "options": {} },
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1,
-      "position": [
-        480,
-        288
-      ],
+      "position": [600, 360],
       "id": "6a0a97ab-bcef-4af5-a745-e079c1b59f7d",
       "name": "Google Gemini Chat Model",
       "credentials": {
@@ -273,16 +126,13 @@
     },
     {
       "parameters": {
-        "jsCode": "// Cogemos el texto de la IA y le quitamos los envoltorios ```json ... ```\nconst rawText = $json.text || $json.output || $json.message.content;\nconst cleanText = rawText.replace(/```json|```/g, \"\").trim();\n\n// Lo convertimos de \"texto\" a \"lista real\"\nconst listaComicos = JSON.parse(cleanText);\n\n// Devolvemos la lista para que el siguiente nodo la vea\nreturn listaComicos;"
+        "jsCode": "const rawText = $json.text || $json.output || $json.message.content;\nconst cleanText = rawText.replace(/```json|```/g, \"\").trim();\nconst listaComicos = JSON.parse(cleanText);\nreturn listaComicos;"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        784,
-        128
-      ],
+      "position": [800, 200],
       "id": "4f6a8309-dd6b-4d98-9a59-77c41d1b9d43",
-      "name": "Code in JavaScript"
+      "name": "Parse Gender Response"
     },
     {
       "parameters": {
@@ -291,165 +141,69 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            {
-              "name": "id",
-              "value": "=eq.{{ $json.id }}"
-            }
+            { "name": "id", "value": "=eq.{{ $json.id }}" }
           ]
         },
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            {
-              "name": "apikey",
-              "value": "={{ $env.SUPABASE_KEY }}"
-            },
-            {
-              "name": "Authorization",
-              "value": "={{ 'Bearer ' + $env.SUPABASE_KEY }}"
-            },
-            {
-              "name": "Content-Profile",
-              "value": "silver"
-            }
+            { "name": "apikey",         "value": "={{ $env.SUPABASE_KEY }}" },
+            { "name": "Authorization",  "value": "={{ 'Bearer ' + $env.SUPABASE_KEY }}" },
+            { "name": "Content-Profile","value": "silver" }
           ]
         },
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
-            {
-              "name": "genero",
-              "value": "={{ $json.genero }}"
-            }
+            { "name": "genero", "value": "={{ $json.genero }}" }
           ]
         },
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.3,
-      "position": [
-        992,
-        128
-      ],
+      "position": [1000, 200],
       "id": "d2bf1fd7-b7b6-408a-8bf9-47e8e590ef0d",
-      "name": "HTTP Request2"
+      "name": "Update Gender"
     },
     {
       "parameters": {
-        "content": "## Data w/gender \n**Data on Silver now have gender**",
-        "height": 112,
-        "width": 192
+        "content": "## Clasificador de género\nBatch global: todos los cómicos\nsin género se clasifican con Gemini\nantes de que corra el scoring.",
+        "height": 128,
+        "width": 220
       },
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
-      "position": [
-        976,
-        288
-      ],
-      "id": "79114959-e1e5-483b-8651-11961eacc17a",
-      "name": "Sticky Note1"
+      "position": [600, 380],
+      "id": "79114959-e1e5-483b-8651-11601eacc17a",
+      "name": "Sticky Note Género"
     }
   ],
   "pinData": {},
   "connections": {
-    "Google Sheets Trigger": {
-      "main": [
-        [
-          {
-            "node": "Create a row",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+    "Schedule Trigger (09:00)": {
+      "main": [[{ "node": "Ingest from Sheets", "type": "main", "index": 0 }]]
     },
-    "Create a row": {
-      "main": [
-        [
-          {
-            "node": "HTTP Request",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+    "Ingest from Sheets": {
+      "main": [[{ "node": "Get Unknown Gender Comics", "type": "main", "index": 0 }]]
     },
-    "HTTP Request": {
-      "main": [
-        [
-          {
-            "node": "HTTP Request1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "HTTP Request1": {
-      "main": [
-        [
-          {
-            "node": "Edit Fields",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+    "Get Unknown Gender Comics": {
+      "main": [[{ "node": "Edit Fields", "type": "main", "index": 0 }]]
     },
     "Edit Fields": {
-      "main": [
-        [
-          {
-            "node": "Aggregate",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Basic LLM Chain": {
-      "main": [
-        [
-          {
-            "node": "Code in JavaScript",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Aggregate", "type": "main", "index": 0 }]]
     },
     "Aggregate": {
-      "main": [
-        [
-          {
-            "node": "Basic LLM Chain",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Basic LLM Chain", "type": "main", "index": 0 }]]
     },
     "Google Gemini Chat Model": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "Basic LLM Chain",
-            "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
+      "ai_languageModel": [[{ "node": "Basic LLM Chain", "type": "ai_languageModel", "index": 0 }]]
     },
-    "Code in JavaScript": {
-      "main": [
-        [
-          {
-            "node": "HTTP Request2",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+    "Basic LLM Chain": {
+      "main": [[{ "node": "Parse Gender Response", "type": "main", "index": 0 }]]
+    },
+    "Parse Gender Response": {
+      "main": [[{ "node": "Update Gender", "type": "main", "index": 0 }]]
     }
   },
   "active": false,

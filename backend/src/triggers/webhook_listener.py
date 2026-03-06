@@ -14,6 +14,7 @@ from flask_cors import CORS
 from supabase import create_client
 
 from backend.src.core.google_form_builder import GoogleFormBuilder
+from backend.src.core.sheet_ingestor import SheetIngestor
 from backend.src.scoring_engine import execute_scoring
 
 app = Flask(__name__)
@@ -664,6 +665,118 @@ def telegram_register():
     silver.from_("telegram_registration_codes").update({"used": True}).eq("code", code).execute()
 
     return jsonify({"host_id": host_id, "already_registered": False}), 200
+
+
+# ---------------------------------------------------------------------------
+# Form submission endpoint (multi-tenant ingesta via Apps Script)
+# ---------------------------------------------------------------------------
+
+@app.route("/api/form-submission", methods=["POST"])
+def form_submission():
+    """Recibe datos de Google Form via Apps Script y los ingesta en bronze."""
+    data = request.get_json(force=True) or {}
+
+    open_mic_id = data.get("open_mic_id")
+    if not open_mic_id:
+        return jsonify({"error": "open_mic_id required"}), 400
+
+    sb = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+    silver = sb.schema("silver")
+
+    # 1. Lookup proveedor_id desde silver.open_mics
+    result = silver.from_("open_mics").select("proveedor_id").eq("id", open_mic_id).execute()
+    if not result.data:
+        return jsonify({"error": "open_mic not found"}), 404
+    proveedor_id = result.data[0]["proveedor_id"]
+
+    # 2. INSERT en bronze.solicitudes
+    # Nombres de campo coinciden con los títulos definidos en _FORM_QUESTIONS
+    bronze = sb.schema("bronze")
+    bronze.from_("solicitudes").insert({
+        "proveedor_id":                 proveedor_id,
+        "open_mic_id":                  open_mic_id,
+        "nombre_raw":                   data.get("Nombre artístico"),
+        "instagram_raw":                data.get("Instagram (sin @)"),
+        "telefono_raw":                 data.get("WhatsApp"),
+        "experiencia_raw":              data.get("¿Cuántas veces has actuado en un open mic?"),
+        "fechas_seleccionadas_raw":     data.get("¿Qué fechas te vienen bien?"),
+        "disponibilidad_ultimo_minuto": data.get("¿Estarías disponible si nos falla alguien de última hora?"),
+        "info_show_cercano":            data.get("¿Tienes algún show próximo que quieras mencionar?"),
+        "origen_conocimiento":          data.get("¿Cómo nos conociste?"),
+    }).execute()
+
+    # 3. Lanzar bronze → silver en background
+    subprocess.Popen([sys.executable, INGEST_SCRIPT_PATH])
+
+    return jsonify({"status": "ok"}), 200
+
+
+@app.route("/api/ingest-from-sheets", methods=["POST"])
+def ingest_from_sheets():
+    """Lee todas las Sheets de open mics activos e ingesta filas nuevas en bronze."""
+    if not _is_authorized():
+        return jsonify({"error": "unauthorized"}), 401
+
+    sb = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+    open_mics = (
+        sb.schema("silver")
+        .from_("open_mics")
+        .select("id, proveedor_id, config")
+        .execute()
+        .data or []
+    )
+    # Solo los que tienen sheet_id configurado
+    open_mics = [
+        om for om in open_mics
+        if (om.get("config") or {}).get("form", {}).get("sheet_id")
+    ]
+
+    bronze = sb.schema("bronze")
+    open_mics_processed = 0
+    rows_ingested = 0
+
+    if not open_mics:
+        subprocess.Popen([sys.executable, INGEST_SCRIPT_PATH])
+        return jsonify({"status": "ok", "open_mics_processed": 0, "rows_ingested": 0}), 200
+
+    ingestor = SheetIngestor()
+
+    for om in open_mics:
+        sheet_id    = om["config"]["form"]["sheet_id"]
+        open_mic_id = om["id"]
+        proveedor_id = om["proveedor_id"]
+        open_mics_processed += 1
+
+        try:
+            pending = ingestor.get_pending_rows(sheet_id)
+        except Exception:
+            continue  # Sheet inaccesible: continúa con los demás
+
+        for row in pending:
+            bronze.from_("solicitudes").insert({
+                "proveedor_id":                 proveedor_id,
+                "open_mic_id":                  open_mic_id,
+                "nombre_raw":                   row.get("Nombre artístico"),
+                "instagram_raw":                row.get("Instagram (sin @)"),
+                "telefono_raw":                 row.get("WhatsApp"),
+                "experiencia_raw":              row.get("¿Cuántas veces has actuado en un open mic?"),
+                "fechas_seleccionadas_raw":     row.get("¿Qué fechas te vienen bien?"),
+                "disponibilidad_ultimo_minuto": row.get("¿Estarías disponible si nos falla alguien de última hora?"),
+                "info_show_cercano":            row.get("¿Tienes algún show próximo que quieras mencionar?"),
+                "origen_conocimiento":          row.get("¿Cómo nos conociste?"),
+            }).execute()
+
+        if pending:
+            ingestor.mark_rows_processed(sheet_id, [r["_row_number"] for r in pending])
+            rows_ingested += len(pending)
+
+    subprocess.Popen([sys.executable, INGEST_SCRIPT_PATH])
+
+    return jsonify({
+        "status": "ok",
+        "open_mics_processed": open_mics_processed,
+        "rows_ingested": rows_ingested,
+    }), 200
 
 
 if __name__ == "__main__":
