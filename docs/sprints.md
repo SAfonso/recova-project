@@ -1,5 +1,24 @@
 # Historial de Sprints y Fases
 
+## Sprint 4b — Telegram Register Endpoint (v0.9.1) — 2026-03-06 ✅
+
+### Objetivo
+Cerrar el loop del QR: procesar el mensaje `/start RCV-XXXX` que envía Telegram cuando el host escanea el QR, validar el código y registrar al host en `silver.telegram_users`.
+
+### Completado
+- **Spec SDD** — `specs/telegram_register_spec.md`
+- **Tests TDD** — `backend/tests/test_telegram_register.py`: 10/10 verdes
+- **Endpoint Flask** — `POST /api/telegram/register`: valida código, registra host, idempotente
+  - Lógica: código existe → usuario ya registrado? → 200 `already_registered:true`; código usado → 409; expirado → 410; nuevo → INSERT + UPDATE used
+- **Idempotencia** — reutilizar el QR no rompe ni duplica el registro
+
+### Pendiente
+- [ ] Configurar nodo n8n: Switch `/start RCV-` + HTTP Request + mensajes de respuesta
+
+→ Spec: `specs/telegram_register_spec.md`
+
+---
+
 ## Sprint 4a — Telegram QR Self-Registration (v0.9.0) — 2026-03-06 ✅
 
 ### Objetivo
@@ -11,9 +30,6 @@ Permitir al host vincular su cuenta de Telegram sin intervención manual en BD, 
 - **Endpoint Flask** — `POST /api/telegram/generate-code`: genera `RCV-[A-Z0-9]{4}`, inserta en `silver.telegram_registration_codes`
 - **Frontend** — icono Telegram (esquina superior derecha del card), tooltip "¡Click Me!" (localStorage), modal con QR (`qrcode.react`)
 - **Variable de entorno** — `TELEGRAM_BOT_USERNAME=ailineup_bot` en servidor
-
-### Pendiente
-- [ ] Nodo n8n para procesar `/start RCV-XXXX` → registrar en `silver.telegram_users`
 
 → Spec: `specs/telegram_qr_connect_spec.md`
 
