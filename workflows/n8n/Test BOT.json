@@ -48,7 +48,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://46.225.120.243:5000/api/telegram/register",
+        "url": "={{ $env.RECOVA_BACKEND_URL }}/api/telegram/register",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -290,7 +290,7 @@
     },
     {
       "parameters": {
-        "url": "=https://cggciltvpffitognpnae.supabase.co/rest/v1/telegram_users",
+        "url": "=={{ $env.SUPABASE_URL + '/rest/v1/telegram_users' }}",
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
@@ -327,7 +327,7 @@
     },
     {
       "parameters": {
-        "url": "=http://46.225.120.243:5000/mcp/open-mics",
+        "url": "={{ $env.RECOVA_BACKEND_URL }}/mcp/open-mics",
         "sendQuery": true,
         "parametersQuery": {
           "values": [
@@ -358,7 +358,7 @@
     },
     {
       "parameters": {
-        "url": "=http://46.225.120.243:5000/mcp/lineup",
+        "url": "={{ $env.RECOVA_BACKEND_URL }}/mcp/lineup",
         "sendQuery": true,
         "parametersQuery": {
           "values": [
@@ -392,7 +392,7 @@
     },
     {
       "parameters": {
-        "url": "=http://46.225.120.243:5000/mcp/candidates",
+        "url": "={{ $env.RECOVA_BACKEND_URL }}/mcp/candidates",
         "sendQuery": true,
         "parametersQuery": {
           "values": [
@@ -427,7 +427,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=http://46.225.120.243:5000/mcp/run-scoring",
+        "url": "={{ $env.RECOVA_BACKEND_URL }}/mcp/run-scoring",
         "sendHeaders": true,
         "parametersHeaders": {
           "values": [
@@ -462,7 +462,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=http://46.225.120.243:5000/mcp/reopen-lineup",
+        "url": "={{ $env.RECOVA_BACKEND_URL }}/mcp/reopen-lineup",
         "sendHeaders": true,
         "parametersHeaders": {
           "values": [
