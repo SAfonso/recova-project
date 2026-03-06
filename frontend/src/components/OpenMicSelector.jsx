@@ -30,6 +30,7 @@ export function OpenMicSelector({ session, onSelect }) {
   const [showTgModal,   setShowTgModal]   = useState(false);
   const [tgData,        setTgData]        = useState(null);
   const [tgLoading,     setTgLoading]     = useState(false);
+  const [tgError,       setTgError]       = useState(null);
 
   useEffect(() => {
     async function fetchOpenMics() {
@@ -84,6 +85,7 @@ export function OpenMicSelector({ session, onSelect }) {
     setShowTgModal(true);
     if (tgData) return;
     setTgLoading(true);
+    setTgError(null);
     try {
       const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/telegram/generate-code`, {
         method: 'POST',
@@ -91,8 +93,11 @@ export function OpenMicSelector({ session, onSelect }) {
         body: JSON.stringify({ host_id: session.user.id }),
       });
       const data = await res.json();
+      if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
       setTgData(data);
-    } catch {}
+    } catch (e) {
+      setTgError(e.message || 'Error desconocido');
+    }
     setTgLoading(false);
   };
 
@@ -247,8 +252,9 @@ export function OpenMicSelector({ session, onSelect }) {
                   <QRCodeSVG value={tgData.qr_url} size={160} level="M" />
                 </div>
               ) : (
-                <div className="flex h-[180px] w-[180px] items-center justify-center">
-                  <p className="text-sm text-[#DC2626]">Error al generar el código</p>
+                <div className="flex h-[180px] w-[180px] flex-col items-center justify-center gap-2">
+                  <p className="text-sm font-bold text-[#DC2626]">Error al generar el código</p>
+                  {tgError && <p className="text-center text-xs text-[#6B5C4A]">{tgError}</p>}
                 </div>
               )}
             </div>
