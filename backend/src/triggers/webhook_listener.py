@@ -192,11 +192,22 @@ def mcp_list_open_mics():
         return jsonify({"status": "error", "message": "host_id es obligatorio"}), 400
 
     sb = _sb_client()
+    # host_id es user_id en organization_members; open_mics usa proveedor_id
+    members = (
+        sb.schema("silver")
+        .from_("organization_members")
+        .select("proveedor_id")
+        .eq("user_id", host_id)
+        .execute()
+    ).data or []
+    proveedor_ids = [m["proveedor_id"] for m in members if m.get("proveedor_id")]
+    if not proveedor_ids:
+        return jsonify({"open_mics": []}), 200
     rows = (
         sb.schema("silver")
         .from_("open_mics")
         .select("id, nombre, config")
-        .eq("host_id", host_id)
+        .in_("proveedor_id", proveedor_ids)
         .execute()
     ).data or []
 
