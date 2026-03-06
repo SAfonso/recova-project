@@ -1,8 +1,10 @@
 """GoogleFormBuilder — crea un Google Form con campos estándar para un open mic.
 
 Usa OAuth2 con refresh token (cuenta del usuario).
-Tras crear el form, vincula la Sheet de respuestas e inyecta la columna
-open_mic_id con ARRAYFORMULA para que el workflow n8n la lea automáticamente.
+Tras crear el form:
+  1. Vincula la Sheet de respuestas e inyecta columna open_mic_id (legado).
+  2. Despliega un Apps Script bound al form con trigger onFormSubmit que hace
+     POST al backend con los datos de la respuesta + open_mic_id.
 
 Dependencias:
     google-api-python-client>=2.100.0
@@ -13,10 +15,12 @@ Variables de entorno:
     GOOGLE_OAUTH_CLIENT_ID
     GOOGLE_OAUTH_CLIENT_SECRET
     GOOGLE_OAUTH_REFRESH_TOKEN
+    BACKEND_URL  (ej: https://api.machango.org)
 """
 
 from __future__ import annotations
 
+import json
 import os
 from dataclasses import dataclass
 
@@ -29,7 +33,61 @@ SCOPES = [
     "https://www.googleapis.com/auth/forms.body",
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive",
+    # Apps Script management
+    "https://www.googleapis.com/auth/script.projects",
+    # Requeridos por el script para que scripts.run() funcione
+    "https://www.googleapis.com/auth/forms.currentonly",
+    "https://www.googleapis.com/auth/script.external_request",
+    "https://www.googleapis.com/auth/script.scriptapp",
 ]
+
+# ---------------------------------------------------------------------------
+# Plantilla Apps Script para el trigger onFormSubmit
+# Bake-in de open_mic_id y backend_url para evitar dependencia de ScriptProperties
+# ---------------------------------------------------------------------------
+
+_APPS_SCRIPT_TEMPLATE = """\
+var OPEN_MIC_ID = "{open_mic_id}";
+var BACKEND_URL = "{backend_url}";
+
+function onFormSubmitHandler(e) {{
+  var itemResponses = e.response.getItemResponses();
+  var payload = {{ open_mic_id: OPEN_MIC_ID }};
+  itemResponses.forEach(function(r) {{
+    payload[r.getItem().getTitle()] = r.getResponse();
+  }});
+  UrlFetchApp.fetch(BACKEND_URL, {{
+    method: "post",
+    contentType: "application/json",
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  }});
+}}
+
+function setup() {{
+  var triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i++) {{
+    ScriptApp.deleteTrigger(triggers[i]);
+  }}
+  ScriptApp.newTrigger("onFormSubmitHandler")
+    .forForm("{form_id}")
+    .onFormSubmit()
+    .create();
+}}
+"""
+
+_APPS_SCRIPT_MANIFEST = {
+    "timeZone": "Europe/Madrid",
+    "dependencies": {},
+    "exceptionLogging": "STACKDRIVER",
+    "runtimeVersion": "V8",
+    "executionApi": {"access": "MYSELF"},
+    "oauthScopes": [
+        "https://www.googleapis.com/auth/forms.currentonly",
+        "https://www.googleapis.com/auth/script.external_request",
+        "https://www.googleapis.com/auth/script.scriptapp",
+    ],
+}
 
 # ---------------------------------------------------------------------------
 # Definición de los 8 campos del form (contrato con ingesta)
@@ -123,6 +181,11 @@ class GoogleFormBuilder:
                 "GOOGLE_OAUTH_CLIENT_SECRET, GOOGLE_OAUTH_REFRESH_TOKEN"
             )
 
+        self._backend_url = (
+            os.environ.get("BACKEND_URL", "https://api.machango.org").rstrip("/")
+            + "/api/form-submission"
+        )
+
         creds = Credentials(
             token=None,
             refresh_token=refresh_token,
@@ -132,10 +195,12 @@ class GoogleFormBuilder:
             scopes=SCOPES,
         )
         creds.refresh(Request())
+        self._creds = creds
 
-        self._forms = build("forms", "v1", credentials=creds, cache_discovery=False)
+        self._forms  = build("forms",  "v1", credentials=creds, cache_discovery=False)
         self._sheets = build("sheets", "v4", credentials=creds, cache_discovery=False)
         self._drive  = build("drive",  "v3", credentials=creds, cache_discovery=False)
+        self._script = build("script", "v1", credentials=creds, cache_discovery=False)
 
     # ------------------------------------------------------------------
 
@@ -154,6 +219,7 @@ class GoogleFormBuilder:
         self._add_questions(form_id)
         sheet_id = self._get_linked_sheet_id(form_id, nombre)
         self._inject_open_mic_id_column(sheet_id, open_mic_id)
+        self.deploy_submit_webhook(form_id=form_id, open_mic_id=open_mic_id)
 
         form_url = f"https://docs.google.com/forms/d/{form_id}/viewform"
         sheet_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}"
@@ -255,6 +321,68 @@ class GoogleFormBuilder:
 
         return sheet_id
 
+    def deploy_submit_webhook(self, form_id: str, open_mic_id: str) -> str:
+        """
+        Crea un Apps Script bound al form con un trigger installable onFormSubmit
+        que hace POST al backend con los datos del formulario + open_mic_id.
+
+        Pasos:
+          1. Crea proyecto Apps Script asociado al form (parentId).
+          2. Sube el código (Code.gs + appsscript.json manifest).
+          3. Crea una deployment como API executable.
+          4. Llama a scripts.run("setup") para instalar el trigger installable.
+
+        Returns: script_id del proyecto creado.
+        """
+        # 1. Crear proyecto bound al form
+        project = self._script.projects().create(body={
+            "title": f"Webhook — {form_id}",
+            "parentId": form_id,
+        }).execute()
+        script_id = project["scriptId"]
+
+        # 2. Subir código
+        code = _APPS_SCRIPT_TEMPLATE.format(
+            open_mic_id=open_mic_id,
+            backend_url=self._backend_url,
+            form_id=form_id,
+        )
+        self._script.projects().updateContent(
+            scriptId=script_id,
+            body={
+                "files": [
+                    {
+                        "name": "appsscript",
+                        "type": "JSON",
+                        "source": json.dumps(_APPS_SCRIPT_MANIFEST),
+                    },
+                    {
+                        "name": "Code",
+                        "type": "SERVER_JS",
+                        "source": code,
+                    },
+                ]
+            },
+        ).execute()
+
+        # 3. Crear deployment como API executable (necesario para scripts.run)
+        self._script.projects().deployments().create(
+            scriptId=script_id,
+            body={
+                "versionNumber": -1,
+                "manifestFileName": "appsscript",
+                "description": "API executable — form webhook",
+            },
+        ).execute()
+
+        # 4. Ejecutar setup() para instalar el trigger installable
+        self._script.scripts().run(
+            scriptId=script_id,
+            body={"function": "setup"},
+        ).execute()
+
+        return script_id
+
     def _inject_open_mic_id_column(self, sheet_id: str, open_mic_id: str) -> None:
         """
         Escribe la cabecera 'open_mic_id' en la primera celda libre (col I = col 9)
@@ -268,7 +396,7 @@ class GoogleFormBuilder:
         sheet_name = spreadsheet["sheets"][0]["properties"]["title"]
 
         values = [
-            ["open_mic_id"],
+            ["open_mic_id", "n8n_procesado"],
             [f'=ARRAYFORMULA(IF(B2:B<>"","{open_mic_id}",""))'],
         ]
 
