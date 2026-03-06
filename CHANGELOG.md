@@ -1,3 +1,46 @@
+## [0.11.0] - 2026-03-07
+
+### Added — Sprint 6: Ingesta Multi-Tenant + Scripts de Utilidad
+
+#### Backend — Ingesta desde Google Sheets
+- `POST /api/ingest-from-sheets`: ingesta batch multi-tenant — itera todos los open mics con `sheet_id`, lee filas pendientes via `SheetIngestor`, inserta en Bronze y lanza `bronze_to_silver_ingestion.py` en background; marca filas como procesadas con `n8n_procesado=si`
+- `POST /api/form-submission`: ingesta individual desde Apps Script `onFormSubmit`; lookup de `proveedor_id` por `open_mic_id`, INSERT bronze, lanza ingestión
+- `backend/src/core/sheet_ingestor.py` — clase `SheetIngestor`:
+  - `get_pending_rows(sheet_id)`: lee rango A:K, filtra por `Marca temporal` no vacía y `n8n_procesado` vacío; añade `_row_number` a cada dict
+  - `mark_rows_processed(sheet_id, row_numbers)`: `batchUpdate` con `"si"` en columna K
+
+#### Backend — GoogleFormBuilder actualizado
+- Nuevos scopes OAuth2: `script.projects`, `forms.currentonly`, `script.external_request`, `script.scriptapp`
+- `self._script = build("script", "v1", ...)` — cuarto cliente de API
+- `deploy_submit_webhook(form_id, open_mic_id)`: crea proyecto Apps Script bound al form, sube código con trigger `onFormSubmit`, despliega como API executable y ejecuta `setup()`
+- `_inject_open_mic_id_column`: escribe `["open_mic_id", "n8n_procesado"]` en J1:K1 (antes solo `open_mic_id`)
+
+#### Scripts de utilidad (`backend/scripts/`)
+- `seed_conditional.py`: lee open mics existentes; para cada uno sin solicitudes inserta 10 cómicos aleatorios con bronze+silver solicitudes; skippea los que ya tienen datos
+- `seed_full.py`: crea un escenario completo desde cero — 1 proveedor + 3 open mics + 30 cómicos distintos (10 por open mic) con solicitudes en bronze y silver
+- `reset_data.py`: TRUNCATE de todas las tablas bronze/silver/gold con backup CSV previo; flags `--yes`, `--include-auth`, `--no-backup`
+
+#### n8n
+- `workflows/n8n/Ingesta-Solicitudes.json` reescrito (multi-tenant):
+  - Schedule Trigger 09:00 → `POST https://api.machango.org/api/ingest-from-sheets` (URL hardcodeada)
+  - → Clasificador de género batch (Gemini): obtiene cómicos con `genero=unknown`, clasifica con LLM, PATCH en `silver.comicos`
+
+#### Spec y Tests
+- `specs/ingest_from_sheets_spec.md`: SDD de `POST /api/ingest-from-sheets`
+- `specs/seed_scripts_spec.md`: SDD de los tres scripts de utilidad
+- `backend/tests/test_form_submission.py`: 7/7 tests verdes
+- `backend/tests/test_ingest_from_sheets.py`: 12/12 tests verdes
+- `backend/tests/scripts/test_seed_conditional.py`: 7/7 tests verdes
+- `backend/tests/scripts/test_seed_full.py`: 8/8 tests verdes
+- `backend/tests/scripts/test_reset_data.py`: 9/9 tests verdes
+- `backend/tests/core/test_google_form_builder.py`: actualizado para cliente `script` (4 APIs)
+
+### Fixed
+- `test_google_form_builder.py`: `KeyError: 'script'` — `_build_side_effect` ahora incluye el cliente `script`; test `test_builds_three_api_clients` actualizado a `{"forms", "sheets", "drive", "script"}`
+- `test_ingest_from_sheets_no_open_mics`: early return antes de instanciar `SheetIngestor` evita error de credenciales faltantes en tests
+
+---
+
 ## [0.10.0] - 2026-03-06
 
 ### Added — Sprint 5: Validación de Lineup via Telegram

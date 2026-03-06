@@ -63,8 +63,24 @@ npm run dev
 
 ```bash
 source backend/venv/bin/activate
-python setup_db.py
-python setup_db.py --seed
+python setup_db.py          # aplica esquema
+python setup_db.py --seed   # seed estático (datos de ejemplo fijos)
+```
+
+### Scripts de utilidad de seed
+
+```bash
+# Rellena open mics sin solicitudes con 10 cómicos aleatorios cada uno
+PYTHONPATH=. python backend/scripts/seed_conditional.py
+
+# Crea un escenario completo desde cero: 1 proveedor + 3 open mics + 30 cómicos
+PYTHONPATH=. python backend/scripts/seed_full.py
+
+# Borra todos los datos (mantiene esquemas), con backup CSV previo
+PYTHONPATH=. python backend/scripts/reset_data.py
+PYTHONPATH=. python backend/scripts/reset_data.py --yes             # sin confirmación
+PYTHONPATH=. python backend/scripts/reset_data.py --include-auth    # también borra telegram_users
+PYTHONPATH=. python backend/scripts/reset_data.py --no-backup       # sin CSV de respaldo
 ```
 
 ## Tests
