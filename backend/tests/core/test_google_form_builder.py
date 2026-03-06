@@ -44,9 +44,15 @@ def _make_builder():
         mock_forms  = MagicMock()
         mock_sheets = MagicMock()
         mock_drive  = MagicMock()
+        mock_script = MagicMock()
 
         def _build_side_effect(service, *args, **kwargs):
-            return {"forms": mock_forms, "sheets": mock_sheets, "drive": mock_drive}[service]
+            return {
+                "forms": mock_forms,
+                "sheets": mock_sheets,
+                "drive": mock_drive,
+                "script": mock_script,
+            }[service]
 
         mock_build.side_effect = _build_side_effect
 
@@ -57,6 +63,7 @@ def _make_builder():
     builder._forms  = mock_forms
     builder._sheets = mock_sheets
     builder._drive  = mock_drive
+    builder._script = mock_script
     return builder
 
 
@@ -89,7 +96,7 @@ class TestInit:
             GoogleFormBuilder()
 
         services = [c.args[0] for c in mock_build.call_args_list]
-        assert set(services) == {"forms", "sheets", "drive"}
+        assert set(services) == {"forms", "sheets", "drive", "script"}
 
 
 # ---------------------------------------------------------------------------
@@ -281,7 +288,7 @@ class TestInjectOpenMicIdColumn:
         builder._inject_open_mic_id_column("sheet-123", "open-mic-uuid")
 
         body = builder._sheets.spreadsheets().values().update.call_args.kwargs["body"]
-        assert body["values"][0] == ["open_mic_id"]
+        assert body["values"][0] == ["open_mic_id", "n8n_procesado"]
 
     def test_arrayformula_contains_open_mic_id(self):
         builder = _make_builder()
