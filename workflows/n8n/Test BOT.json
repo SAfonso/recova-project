@@ -243,7 +243,7 @@
       "parameters": {
         "text": "={{ $('Telegram Trigger').item.json.message.text }}",
         "options": {
-          "systemMessage": "=Eres el asistente de operaciones de Recova, un SaaS para Open Mics. \n\nREGLA ESTRICTA DE ARQUITECTURA:\nEl Host que te está hablando tiene el ID: {{ $('Supabase (Validar Host)1').item.json.host_id }}.\n\nUsa este ID de forma obligatoria cuando llames a la herramienta de listar open mics. No asumas IDs, no inventes IDs. Responde de forma concisa, profesional y directa con los datos que te devuelvan las herramientas.\n\nSi la herramienta de listar open mics devuelve una lista vacía, responde exactamente así:               \n  \"Aún no tienes ningún Open Mic creado. Entra en la app web para crear el primero:                       \n  https://recova-project-z5zp.vercel.app\" \n\nSi cualquier devuelve una lista vacía, y no hay ningun open creado para el usuario, responde exactamente así:               \n  \"Aún no tienes ningún Open Mic creado. Entra en la app web para crear el primero:                       \n  https://recova-project-z5zp.vercel.app\" "
+          "systemMessage": "=Eres el asistente de operaciones de Recova, un SaaS para Open Mics.\n\nREGLA ESTRICTA DE ARQUITECTURA:\nEl Host que te esta hablando tiene el ID: {{ $('Supabase (Validar Host)1').item.json.host_id }}.\n\nUsa este ID de forma obligatoria cuando llames a las herramientas. No asumas IDs, no inventes IDs. Responde de forma concisa, profesional y directa.\n\nSi la herramienta de listar open mics devuelve una lista vacia, responde exactamente:\n\"Aun no tienes ningun Open Mic creado. Entra en la app web para crear el primero: https://recova-project-z5zp.vercel.app\"\n\nCUANDO EL HOST PIDA EL LINEUP O QUIERA VALIDARLO:\n1. Usa Tool_Lineup_Link con su host_id y el open_mic_id del show.\n2. Responde con la lista de comicos y el link de validacion que devuelva la herramienta.\n3. Indica que el link expira cuando empiece el show.\n4. NO navegues a otras vistas ni ofrezcas navegar por la app."
         }
       },
       "id": "df270a6c-ea4e-4388-9304-c8341fcb3e51",
@@ -499,6 +499,35 @@
     },
     {
       "parameters": {
+        "method": "POST",
+        "url": "={{ $env.RECOVA_BACKEND_URL }}/api/lineup/prepare-validation",
+        "sendHeaders": true,
+        "parametersHeaders": {
+          "values": [
+            { "name": "X-API-KEY", "valueProvider": "fieldValue", "value": "={{ $env.WEBHOOK_API_KEY }}" },
+            { "name": "Content-Type" }
+          ]
+        },
+        "sendBody": true,
+        "parametersBody": {
+          "values": [
+            { "name": "host_id" },
+            { "name": "open_mic_id" }
+          ]
+        },
+        "toolDescription": "Obtiene el lineup del proximo show de un open mic y genera un link de validacion. Requiere host_id y open_mic_id. Devuelve: fecha_evento, lineup (lista de comicos con nombre e instagram), validate_url (link para validar el lineup, expira al empezar el show)."
+      },
+      "id": "dd000001-0000-0000-0000-000000000001",
+      "name": "Tool_Lineup_Link",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1,
+      "position": [
+        752,
+        336
+      ]
+    },
+    {
+      "parameters": {
         "options": {}
       },
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
@@ -691,6 +720,17 @@
       ]
     },
     "Tool_Reopen_Lineup": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent (Recova MCP)",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool_Lineup_Link": {
       "ai_tool": [
         [
           {
