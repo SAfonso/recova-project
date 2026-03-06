@@ -118,7 +118,8 @@ export function OpenMicSelector({ session, onSelect }) {
           <p className="mt-1 text-sm font-bold text-[#fff8e7]/70">{session.user.email}</p>
         </div>
 
-        {/* Card rugosa */}
+        {/* Card rugosa + botón Telegram en esquina superior derecha */}
+        <div className="relative">
         <div className="animate-pop-in paper-drop paper-tape">
           <div className="paper-rough paper-note border-[3px] border-[#1a1a1a] bg-[#fffef5] p-6">
             <h2 className="mb-4 font-['Bangers'] text-2xl tracking-wide text-[#1a1a1a]">Tus Open Mics</h2>
@@ -193,27 +194,26 @@ export function OpenMicSelector({ session, onSelect }) {
           </div>
         </div>
 
-        {/* Telegram connect */}
-        <div className="mt-5 flex justify-center">
-          <div className="relative flex flex-col items-center">
-            {showTgTooltip && (
-              <div className="absolute bottom-full mb-2 animate-bounce">
-                <div className="rounded-xl bg-[#229ED9] px-3 py-1.5 text-xs font-bold text-white shadow-lg">
-                  ¡Click Me!
-                </div>
-                <div className="mx-auto mt-0.5 h-0 w-0 border-l-[6px] border-r-[6px] border-t-[6px] border-l-transparent border-r-transparent border-t-[#229ED9]" />
+        {/* Telegram connect — esquina superior derecha, fuera del card */}
+        <div className="absolute -right-5 -top-5 flex flex-col items-center">
+          {showTgTooltip && (
+            <div className="absolute bottom-full mb-2 animate-bounce whitespace-nowrap">
+              <div className="rounded-xl bg-[#229ED9] px-3 py-1.5 text-xs font-bold text-white shadow-lg">
+                ¡Click Me!
               </div>
-            )}
-            <button
-              type="button"
-              onClick={handleTelegramClick}
-              className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-[#229ED9] text-white shadow-[2px_2px_0px_rgba(0,0,0,0.3)] transition-all duration-200 hover:scale-110 hover:shadow-[3px_3px_0px_rgba(0,0,0,0.4)]"
-              title="Conectar bot de Telegram"
-            >
-              <TelegramIcon className="h-6 w-6" />
-            </button>
-          </div>
+              <div className="mx-auto mt-0.5 h-0 w-0 border-l-[6px] border-r-[6px] border-t-[6px] border-l-transparent border-r-transparent border-t-[#229ED9]" />
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={handleTelegramClick}
+            className="flex h-16 w-16 cursor-pointer items-center justify-center rounded-full bg-[#229ED9] text-white shadow-[3px_3px_0px_rgba(0,0,0,0.35)] transition-all duration-200 hover:scale-110 hover:shadow-[4px_4px_0px_rgba(0,0,0,0.4)]"
+            title="Conectar bot de Telegram"
+          >
+            <TelegramIcon className="h-9 w-9" />
+          </button>
         </div>
+        </div>{/* fin relative wrapper */}
 
         <div className="mt-4 flex justify-center">
           <button type="button" onClick={handleLogout} className="cursor-pointer text-xs font-bold text-[#fff8e7]/60 underline hover:text-[#fff8e7]">
