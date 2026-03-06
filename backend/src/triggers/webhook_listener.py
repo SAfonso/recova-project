@@ -16,9 +16,17 @@ from backend.src.scoring_engine import execute_scoring
 app = Flask(__name__)
 CORS(app)
 
-# Busca .env relativo a este archivo (backend/.env) o desde CWD como fallback
-_ENV_PATH = os.path.join(os.path.dirname(__file__), "../../../backend/.env")
-load_dotenv(dotenv_path=_ENV_PATH, override=False)
+# Busca .env en: backend/.env → raíz del repo → CWD
+_HERE = os.path.dirname(__file__)
+_ENV_CANDIDATES = [
+    os.path.join(_HERE, "../../../backend/.env"),
+    os.path.join(_HERE, "../../.env"),
+    os.path.join(_HERE, "../../../.env"),
+]
+for _env_path in _ENV_CANDIDATES:
+    if os.path.exists(_env_path):
+        load_dotenv(dotenv_path=_env_path, override=False)
+        break
 load_dotenv(override=False)
 INGEST_SCRIPT_PATH = "/root/RECOVA/backend/src/bronze_to_silver_ingestion.py"
 SCORING_SCRIPT_PATH = "/root/RECOVA/backend/src/scoring_engine.py"
