@@ -1,10 +1,17 @@
 import { useEffect, useState } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import { supabase } from '../supabaseClient';
 import { OpenMicIcon } from './open-mic/openmic-icons';
 
 const PlusIcon = () => (
   <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
     <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+  </svg>
+);
+
+const TelegramIcon = ({ className }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.96 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
   </svg>
 );
 
@@ -19,6 +26,10 @@ export function OpenMicSelector({ session, onSelect }) {
   const [newName,     setNewName]     = useState('');
   const [saving,      setSaving]      = useState(false);
   const [error,       setError]       = useState(null);
+  const [showTgTooltip, setShowTgTooltip] = useState(() => !localStorage.getItem('tg_btn_seen'));
+  const [showTgModal,   setShowTgModal]   = useState(false);
+  const [tgData,        setTgData]        = useState(null);
+  const [tgLoading,     setTgLoading]     = useState(false);
 
   useEffect(() => {
     async function fetchOpenMics() {
@@ -66,6 +77,24 @@ export function OpenMicSelector({ session, onSelect }) {
   };
 
   const handleLogout = () => supabase.auth.signOut();
+
+  const handleTelegramClick = async () => {
+    localStorage.setItem('tg_btn_seen', '1');
+    setShowTgTooltip(false);
+    setShowTgModal(true);
+    if (tgData) return;
+    setTgLoading(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/telegram/generate-code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-API-KEY': import.meta.env.VITE_WEBHOOK_API_KEY },
+        body: JSON.stringify({ host_id: session.user.id }),
+      });
+      const data = await res.json();
+      setTgData(data);
+    } catch {}
+    setTgLoading(false);
+  };
 
   if (loading) {
     return (
@@ -164,12 +193,89 @@ export function OpenMicSelector({ session, onSelect }) {
           </div>
         </div>
 
+        {/* Telegram connect */}
+        <div className="mt-5 flex justify-center">
+          <div className="relative flex flex-col items-center">
+            {showTgTooltip && (
+              <div className="absolute bottom-full mb-2 animate-bounce">
+                <div className="rounded-xl bg-[#229ED9] px-3 py-1.5 text-xs font-bold text-white shadow-lg">
+                  ¡Click Me!
+                </div>
+                <div className="mx-auto mt-0.5 h-0 w-0 border-l-[6px] border-r-[6px] border-t-[6px] border-l-transparent border-r-transparent border-t-[#229ED9]" />
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={handleTelegramClick}
+              className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-[#229ED9] text-white shadow-[2px_2px_0px_rgba(0,0,0,0.3)] transition-all duration-200 hover:scale-110 hover:shadow-[3px_3px_0px_rgba(0,0,0,0.4)]"
+              title="Conectar bot de Telegram"
+            >
+              <TelegramIcon className="h-6 w-6" />
+            </button>
+          </div>
+        </div>
+
         <div className="mt-4 flex justify-center">
           <button type="button" onClick={handleLogout} className="cursor-pointer text-xs font-bold text-[#fff8e7]/60 underline hover:text-[#fff8e7]">
             Cerrar sesión
           </button>
         </div>
       </div>
+
+      {/* Modal Telegram */}
+      {showTgModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4"
+          onClick={() => setShowTgModal(false)}
+        >
+          <div
+            className="paper-drop paper-note w-full max-w-xs border-[3px] border-[#1a1a1a] bg-[#fffef5] p-6 text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="mb-1 font-['Bangers'] text-2xl tracking-wide text-[#1a1a1a]">
+              Conecta el bot
+            </h3>
+            <p className="mb-4 text-xs text-[#6B5C4A]">Escanea el QR desde Telegram en tu móvil</p>
+
+            <div className="flex justify-center">
+              {tgLoading ? (
+                <div className="flex h-[180px] w-[180px] items-center justify-center">
+                  <p className="text-sm text-[#6B5C4A]">Generando...</p>
+                </div>
+              ) : tgData?.qr_url ? (
+                <div className="rounded-xl border-[3px] border-[#1a1a1a] bg-white p-3 shadow-inner">
+                  <QRCodeSVG value={tgData.qr_url} size={160} level="M" />
+                </div>
+              ) : (
+                <div className="flex h-[180px] w-[180px] items-center justify-center">
+                  <p className="text-sm text-[#DC2626]">Error al generar el código</p>
+                </div>
+              )}
+            </div>
+
+            {tgData?.code && (
+              <div className="mt-4 rounded-lg border-2 border-dashed border-[#C8B89A] bg-[#F5F0E1] py-2">
+                <p className="font-mono text-lg font-bold tracking-widest text-[#1a1a1a]">{tgData.code}</p>
+              </div>
+            )}
+
+            <ol className="mt-4 space-y-1 text-left text-xs text-[#6B5C4A]">
+              <li>1. Escanea el QR con tu cámara</li>
+              <li>2. Se abrirá Telegram — pulsa <strong>Enviar</strong></li>
+              <li>3. El bot confirmará la conexión</li>
+            </ol>
+            <p className="mt-3 text-[10px] text-[#C8B89A]">El código expira en 15 minutos</p>
+
+            <button
+              type="button"
+              onClick={() => setShowTgModal(false)}
+              className="mt-4 w-full cursor-pointer rounded-lg border-[3px] border-[#1a1a1a] bg-[#1a1a1a] py-2 text-sm font-bold text-[#fff8e7] transition-all duration-200 hover:bg-[#DC2626]"
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
