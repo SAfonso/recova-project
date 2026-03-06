@@ -1,3 +1,26 @@
+## [0.9.0] - 2026-03-06
+
+### Added — Sprint 4a: Telegram QR Self-Registration
+
+#### Frontend
+- `frontend/src/components/OpenMicSelector.jsx`: icono Telegram en esquina superior derecha del card (fuera del div)
+- Tooltip animado "¡Click Me!" visible solo la primera vez (persiste en `localStorage: tg_btn_seen`)
+- Modal con QR code (`qrcode.react`), código `RCV-XXXX` y instrucciones paso a paso
+- El código expira en 15 minutos (gestionado por BD)
+
+#### Backend
+- `POST /api/telegram/generate-code`: genera código `RCV-[A-Z0-9]{4}`, inserta en `silver.telegram_registration_codes`, devuelve `{code, qr_url}`
+- Variable de entorno: `TELEGRAM_BOT_USERNAME`
+
+#### Spec y Tests
+- `specs/telegram_qr_connect_spec.md`: SDD completo del flujo de registro
+- `backend/tests/test_telegram_generate_code.py`: 5/5 tests verdes
+
+### Fixed
+- Nombre del servidor MCP: `recova_mcp_renderer` (guiones → underscores)
+
+---
+
 ## [0.8.0] - 2026-03-06
 
 ### Added — Sprint 3: Telegram Lineup Agent ✅
