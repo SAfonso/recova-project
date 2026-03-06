@@ -1,3 +1,21 @@
+## [0.9.1] - 2026-03-06
+
+### Added — Sprint 4b: Telegram Register Endpoint
+
+#### Backend
+- `POST /api/telegram/register`: procesa `/start RCV-XXXX` desde n8n
+  - Valida codigo en `silver.telegram_registration_codes` (existe, no expirado, no usado)
+  - Comprueba si `telegram_user_id` ya esta en `silver.telegram_users` (idempotente)
+  - Si ya registrado: marca codigo usado si es necesario y responde `already_registered: true`
+  - Si nuevo: INSERT en `silver.telegram_users` + marca codigo usado
+  - Errores diferenciados: 404 (no encontrado), 409 (ya usado), 410 (expirado)
+
+#### Spec y Tests
+- `specs/telegram_register_spec.md`: SDD completo con logica idempotente
+- `backend/tests/test_telegram_register.py`: 10/10 tests verdes
+
+---
+
 ## [0.9.0] - 2026-03-06
 
 ### Added — Sprint 4a: Telegram QR Self-Registration
