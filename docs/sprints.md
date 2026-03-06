@@ -1,5 +1,38 @@
 # Historial de Sprints y Fases
 
+## Sprint 6 — Ingesta Multi-Tenant + Scripts de Utilidad (v0.11.0) — 2026-03-07 ✅
+
+### Objetivo
+Implementar ingesta diaria de solicitudes desde todas las Google Sheets de los open mics (multi-tenant), integrando clasificación de género con Gemini antes del scoring diario. Añadir scripts de utilidad para desarrollo local.
+
+### Completado
+
+#### Ingesta desde Sheets
+- **Spec SDD** — `specs/ingest_from_sheets_spec.md`
+- **`SheetIngestor`** — `backend/src/core/sheet_ingestor.py`: lee rango A:K, filtra por `n8n_procesado` vacío; marca procesadas con `"si"` en columna K via `batchUpdate`
+- **`POST /api/ingest-from-sheets`**: itera `silver.open_mics` con `sheet_id`, ingesta batch multi-tenant, lanza `bronze_to_silver_ingestion.py` en background
+- **`POST /api/form-submission`**: ingesta individual desde Apps Script `onFormSubmit`
+- **`GoogleFormBuilder`** actualizado: nuevo cliente `script`, `deploy_submit_webhook()`, columna `n8n_procesado` en Sheet
+
+#### n8n
+- **`Ingesta-Solicitudes.json`** reescrito: Schedule 09:00 → `POST /api/ingest-from-sheets` → clasificador de género con Gemini (`silver.comicos.genero`)
+
+#### Scripts de utilidad
+- **`backend/scripts/seed_conditional.py`**: rellena con 10 cómicos los open mics sin solicitudes
+- **`backend/scripts/seed_full.py`**: crea escenario completo (1 proveedor + 3 open mics + 30 cómicos)
+- **`backend/scripts/reset_data.py`**: TRUNCATE con backup CSV; flags `--yes`, `--include-auth`, `--no-backup`
+
+#### Tests (TDD)
+- `test_form_submission.py`: 7/7
+- `test_ingest_from_sheets.py`: 12/12
+- `tests/scripts/test_seed_conditional.py`: 7/7
+- `tests/scripts/test_seed_full.py`: 8/8
+- `tests/scripts/test_reset_data.py`: 9/9
+
+→ Spec: `specs/ingest_from_sheets_spec.md`, `specs/seed_scripts_spec.md`
+
+---
+
 ## Sprint 5 — Validación de Lineup via Telegram (v0.10.0) — 2026-03-06 ✅
 
 ### Objetivo

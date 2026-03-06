@@ -1,7 +1,7 @@
 # AI LineUp Architect
 
 **Estado:** En desarrollo activo
-**Versión:** `0.10.0`
+**Versión:** `0.11.0`
 **Metodología:** Spec-Driven Development (SDD) + TDD
 
 SaaS multi-tenant para gestión de open mics de comedia. Automatiza la recogida de solicitudes de cómicos (Google Forms), el scoring y la selección del lineup, y la generación del cartel en PNG.
@@ -118,7 +118,7 @@ flowchart TD
 ```
 recova-project/
 ├── backend/
-│   ├── scripts/              # Utilidades de setup (OAuth2, etc.)
+│   ├── scripts/              # Utilidades: OAuth2, seed condicional, seed completo, reset
 │   ├── src/
 │   │   ├── core/             # Módulos: scoring, render, forms, security
 │   │   ├── triggers/         # webhook_listener.py (Flask :5000)
@@ -128,6 +128,7 @@ recova-project/
 │   │   └── mcp_server.py     # Renderer API (Flask :5050)
 │   └── tests/
 │       ├── core/             # Tests unitarios de módulos core
+│       ├── scripts/          # Tests de scripts de utilidad
 │       ├── unit/             # Tests unitarios generales
 │       └── mcp/              # Tests del renderer
 ├── frontend/
@@ -174,6 +175,9 @@ cd frontend && npm install && npm run dev
 
 | Fase | Versión | Estado |
 |------|---------|--------|
+| Sprint 6 — Ingesta Multi-Tenant + Scripts de Utilidad | 0.11.0 | Completado |
+| Sprint 5 — Validación de Lineup via Telegram | 0.10.0 | Completado |
+| Sprint 4b — Telegram Register Endpoint | 0.9.1 | Completado |
 | Sprint 4a — Telegram QR Self-Registration | 0.9.0 | Completado |
 | Sprint 3 — Telegram Lineup Agent (LLM + MCP) | 0.8.0 | Completado |
 | Sprint 2 — Google Forms + Backend integration | 0.7.0 | Completado |
@@ -187,8 +191,9 @@ cd frontend && npm install && npm run dev
 | Bronze + Silver + Seed | 0.1.0–0.3.0 | Completado |
 
 **Próximo:**
-- Nodo n8n para procesar `/start RCV-XXXX` → registrar en `silver.telegram_users`
-- Sprint 4b — Renderer de póster (SVG → PNG → Supabase Storage)
+- Renderer de póster (SVG → PNG → Supabase Storage)
+- Activar `Scoring & Draft` e `Ingesta-Solicitudes` en n8n producción
+- Penalización recencia en `scoring_engine.py`
 
 ---
 
@@ -199,7 +204,7 @@ source backend/venv/bin/activate
 PYTHONPATH=. pytest backend/tests/ -v
 ```
 
-Cobertura actual: scoring config (27), google form builder (23), data binder, security, render, MCP.
+Cobertura actual: 188 tests verdes — scoring config, google form builder, sheet ingestor, form submission, ingest-from-sheets, validate lineup, telegram register/QR, scripts de utilidad.
 
 ---
 
