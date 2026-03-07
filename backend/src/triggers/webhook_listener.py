@@ -9,10 +9,14 @@ import subprocess
 from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 
-from flask import Flask, jsonify, request
+import re
+from pathlib import Path as _Path
+
+from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
 from supabase import create_client
 
+from backend.src.core.poster_composer import PosterComposer
 from backend.src.core.google_form_builder import GoogleFormBuilder
 from backend.src.core.sheet_ingestor import SheetIngestor
 from backend.src.core.form_ingestor import FormIngestor
@@ -773,6 +777,104 @@ def ingest_from_sheets():
     }), 200
 
 
+# Mapeo campo canónico (FormAnalyzer) → columna bronze.solicitudes
+_CANONICAL_TO_BRONZE = {
+    "nombre_artistico":            "nombre_raw",
+    "instagram":                   "instagram_raw",
+    "whatsapp":                    "telefono_raw",
+    "experiencia":                 "experiencia_raw",
+    "fechas_disponibles":          "fechas_seleccionadas_raw",
+    "backup":                      "disponibilidad_ultimo_minuto",
+    "show_proximo":                "info_show_cercano",
+    "como_nos_conociste":          "origen_conocimiento",
+}
+
+
+@app.route("/api/ingest-from-forms", methods=["POST"])
+def ingest_from_forms():
+    """Lee respuestas de Google Forms de todos los open mics activos e ingesta en bronze."""
+    if not _is_authorized():
+        return jsonify({"error": "unauthorized"}), 401
+
+    sb = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+    silver = sb.schema("silver")
+
+    open_mics = (
+        silver
+        .from_("open_mics")
+        .select("id, proveedor_id, config")
+        .execute()
+        .data or []
+    )
+    # Solo open mics con external_form_id y field_mapping configurados
+    open_mics = [
+        om for om in open_mics
+        if (om.get("config") or {}).get("external_form_id")
+        and (om.get("config") or {}).get("field_mapping")
+    ]
+
+    if not open_mics:
+        subprocess.Popen([sys.executable, INGEST_SCRIPT_PATH])
+        return jsonify({"status": "ok", "open_mics_processed": 0, "rows_ingested": 0}), 200
+
+    try:
+        ingestor = FormIngestor()
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 500
+
+    bronze = sb.schema("bronze")
+    open_mics_processed = 0
+    rows_ingested = 0
+
+    for om in open_mics:
+        config = om.get("config") or {}
+        form_id = config["external_form_id"]
+        field_mapping = config["field_mapping"]
+        last_at = config.get("last_form_ingestion_at", "1970-01-01T00:00:00Z")
+        open_mic_id = om["id"]
+        proveedor_id = om["proveedor_id"]
+        open_mics_processed += 1
+        max_submitted_at = last_at
+
+        try:
+            responses = ingestor.get_responses(form_id, field_mapping)
+        except Exception:
+            continue
+
+        new_responses = [
+            r for r in responses
+            if r.get("_submitted_at", "") > last_at
+        ]
+
+        for resp in new_responses:
+            row = {"proveedor_id": proveedor_id, "open_mic_id": open_mic_id}
+            for canonical, bronze_field in _CANONICAL_TO_BRONZE.items():
+                if canonical in resp:
+                    row[bronze_field] = resp[canonical]
+            bronze.from_("solicitudes").insert(row).execute()
+            submitted_at = resp.get("_submitted_at", "")
+            if submitted_at > max_submitted_at:
+                max_submitted_at = submitted_at
+            rows_ingested += 1
+
+        if new_responses:
+            silver.rpc(
+                "update_open_mic_config_keys",
+                {
+                    "p_open_mic_id": open_mic_id,
+                    "p_keys": {"last_form_ingestion_at": max_submitted_at},
+                },
+            ).execute()
+
+    subprocess.Popen([sys.executable, INGEST_SCRIPT_PATH])
+
+    return jsonify({
+        "status": "ok",
+        "open_mics_processed": open_mics_processed,
+        "rows_ingested": rows_ingested,
+    }), 200
+
+
 @app.route("/api/open-mic/analyze-form", methods=["POST"])
 def analyze_form() -> tuple:
     """Analiza los campos de un Google Form y guarda el field_mapping en config."""
@@ -861,6 +963,37 @@ def propose_custom_rules() -> tuple:
         "unmapped_fields": unmapped_fields,
         "proposed_count": len(rules),
     }), 200
+
+
+@app.route("/api/render-poster", methods=["POST"])
+def render_poster() -> tuple:
+    """Renderiza el cartel del lineup con PosterComposer y devuelve PNG binario."""
+    if not _is_authorized():
+        return jsonify({"error": "unauthorized"}), 401
+
+    data = request.get_json(force=True) or {}
+    lineup = data.get("lineup") or []
+
+    if not lineup:
+        return jsonify({"error": "lineup requerido"}), 400
+
+    event_id = str(data.get("event_id") or "evento")
+    date_text = str(data.get("date") or event_id)
+
+    safe_id = re.sub(r"[^\w-]", "_", event_id)
+    output_path = _Path("/tmp") / f"render_{safe_id}.png"
+
+    try:
+        PosterComposer().render(
+            lineup=lineup,
+            date=date_text,
+            event_id=event_id,
+            output_path=output_path,
+        )
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
+
+    return send_file(str(output_path), mimetype="image/png")
 
 
 if __name__ == "__main__":
