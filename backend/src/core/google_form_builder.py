@@ -406,7 +406,7 @@ class GoogleFormBuilder:
 
         values = [
             ["open_mic_id", "n8n_procesado"],
-            [f'=ARRAYFORMULA(IF(B2:B<>"","{open_mic_id}",""))'],
+            [f'=ARRAYFORMULA(SI(B2:B<>"";"{open_mic_id}";""))'],
         ]
 
         self._sheets.spreadsheets().values().update(
