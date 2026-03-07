@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { ScoringTypeSelector } from './ScoringTypeSelector';
 import { CustomScoringConfigurator } from './CustomScoringConfigurator';
+import { extractFormId } from '../utils/formUtils';
 
 // ---------------------------------------------------------------------------
 // Valores por defecto — deben mantenerse sincronizados con
@@ -157,6 +158,10 @@ export function ScoringConfigurator({ openMicId, onSaved }) {
   const [fieldErrors, setFieldErrors] = useState({});
   const [uploading, setUploading] = useState(false);
   const [proposing, setProposing] = useState(false);
+  const [formUrlInput, setFormUrlInput] = useState('');
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analyzeError, setAnalyzeError] = useState('');
+  const [analyzeResult, setAnalyzeResult] = useState(null);
 
   // Carga/recarga config desde silver.open_mics
   const fetchConfig = () => {
@@ -228,6 +233,34 @@ export function ScoringConfigurator({ openMicId, onSaved }) {
     }
   };
 
+  const handleAnalyzeForm = async () => {
+    const formId = extractFormId(formUrlInput) || config.external_form_id || config.form?.form_id;
+    if (!formId) return;
+    setAnalyzing(true);
+    setAnalyzeError('');
+    setAnalyzeResult(null);
+    try {
+      const apiKey = import.meta.env.VITE_WEBHOOK_API_KEY ?? '';
+      const apiUrl = import.meta.env.VITE_BACKEND_URL ?? '';
+      const res = await fetch(`${apiUrl}/api/open-mic/analyze-form`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-API-KEY': apiKey },
+        body: JSON.stringify({ open_mic_id: openMicId, form_id: formId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAnalyzeError(data.message ?? 'Error al analizar el formulario');
+      } else {
+        setAnalyzeResult(data);
+        fetchConfig();
+      }
+    } catch {
+      setAnalyzeError('Error de red al analizar el formulario');
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
   const handleSave = async () => {
     const errors = validate(config);
     if (Object.keys(errors).length > 0) {
@@ -271,6 +304,11 @@ export function ScoringConfigurator({ openMicId, onSaved }) {
     restricted: 'Restricted',
   };
 
+  const scoringType = config.scoring_type ?? 'basic';
+  const isNone   = scoringType === 'none';
+  const isBasic  = scoringType === 'basic';
+  const isCustom = scoringType === 'custom';
+
   return (
     <div className="flex flex-col gap-4">
 
@@ -285,23 +323,64 @@ export function ScoringConfigurator({ openMicId, onSaved }) {
       <SectionCard title="Tipo de scoring">
         <ScoringTypeSelector
           openMicId={openMicId}
-          currentType={config.scoring_type ?? 'basic'}
+          currentType={scoringType}
           hasFieldMapping={!!config.field_mapping}
           onChanged={fetchConfig}
         />
       </SectionCard>
 
-      {/* ── 0b. Reglas custom (solo si scoring_type = 'custom') ─── */}
-      {config.scoring_type === 'custom' && (
-        <SectionCard title="Reglas de scoring personalizadas">
-          <CustomScoringConfigurator
-            openMicId={openMicId}
-            rules={config.custom_scoring_rules ?? []}
-            onRulesChanged={(r) => update(['custom_scoring_rules'], r)}
-            onPropose={handlePropose}
-            proposing={proposing}
-          />
-        </SectionCard>
+      {/* ── Paneles visibles solo si scoring != 'none' ───────────── */}
+      {!isNone && (
+        <>
+
+      {/* ── Form + reglas custom (solo si custom) ────────────────── */}
+      {isCustom && (
+        <>
+          <SectionCard title="Google Form (fuente de reglas)">
+            <div className="flex flex-col gap-3">
+              {config.field_mapping && (
+                <p className="flex items-center gap-1.5 text-xs text-[#22C55E]">
+                  <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
+                  {Object.values(config.field_mapping).filter(Boolean).length} de {Object.keys(config.field_mapping).length} campos mapeados
+                </p>
+              )}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={formUrlInput || config.external_form_id || ''}
+                  onChange={(e) => setFormUrlInput(e.target.value)}
+                  placeholder="URL o ID del Google Form"
+                  className="flex-1 rounded-md border-2 border-[#1a1a1a] bg-[#F5F0E1] px-3 py-2 text-xs text-[#1a1a1a] outline-none focus:ring-2 focus:ring-[#DC2626]"
+                />
+                <button
+                  type="button"
+                  onClick={handleAnalyzeForm}
+                  disabled={analyzing || !(formUrlInput || config.external_form_id || config.form?.form_id)}
+                  className="shrink-0 cursor-pointer rounded-lg border-[3px] border-[#1a1a1a] bg-[#1a1a1a] px-3 py-2 text-xs font-bold text-[#fff8e7] transition-all duration-200 hover:bg-[#DC2626] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {analyzing ? 'Analizando...' : config.field_mapping ? 'Re-analizar' : 'Analizar'}
+                </button>
+              </div>
+              {analyzeError && <p className="text-xs text-[#DC2626]">{analyzeError}</p>}
+              {analyzeResult && (
+                <p className="text-xs text-[#22C55E]">
+                  {analyzeResult.canonical_coverage} de {analyzeResult.total_questions} campos mapeados
+                  {analyzeResult.unmapped_fields?.length > 0 && ` · sin mapear: ${analyzeResult.unmapped_fields.join(', ')}`}
+                </p>
+              )}
+            </div>
+          </SectionCard>
+
+          <SectionCard title="Reglas de scoring personalizadas">
+            <CustomScoringConfigurator
+              openMicId={openMicId}
+              rules={config.custom_scoring_rules ?? []}
+              onRulesChanged={(r) => update(['custom_scoring_rules'], r)}
+              onPropose={handlePropose}
+              proposing={proposing}
+            />
+          </SectionCard>
+        </>
       )}
 
       {/* ── 1. Slots disponibles ─────────────────────────────────── */}
@@ -370,8 +449,8 @@ export function ScoringConfigurator({ openMicId, onSaved }) {
         </div>
       </SectionCard>
 
-      {/* ── 3. Penalización de recencia ──────────────────────────── */}
-      <SectionCard title="Penalización por recencia">
+      {/* ── 3. Penalización de recencia (solo básico) ────────────── */}
+      {isBasic && <SectionCard title="Penalización por recencia">
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-3">
             <Toggle
@@ -411,10 +490,10 @@ export function ScoringConfigurator({ openMicId, onSaved }) {
             <FieldError errors={fieldErrors} field="recency_penalty.penalty_points" />
           </div>
         </div>
-      </SectionCard>
+      </SectionCard>}
 
-      {/* ── 4. Bono bala única ───────────────────────────────────── */}
-      <SectionCard title="Bono por disponibilidad única">
+      {/* ── 4. Bono bala única (solo básico) ─────────────────────── */}
+      {isBasic && <SectionCard title="Bono por disponibilidad única">
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-3">
             <Toggle
@@ -439,7 +518,7 @@ export function ScoringConfigurator({ openMicId, onSaved }) {
           </div>
           <FieldError errors={fieldErrors} field="single_date_boost.boost_points" />
         </div>
-      </SectionCard>
+      </SectionCard>}
 
       {/* ── 5. Paridad de género ─────────────────────────────────── */}
       <SectionCard title="Paridad de género">
@@ -517,6 +596,9 @@ export function ScoringConfigurator({ openMicId, onSaved }) {
           )}
         </div>
       </SectionCard>
+
+        </>
+      )}
 
       {/* ── Guardar ──────────────────────────────────────────────── */}
       <div className="flex items-center justify-end gap-3 pt-1">
