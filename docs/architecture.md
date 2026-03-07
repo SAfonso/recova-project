@@ -1,6 +1,6 @@
 # Arquitectura del sistema
 
-**Versión:** 0.7.0
+**Versión:** 0.11.1
 
 ## Diagrama
 
@@ -75,17 +75,24 @@ flowchart TD
 
 ## Variables de entorno clave
 
-### `backend/.env`
+### `.env` (raíz — fuente única de verdad)
 ```
 SUPABASE_URL=
 SUPABASE_SERVICE_KEY=
+DATABASE_URL=
 WEBHOOK_API_KEY=
+BACKEND_URL=
+FRONTEND_URL=
 GOOGLE_OAUTH_CLIENT_ID=
 GOOGLE_OAUTH_CLIENT_SECRET=
 GOOGLE_OAUTH_REFRESH_TOKEN=
+TELEGRAM_BOT_USERNAME=
+N8N_BACKEND_INGEST_URL=
+N8N_BACKEND_SCORING_URL=
+N8N_BACKEND_RENDER_URL=
 ```
 
-### `frontend/.env`
+### `frontend/.env` (solo variables Vite)
 ```
 VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=

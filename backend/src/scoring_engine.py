@@ -27,7 +27,10 @@ from logging.handlers import TimedRotatingFileHandler
 from typing import Any
 from uuid import uuid4
 
+from pathlib import Path
 from dotenv import load_dotenv
+
+_ROOT_ENV = Path(__file__).resolve().parents[2] / ".env"
 
 from backend.src.core.scoring_config import ScoringConfig
 
@@ -518,7 +521,7 @@ def execute_scoring(open_mic_id: str) -> dict[str, Any]:
 if __name__ == "__main__":
     import sys
 
-    load_dotenv()
+    load_dotenv(dotenv_path=_ROOT_ENV)
     configure_logging()
 
     if len(sys.argv) < 2:

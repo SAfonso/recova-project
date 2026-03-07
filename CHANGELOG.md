@@ -1,3 +1,16 @@
+## [0.11.1] - 2026-03-07
+
+### Changed — Consolidación de variables de entorno
+
+- Todas las variables de entorno unificadas en un único `.env` raíz (antes divididas entre `backend/.env` y raíz)
+- `backend/.env` eliminado
+- `webhook_listener.py`, `bronze_to_silver_ingestion.py`, `scoring_engine.py`: `load_dotenv()` actualizado para apuntar explícitamente al `.env` raíz via `Path(__file__).parents[N] / ".env"`
+- `.env.example` raíz reescrito como fuente única de verdad con todas las variables documentadas
+- `backend/.env.example` eliminado (redundante)
+- `frontend/.env.example` completado con `VITE_BACKEND_URL`, `VITE_WEBHOOK_API_KEY`, `VITE_N8N_WEBHOOK_URL`
+
+---
+
 ## [0.11.0] - 2026-03-07
 
 ### Added — Sprint 6: Ingesta Multi-Tenant + Scripts de Utilidad
