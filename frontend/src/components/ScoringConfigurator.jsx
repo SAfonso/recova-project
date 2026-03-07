@@ -149,7 +149,7 @@ function NumberInput({ value, onChange, min, max, disabled = false, error = fals
 // Componente principal
 // ---------------------------------------------------------------------------
 
-export function ScoringConfigurator({ openMicId, onSaved }) {
+export function ScoringConfigurator({ openMicId, openMicName, onSaved }) {
   const [config, setConfig]   = useState(mergeWithDefaults({}));
   const [loading, setLoading] = useState(true);
   const [saving, setSaving]   = useState(false);
@@ -162,6 +162,8 @@ export function ScoringConfigurator({ openMicId, onSaved }) {
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeError, setAnalyzeError] = useState('');
   const [analyzeResult, setAnalyzeResult] = useState(null);
+  const [creatingForm, setCreatingForm] = useState(false);
+  const [formCreateError, setFormCreateError] = useState('');
 
   // Carga/recarga config desde silver.open_mics
   const fetchConfig = () => {
@@ -230,6 +232,30 @@ export function ScoringConfigurator({ openMicId, onSaved }) {
       setError('Error de red al proponer reglas');
     } finally {
       setProposing(false);
+    }
+  };
+
+  const handleCreateForm = async () => {
+    setCreatingForm(true);
+    setFormCreateError('');
+    try {
+      const apiKey = import.meta.env.VITE_WEBHOOK_API_KEY ?? '';
+      const apiUrl = import.meta.env.VITE_BACKEND_URL ?? '';
+      const res = await fetch(`${apiUrl}/api/open-mic/create-form`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-API-KEY': apiKey },
+        body: JSON.stringify({ open_mic_id: openMicId, nombre: openMicName }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setFormCreateError(data.message ?? 'Error creando el form');
+        return;
+      }
+      fetchConfig();
+    } catch {
+      setFormCreateError('Error de red al crear el formulario');
+    } finally {
+      setCreatingForm(false);
     }
   };
 
@@ -329,59 +355,94 @@ export function ScoringConfigurator({ openMicId, onSaved }) {
         />
       </SectionCard>
 
+      {/* ── Google Form — siempre visible ────────────────────────── */}
+      {isCustom ? (
+        <SectionCard title="Subir formulario">
+          <div className="flex flex-col gap-3">
+            {config.field_mapping && (
+              <p className="flex items-center gap-1.5 text-xs text-[#22C55E]">
+                <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
+                {Object.values(config.field_mapping).filter(Boolean).length} de {Object.keys(config.field_mapping).length} campos mapeados
+              </p>
+            )}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={formUrlInput || config.external_form_id || ''}
+                onChange={(e) => setFormUrlInput(e.target.value)}
+                placeholder="URL o ID del Google Form"
+                className="flex-1 rounded-md border-2 border-[#1a1a1a] bg-[#F5F0E1] px-3 py-2 text-xs text-[#1a1a1a] outline-none focus:ring-2 focus:ring-[#DC2626]"
+              />
+              <button
+                type="button"
+                onClick={handleAnalyzeForm}
+                disabled={analyzing || !(formUrlInput || config.external_form_id || config.form?.form_id)}
+                className="shrink-0 cursor-pointer rounded-lg border-[3px] border-[#1a1a1a] bg-[#1a1a1a] px-3 py-2 text-xs font-bold text-[#fff8e7] transition-all duration-200 hover:bg-[#DC2626] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {analyzing ? 'Analizando...' : config.field_mapping ? 'Re-analizar' : 'Analizar'}
+              </button>
+            </div>
+            {analyzeError && <p className="text-xs text-[#DC2626]">{analyzeError}</p>}
+            {analyzeResult && (
+              <p className="text-xs text-[#22C55E]">
+                {analyzeResult.canonical_coverage} de {analyzeResult.total_questions} campos mapeados
+                {analyzeResult.unmapped_fields?.length > 0 && ` · sin mapear: ${analyzeResult.unmapped_fields.join(', ')}`}
+              </p>
+            )}
+          </div>
+        </SectionCard>
+      ) : (
+        <SectionCard title="Google Form">
+          <div className="flex flex-col gap-3">
+            {config.form?.form_url && (
+              <div className="flex flex-col gap-2">
+                <a href={config.form.form_url} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 text-sm font-bold text-[#DC2626] underline underline-offset-2 hover:text-[#7f1d1d]">
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                  Abrir formulario
+                </a>
+                {config.form.sheet_url && (
+                  <a href={config.form.sheet_url} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-sm font-bold text-[#DC2626] underline underline-offset-2 hover:text-[#7f1d1d]">
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                    Ver respuestas (Sheet)
+                  </a>
+                )}
+              </div>
+            )}
+            {!config.form?.form_url && (
+              <>
+                {formCreateError && <p className="text-xs text-[#DC2626]">{formCreateError}</p>}
+                <button
+                  type="button"
+                  onClick={handleCreateForm}
+                  disabled={creatingForm}
+                  className="comic-shadow flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border-[3px] border-[#1a1a1a] bg-[#1a1a1a] py-2.5 text-sm font-bold text-[#fff8e7] transition-all duration-200 hover:bg-[#DC2626] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {creatingForm ? 'Creando form...' : 'Crear Google Form'}
+                </button>
+              </>
+            )}
+          </div>
+        </SectionCard>
+      )}
+
+      {/* ── Reglas custom (solo si custom) ───────────────────────── */}
+      {isCustom && (
+        <SectionCard title="Reglas de scoring personalizadas">
+          <CustomScoringConfigurator
+            openMicId={openMicId}
+            rules={config.custom_scoring_rules ?? []}
+            onRulesChanged={(r) => update(['custom_scoring_rules'], r)}
+            onPropose={handlePropose}
+            proposing={proposing}
+          />
+        </SectionCard>
+      )}
+
       {/* ── Paneles visibles solo si scoring != 'none' ───────────── */}
       {!isNone && (
         <>
-
-      {/* ── Form + reglas custom (solo si custom) ────────────────── */}
-      {isCustom && (
-        <>
-          <SectionCard title="Google Form (fuente de reglas)">
-            <div className="flex flex-col gap-3">
-              {config.field_mapping && (
-                <p className="flex items-center gap-1.5 text-xs text-[#22C55E]">
-                  <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
-                  {Object.values(config.field_mapping).filter(Boolean).length} de {Object.keys(config.field_mapping).length} campos mapeados
-                </p>
-              )}
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={formUrlInput || config.external_form_id || ''}
-                  onChange={(e) => setFormUrlInput(e.target.value)}
-                  placeholder="URL o ID del Google Form"
-                  className="flex-1 rounded-md border-2 border-[#1a1a1a] bg-[#F5F0E1] px-3 py-2 text-xs text-[#1a1a1a] outline-none focus:ring-2 focus:ring-[#DC2626]"
-                />
-                <button
-                  type="button"
-                  onClick={handleAnalyzeForm}
-                  disabled={analyzing || !(formUrlInput || config.external_form_id || config.form?.form_id)}
-                  className="shrink-0 cursor-pointer rounded-lg border-[3px] border-[#1a1a1a] bg-[#1a1a1a] px-3 py-2 text-xs font-bold text-[#fff8e7] transition-all duration-200 hover:bg-[#DC2626] disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {analyzing ? 'Analizando...' : config.field_mapping ? 'Re-analizar' : 'Analizar'}
-                </button>
-              </div>
-              {analyzeError && <p className="text-xs text-[#DC2626]">{analyzeError}</p>}
-              {analyzeResult && (
-                <p className="text-xs text-[#22C55E]">
-                  {analyzeResult.canonical_coverage} de {analyzeResult.total_questions} campos mapeados
-                  {analyzeResult.unmapped_fields?.length > 0 && ` · sin mapear: ${analyzeResult.unmapped_fields.join(', ')}`}
-                </p>
-              )}
-            </div>
-          </SectionCard>
-
-          <SectionCard title="Reglas de scoring personalizadas">
-            <CustomScoringConfigurator
-              openMicId={openMicId}
-              rules={config.custom_scoring_rules ?? []}
-              onRulesChanged={(r) => update(['custom_scoring_rules'], r)}
-              onPropose={handlePropose}
-              proposing={proposing}
-            />
-          </SectionCard>
-        </>
-      )}
 
       {/* ── 1. Slots disponibles ─────────────────────────────────── */}
       <SectionCard title="Slots disponibles">
