@@ -15,7 +15,10 @@ from typing import Iterable
 from uuid import UUID
 
 import psycopg2
+from pathlib import Path
 from dotenv import load_dotenv
+
+_ROOT_ENV = Path(__file__).resolve().parents[2] / ".env"
 
 LOGGER = logging.getLogger("bronze_to_silver_ingestion")
 LOG_DIRECTORY = "/root/RECOVA/backend/logs"
@@ -596,7 +599,7 @@ def process_single_solicitud(
 
 
 def run_pipeline() -> dict[str, object]:
-    load_dotenv()
+    load_dotenv(dotenv_path=_ROOT_ENV)
     configure_logging()
     today = date.today()
     detalles_descarte: list[dict[str, str]] = []

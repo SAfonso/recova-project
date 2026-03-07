@@ -16,14 +16,10 @@ source venv/bin/activate
 pip install -r requirements.txt   # o: pip install python-dotenv flask flask-cors supabase google-api-python-client google-auth google-auth-oauthlib
 ```
 
-Crear `backend/.env`:
-```
-SUPABASE_URL=https://xxx.supabase.co
-SUPABASE_SERVICE_KEY=eyJ...
-WEBHOOK_API_KEY=<api key>
-GOOGLE_OAUTH_CLIENT_ID=
-GOOGLE_OAUTH_CLIENT_SECRET=
-GOOGLE_OAUTH_REFRESH_TOKEN=
+Copiar y rellenar el `.env` raíz (fuente única de verdad para todo el proyecto):
+```bash
+cp .env.example .env
+# editar .env con tus credenciales
 ```
 
 Autorización OAuth2 de Google (una sola vez):
