@@ -48,21 +48,6 @@ const ChevronRightIcon = () => (
   </svg>
 );
 
-const LinkIcon = () => (
-  <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-    <polyline points="15 3 21 3 21 9" />
-    <line x1="10" y1="14" x2="21" y2="3" />
-  </svg>
-);
-
-const UploadIcon = () => (
-  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <polyline points="16 16 12 12 8 16" />
-    <line x1="12" y1="12" x2="12" y2="21" />
-    <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" />
-  </svg>
-);
 
 function InfoRow({ label, value, dot }) {
   return (
@@ -123,8 +108,6 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
   const [deleting,        setDeleting]        = useState(false);
   const [deleteConfirm,   setDeleteConfirm]   = useState('');
   const [deleteError,     setDeleteError]     = useState('');
-  const [creatingForm,    setCreatingForm]    = useState(false);
-  const [formError,       setFormError]       = useState('');
 
   const fetchOpenMic = useCallback(() => {
     setLoading(true);
@@ -147,30 +130,6 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
   const handleSaved = () => {
     fetchOpenMic();
     setView('info');
-  };
-
-  const handleCreateForm = async () => {
-    const backendUrl = import.meta.env.VITE_BACKEND_URL;
-    const apiKey = import.meta.env.VITE_WEBHOOK_API_KEY;
-    setCreatingForm(true);
-    setFormError('');
-    try {
-      const res = await fetch(`${backendUrl}/api/open-mic/create-form`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-API-KEY': apiKey },
-        body: JSON.stringify({ open_mic_id: openMicId, nombre: openMic.nombre }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setFormError(data.message ?? 'Error creando el form');
-        return;
-      }
-      fetchOpenMic();
-    } catch {
-      setFormError('No se pudo conectar con el backend.');
-    } finally {
-      setCreatingForm(false);
-    }
   };
 
   const handleDelete = async () => {
@@ -241,61 +200,6 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
                 <ChevronRightIcon />
               </button>
             </div>
-
-            {/* Google Form */}
-            <div className="animate-slide-up stagger-1 paper-drop paper-tape"><div className="paper-rough paper-note border-[3px] border-[#1a1a1a] bg-[#fffef5] px-6 py-4">
-              <h3 className="mb-3 font-['Bangers'] text-lg tracking-wide text-[#1a1a1a]">Google Form</h3>
-
-              {/* Links al form auto-creado */}
-              {openMic.config?.form && (
-                <div className="mb-4 flex flex-col gap-2">
-                  <a
-                    href={openMic.config.form.form_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex cursor-pointer items-center gap-1.5 text-sm font-bold text-[#DC2626] underline underline-offset-2 hover:text-[#7f1d1d]"
-                  >
-                    <LinkIcon />
-                    Abrir formulario
-                  </a>
-                  <a
-                    href={openMic.config.form.sheet_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex cursor-pointer items-center gap-1.5 text-sm font-bold text-[#DC2626] underline underline-offset-2 hover:text-[#7f1d1d]"
-                  >
-                    <LinkIcon />
-                    Ver respuestas (Sheet)
-                  </a>
-                </div>
-              )}
-
-              {/* Botón crear form si no existe */}
-              {!openMic.config?.form && (
-                <div className="mb-4">
-                  {formError && <p className="mb-2 text-xs text-[#DC2626]">{formError}</p>}
-                  <button
-                    type="button"
-                    onClick={handleCreateForm}
-                    disabled={creatingForm}
-                    className="comic-shadow flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border-[3px] border-[#1a1a1a] bg-[#1a1a1a] py-2.5 text-sm font-bold text-[#fff8e7] transition-all duration-200 hover:bg-[#DC2626] disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <UploadIcon />
-                    {creatingForm ? 'Creando form...' : 'Crear Google Form'}
-                  </button>
-                </div>
-              )}
-
-              {openMic.config?.field_mapping && (
-                <p className="flex items-center gap-1.5 text-xs text-[#22C55E]">
-                  <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
-                  Form analizado — {Object.values(openMic.config.field_mapping).filter(Boolean).length} de {Object.keys(openMic.config.field_mapping).length} campos mapeados
-                </p>
-              )}
-              {!openMic.config?.field_mapping && (
-                <p className="text-xs text-[#6B5C4A]">Analiza el form desde Scoring → Scoring personalizado.</p>
-              )}
-            </div></div>
 
             {/* Zona de peligro */}
             <div className="animate-slide-up stagger-2 paper-drop paper-tape"><div className="paper-rough paper-note border-[3px] border-[#DC2626]/60 bg-[#fffef5] px-6 py-4">
@@ -372,7 +276,7 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
                   <h2 className="mb-4 font-['Bangers'] text-xl tracking-wide text-[#1a1a1a]">
                     Configuración de scoring
                   </h2>
-                  <ScoringConfigurator openMicId={openMicId} onSaved={handleSaved} />
+                  <ScoringConfigurator openMicId={openMicId} openMicName={openMic?.nombre} onSaved={handleSaved} />
                 </>
               )}
             </div>
