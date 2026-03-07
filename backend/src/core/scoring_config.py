@@ -43,6 +43,38 @@ _DEFAULTS: dict[str, Any] = {
 
 
 @dataclass(frozen=True)
+class CustomRule:
+    """Regla de scoring basada en un campo no canónico de solicitudes.metadata."""
+
+    field: str        # título del campo en solicitudes.metadata
+    condition: str    # "equals" (único en v0.15.0)
+    value: str        # valor que activa la regla
+    points: int       # bono (+) o penalización (-)
+    enabled: bool = True
+    description: str = ""
+
+    @classmethod
+    def from_dict(cls, raw: dict[str, Any]) -> "CustomRule":
+        return cls(
+            field=raw["field"],
+            condition=raw.get("condition", "equals"),
+            value=raw["value"],
+            points=int(raw["points"]),
+            enabled=bool(raw.get("enabled", True)),
+            description=raw.get("description", ""),
+        )
+
+    def matches(self, metadata: dict) -> bool:
+        """True si la respuesta en metadata cumple la condición (case-insensitive)."""
+        if not self.enabled:
+            return False
+        answer = metadata.get(self.field, "")
+        if self.condition == "equals":
+            return str(answer).strip().lower() == self.value.strip().lower()
+        return False
+
+
+@dataclass(frozen=True)
 class CategoryRule:
     """Regla de puntuación para una categoría de cómico."""
 
@@ -88,6 +120,10 @@ class ScoringConfig:
     gender_parity_enabled: bool = False
     gender_parity_target_pct: int = 40  # % objetivo femenino/nb
 
+    # Scoring custom (Sprint 10)
+    scoring_type: str = "basic"  # 'none' | 'basic' | 'custom'
+    custom_scoring_rules: list[CustomRule] = field(default_factory=list)
+
     # ------------------------------------------------------------------
     # Constructor principal
     # ------------------------------------------------------------------
@@ -122,6 +158,9 @@ class ScoringConfig:
         boost   = raw.get("single_date_boost", _DEFAULTS["single_date_boost"])
         parity  = raw.get("gender_parity", _DEFAULTS["gender_parity"])
 
+        raw_rules = raw.get("custom_scoring_rules", [])
+        custom_rules = [CustomRule.from_dict(r) for r in raw_rules if isinstance(r, dict)]
+
         return cls(
             open_mic_id=open_mic_id,
             available_slots=int(raw.get("available_slots", _DEFAULTS["available_slots"])),
@@ -133,6 +172,8 @@ class ScoringConfig:
             single_date_boost_points=int(boost.get("boost_points", 10)),
             gender_parity_enabled=bool(parity.get("enabled", False)),
             gender_parity_target_pct=int(parity.get("target_female_nb_pct", 40)),
+            scoring_type=raw.get("scoring_type", "basic"),
+            custom_scoring_rules=custom_rules,
         )
 
     @classmethod
@@ -177,3 +218,12 @@ class ScoringConfig:
             score += self.single_date_boost_points
 
         return score
+
+    def apply_custom_rules(self, metadata: dict) -> int:
+        """Suma puntos de reglas custom habilitadas que coinciden con metadata.
+
+        Solo aplica si scoring_type == 'custom'. Si no, devuelve 0.
+        """
+        if self.scoring_type != "custom":
+            return 0
+        return sum(r.points for r in self.custom_scoring_rules if r.matches(metadata))
