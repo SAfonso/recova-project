@@ -33,8 +33,6 @@ SCOPES = [
     "https://www.googleapis.com/auth/forms.body",
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive",
-    # Apps Script management (crear y desplegar proyectos via REST API)
-    "https://www.googleapis.com/auth/script.projects",
 ]
 
 # ---------------------------------------------------------------------------
@@ -196,7 +194,12 @@ class GoogleFormBuilder:
         self._forms  = build("forms",  "v1", credentials=creds, cache_discovery=False)
         self._sheets = build("sheets", "v4", credentials=creds, cache_discovery=False)
         self._drive  = build("drive",  "v3", credentials=creds, cache_discovery=False)
-        self._script = build("script", "v1", credentials=creds, cache_discovery=False)
+        # Apps Script requiere scope 'script.projects' en el refresh token.
+        # Si no está autorizado, se inicializa a None y deploy_submit_webhook es no-op.
+        try:
+            self._script = build("script", "v1", credentials=creds, cache_discovery=False)
+        except Exception:
+            self._script = None
 
     # ------------------------------------------------------------------
 
@@ -215,7 +218,10 @@ class GoogleFormBuilder:
         self._add_questions(form_id)
         sheet_id = self._get_linked_sheet_id(form_id, nombre)
         self._inject_open_mic_id_column(sheet_id, open_mic_id)
-        self.deploy_submit_webhook(form_id=form_id, open_mic_id=open_mic_id)
+        try:
+            self.deploy_submit_webhook(form_id=form_id, open_mic_id=open_mic_id)
+        except Exception as e:
+            print(f"[GoogleFormBuilder] Apps Script webhook no desplegado: {e}")
 
         form_url = f"https://docs.google.com/forms/d/{form_id}/viewform"
         sheet_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}"
@@ -330,6 +336,13 @@ class GoogleFormBuilder:
 
         Returns: script_id del proyecto creado.
         """
+        if self._script is None:
+            raise RuntimeError(
+                "Apps Script no disponible. Regenera el refresh token con scope "
+                "'https://www.googleapis.com/auth/script.projects' usando "
+                "backend/scripts/google_oauth_setup.py"
+            )
+
         # 1. Crear proyecto bound al form
         project = self._script.projects().create(body={
             "title": f"Webhook — {form_id}",
