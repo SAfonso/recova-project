@@ -1,7 +1,7 @@
 # AI LineUp Architect
 
 **Estado:** En desarrollo activo
-**Versión:** `0.12.0`
+**Versión:** `0.13.0`
 **Metodología:** Spec-Driven Development (SDD) + TDD
 
 SaaS multi-tenant para gestión de open mics de comedia. Automatiza la recogida de solicitudes de cómicos (Google Forms), el scoring y la selección del lineup, y la generación del cartel en PNG.
@@ -19,7 +19,7 @@ flowchart TD
     classDef n8n fill:#EA4B71,color:#fff,stroke:#c73059
     classDef storage fill:#9B59B6,color:#fff,stroke:#7d3f9e
 
-    Host(["👤 Host\n(magic link)"])
+    Host(["👤 Host\n(Google OAuth)"])
     Comico(["🎤 Cómico\n(formulario)"])
 
     subgraph FE ["🖥️ Frontend React/Vite"]
@@ -103,7 +103,7 @@ flowchart TD
 | Backend | Python / Flask |
 | Base de datos | Supabase (PostgreSQL — Bronze/Silver/Gold) |
 | Almacenamiento | Supabase Storage |
-| Auth | Supabase (magic link) |
+| Auth | Supabase (Google OAuth — registro abierto) |
 | Orquestación | n8n |
 | Formularios | Google Forms + Sheets API (OAuth2) |
 | Render de carteles | Playwright + Jinja2 |

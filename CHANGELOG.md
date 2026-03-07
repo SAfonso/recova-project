@@ -1,3 +1,21 @@
+## [0.13.0] - 2026-03-07
+
+### Added — Sprint 8: Registro Abierto con Google OAuth
+
+- **`LoginScreen.jsx`** — reemplaza magic link por botón "Continuar con Google" (OAuth2)
+- **`OnboardingScreen.jsx`** (nuevo) — captura el nombre del venue en el primer login; llama RPC `silver.onboard_new_host`
+- **`main.jsx`** — nuevo estado `onboarding` entre `no-session` y `ready`; `checkMembership` detecta si el usuario ya tiene proveedor
+- **RPC `silver.onboard_new_host(p_nombre_comercial)`** — crea `silver.proveedores` + `silver.organization_members` (rol `host`); `SECURITY DEFINER`, idempotente, slug generado y sin colisiones
+- **Migración** — `specs/sql/migrations/20260307_onboard_new_host.sql`
+- **11 tests TDD** en `backend/tests/core/test_onboard_new_host.py` — 11/11 verdes
+
+### Changed
+
+- Cualquier usuario con cuenta Google puede registrarse (antes solo hosts pre-registrados via whitelist)
+- `Auth` en tabla Stack actualizada: magic link → Google OAuth
+
+---
+
 ## [0.12.0] - 2026-03-07
 
 ### Added — Sprint 7: Poster Renderer (Gemini Flash Vision)
