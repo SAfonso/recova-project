@@ -792,9 +792,9 @@ def analyze_form() -> tuple:
     except ValueError as exc:
         return jsonify({"status": "error", "message": "Gemini devolvió JSON inválido", "raw": str(exc)}), 422
 
-    # Guardar en config del open mic via RPC
+    # Guardar en config del open mic via RPC (schema silver)
     sb = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
-    sb.rpc("update_open_mic_config_keys", {
+    sb.schema("silver").rpc("update_open_mic_config_keys", {
         "p_open_mic_id": open_mic_id,
         "p_keys": {"field_mapping": field_mapping, "external_form_id": form_id},
     }).execute()
