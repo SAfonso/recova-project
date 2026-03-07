@@ -47,12 +47,12 @@ export function OnboardingScreen({ session, onComplete }) {
             <form onSubmit={handleCreate} className="flex flex-col gap-4">
 
               <p className="text-sm text-[#6B5C4A] leading-snug">
-                Para empezar, dinos el nombre de tu sala o evento.
+                Para empezar, dinos el nombre de tu organización.
               </p>
 
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="nombre" className="text-xs font-bold uppercase tracking-wide text-[#6B5C4A]">
-                  Nombre de tu local / evento
+                  Nombre de tu organización
                 </label>
                 <input
                   id="nombre"

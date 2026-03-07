@@ -146,6 +146,7 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
 
   const handleSaved = () => {
     fetchOpenMic();
+    setView('info');
   };
 
   const handleCreateForm = async () => {
