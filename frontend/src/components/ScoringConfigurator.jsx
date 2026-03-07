@@ -208,8 +208,8 @@ export function ScoringConfigurator({ openMicId, onSaved }) {
     setProposing(true);
     setError(null);
     try {
-      const apiKey = import.meta.env.VITE_API_KEY ?? '';
-      const apiUrl = import.meta.env.VITE_API_URL ?? '';
+      const apiKey = import.meta.env.VITE_WEBHOOK_API_KEY ?? '';
+      const apiUrl = import.meta.env.VITE_BACKEND_URL ?? '';
       const resp = await fetch(`${apiUrl}/api/open-mic/propose-custom-rules`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-API-KEY': apiKey },
