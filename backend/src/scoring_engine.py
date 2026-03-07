@@ -21,7 +21,7 @@ import json
 import logging
 import os
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from logging.handlers import TimedRotatingFileHandler
 from typing import Any
@@ -63,6 +63,7 @@ class SilverRequest:
     fechas_disponibles: str
     marca_temporal: datetime | None
     solicitud_id: str = ""
+    metadata: dict = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -168,7 +169,8 @@ def fetch_silver_requests(conn, open_mic_id: str) -> list[SilverRequest]:
                 COALESCE(c.genero, 'unknown') AS genero,
                 c.categoria::text   AS categoria_silver,
                 to_char(s.fecha_evento, 'YYYY-MM-DD') AS fechas_disponibles,
-                s.created_at        AS marca_temporal
+                s.created_at        AS marca_temporal,
+                COALESCE(s.metadata, '{}') AS metadata
             FROM silver.solicitudes s
             JOIN silver.comicos c ON c.id = s.comico_id
             LEFT JOIN bronze.solicitudes b ON b.id = s.bronze_id
@@ -192,6 +194,7 @@ def fetch_silver_requests(conn, open_mic_id: str) -> list[SilverRequest]:
             categoria_silver=row[6],
             fechas_disponibles=row[7],
             marca_temporal=row[8],
+            metadata=row[9] if isinstance(row[9], dict) else {},
         )
         for row in rows
     ]
@@ -418,6 +421,8 @@ def build_ranking(
                 # compute_score devuelve None si la categoría es restringida
                 skipped_restricted += 1
                 continue
+
+            score += config.apply_custom_rules(request.metadata)
 
             scored.append(
                 CandidateScore(

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { ScoringTypeSelector } from './ScoringTypeSelector';
+import { CustomScoringConfigurator } from './CustomScoringConfigurator';
 
 // ---------------------------------------------------------------------------
 // Valores por defecto — deben mantenerse sincronizados con
@@ -155,6 +156,7 @@ export function ScoringConfigurator({ openMicId, onSaved }) {
   const [error, setError]     = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
   const [uploading, setUploading] = useState(false);
+  const [proposing, setProposing] = useState(false);
 
   // Carga inicial desde silver.open_mics
   useEffect(() => {
@@ -199,6 +201,30 @@ export function ScoringConfigurator({ openMicId, onSaved }) {
       .getPublicUrl(path);
     update(['poster', 'base_image_url'], publicUrl);
     setUploading(false);
+  };
+
+  const handlePropose = async () => {
+    setProposing(true);
+    setError(null);
+    try {
+      const apiKey = import.meta.env.VITE_API_KEY ?? '';
+      const apiUrl = import.meta.env.VITE_API_URL ?? '';
+      const resp = await fetch(`${apiUrl}/api/open-mic/propose-custom-rules`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-API-KEY': apiKey },
+        body: JSON.stringify({ open_mic_id: openMicId }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        setError(data.message ?? 'Error al proponer reglas');
+        return;
+      }
+      update(['custom_scoring_rules'], data.rules);
+    } catch (e) {
+      setError('Error de red al proponer reglas');
+    } finally {
+      setProposing(false);
+    }
   };
 
   const handleSave = async () => {
@@ -263,6 +289,19 @@ export function ScoringConfigurator({ openMicId, onSaved }) {
           onChanged={onSaved}
         />
       </SectionCard>
+
+      {/* ── 0b. Reglas custom (solo si scoring_type = 'custom') ─── */}
+      {config.scoring_type === 'custom' && (
+        <SectionCard title="Reglas de scoring personalizadas">
+          <CustomScoringConfigurator
+            openMicId={openMicId}
+            rules={config.custom_scoring_rules ?? []}
+            onRulesChanged={(r) => update(['custom_scoring_rules'], r)}
+            onPropose={handlePropose}
+            proposing={proposing}
+          />
+        </SectionCard>
+      )}
 
       {/* ── 1. Slots disponibles ─────────────────────────────────── */}
       <SectionCard title="Slots disponibles">
