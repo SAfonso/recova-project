@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { InfoConfigurator } from './open-mic/InfoConfigurator';
 import { ScoringConfigurator } from './ScoringConfigurator';
 import { supabase } from '../supabaseClient';
+import { extractFormId } from '../utils/formUtils';
 
 const DEFAULTS = {
   available_slots: 8,
@@ -175,11 +176,6 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
     } finally {
       setCreatingForm(false);
     }
-  };
-
-  const extractFormId = (urlOrId) => {
-    const match = urlOrId.match(/\/forms\/d\/([a-zA-Z0-9_-]+)/);
-    return match ? match[1] : urlOrId.trim();
   };
 
   const handleAnalyzeForm = async () => {
