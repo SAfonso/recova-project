@@ -3,9 +3,13 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ScoringTypeSelector } from '../components/ScoringTypeSelector';
 
 // Mock del cliente Supabase
+const { mockRpc } = vi.hoisted(() => ({
+  mockRpc: vi.fn().mockResolvedValue({ error: null }),
+}));
+
 vi.mock('../supabaseClient', () => ({
   supabase: {
-    rpc: vi.fn().mockReturnValue({ execute: vi.fn().mockResolvedValue({ error: null }) }),
+    schema: vi.fn().mockReturnValue({ rpc: mockRpc }),
   },
 }));
 
@@ -55,14 +59,15 @@ describe('ScoringTypeSelector', () => {
     expect(customBtn).not.toBeDisabled();
   });
 
-  it('al cambiar selección llama a supabase.rpc con scoring_type correcto', async () => {
+  it('al cambiar selección llama a supabase.schema("silver").rpc con scoring_type correcto', async () => {
     render(<ScoringTypeSelector {...defaultProps} currentType="basic" />);
 
     const noneBtn = screen.getByText('Sin scoring').closest('button');
     fireEvent.click(noneBtn);
 
     await waitFor(() => {
-      expect(supabase.rpc).toHaveBeenCalledWith('update_open_mic_config_keys', {
+      expect(supabase.schema).toHaveBeenCalledWith('silver');
+      expect(mockRpc).toHaveBeenCalledWith('update_open_mic_config_keys', {
         p_open_mic_id: 'om-test-uuid',
         p_keys: { scoring_type: 'none' },
       });
@@ -87,7 +92,7 @@ describe('ScoringTypeSelector', () => {
     fireEvent.click(basicBtn);
 
     await waitFor(() => {
-      expect(supabase.rpc).not.toHaveBeenCalled();
+      expect(mockRpc).not.toHaveBeenCalled();
     });
   });
 });
