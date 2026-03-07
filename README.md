@@ -175,6 +175,8 @@ cd frontend && npm install && npm run dev
 
 | Fase | Versión | Estado |
 |------|---------|--------|
+| Sprint 8 — Google OAuth Open Registration | 0.13.0 | Completado |
+| Sprint 7 — Poster Renderer (Gemini Flash Vision) | 0.12.0 | Completado |
 | Sprint 6 — Ingesta Multi-Tenant + Scripts de Utilidad | 0.11.0 | Completado |
 | Sprint 5 — Validación de Lineup via Telegram | 0.10.0 | Completado |
 | Sprint 4b — Telegram Register Endpoint | 0.9.1 | Completado |
@@ -182,18 +184,71 @@ cd frontend && npm install && npm run dev
 | Sprint 3 — Telegram Lineup Agent (LLM + MCP) | 0.8.0 | Completado |
 | Sprint 2 — Google Forms + Backend integration | 0.7.0 | Completado |
 | Sprint 1 — Pivot SaaS Multi-Tenant | 0.6.0 | Completado |
-| SVG Renderer | 0.5.57–0.5.61 | Completado |
-| MCP Renderer + Frontend UI | 0.5.33–0.5.56 | Completado |
-| Playwright Renderer v1 | 0.5.25–0.5.32 | Completado |
-| Canva Integration *(deprecada)* | 0.5.16–0.5.24 | Completado |
-| Pipeline Inicial + Gold Layer | 0.5.0–0.5.15 | Completado |
-| Ingesta + Infraestructura | 0.4.x | Completado |
-| Bronze + Silver + Seed | 0.1.0–0.3.0 | Completado |
 
-**Próximo:**
-- Renderer de póster (SVG → PNG → Supabase Storage)
+**Roadmap:**
+- **Sprint 9** — Smart Form Ingestion (AI field mapping + Forms API sin sheets vinculados)
+- **Sprint 10** — Scoring Inteligente por IA (scoring básico vs. custom basado en campos del form)
+- Conectar renderer al flujo: n8n → `POST /api/render-poster` → Supabase Storage → Telegram
 - Activar `Scoring & Draft` e `Ingesta-Solicitudes` en n8n producción
 - Penalización recencia en `scoring_engine.py`
+
+---
+
+## Visión — Scoring Inteligente (Sprint 9 + 10)
+
+El sistema de scoring evolucionará para adaptarse a cualquier formulario, sin forzar al host a usar campos específicos.
+
+### Selección de scoring al crear el open mic
+
+```
+¿Cómo quieres gestionar las solicitudes?
+
+  [ Sin scoring    ]  orden de llegada
+  [ Scoring básico ]  VIP, género, recencia, fecha única...
+  [ Scoring custom ]  basado en tu formulario (con IA)
+```
+
+### Scoring básico — Smart Field Mapping
+Gemini lee los campos del form del host y los mapea a nuestro schema canónico.
+El host no necesita usar nombres de campo específicos.
+
+```
+"Como te llamas?"   → nombre_artistico
+"IG handle?"        → instagram
+"¿Estarías de back?"→ backup
+"¿Eres de Madrid?"  → metadata_extra  (no matchea — se guarda aparte)
+```
+
+### Scoring custom — Reglas emergentes del formulario
+Gemini lee TODOS los campos del form y propone reglas de scoring basadas en ellos.
+El host activa/desactiva cada regla y ajusta el peso.
+
+```
+"¿eres de aquí?"
+  → [Boost local] +15 pts si respuesta = Sí   [toggle] [slider]
+
+"¿haces humor negro?"
+  → [Tipo humor]  +20 pts si respuesta = Sí   [toggle] [slider]
+
+"¿primera vez?"
+  → [Novatos]     +10 pts si respuesta = Sí   [toggle] [slider]
+```
+
+### Schema en `silver.open_mics.config`
+
+```json
+{
+  "scoring_type": "basic | custom | none",
+  "field_mapping": {
+    "Como te llamas?": "nombre_artistico",
+    "IG handle?": "instagram"
+  },
+  "custom_scoring_rules": [
+    { "field": "eres de aqui?", "rule_id": "local_boost",
+      "weight": 15, "condition": "eq", "value": "Sí", "enabled": true }
+  ]
+}
+```
 
 ---
 

@@ -1,5 +1,73 @@
 # Historial de Sprints y Fases
 
+---
+
+## Sprint 10 — Scoring Inteligente Custom (v0.15.0) — PENDIENTE
+
+### Objetivo
+Permitir que cada host defina reglas de scoring emergentes de su propio formulario. Gemini propone las reglas, el host las configura con pesos, el engine las aplica.
+
+### Scope
+
+#### Backend
+- `scoring_engine.py`: soporte para `custom_scoring_rules` en config JSONB
+  - Por cada regla activa: busca el campo en `solicitudes.metadata`, evalúa la condición, suma el peso
+- `POST /api/open-mic/analyze-form` (ampliado): añade `proposed_rules` a la respuesta
+  - Para cada campo no canónico: Gemini propone `rule_id`, `description`, `suggested_weight`, `condition`, `value`
+
+#### Frontend
+- `CustomScoringConfigurator` (nuevo) — lista de reglas propuestas con:
+  - Toggle activar/desactivar
+  - Slider de peso (-50 a +50 pts)
+  - Descripción generada por IA
+- `ScoringTypeSelector` integrado en `OpenMicDetail` config tab
+
+#### DB
+- `silver.open_mics.config.custom_scoring_rules` — array de reglas configuradas
+
+### Prerequisito
+Sprint 9 completado (`field_mapping` + `scoring_type` en config)
+
+---
+
+## Sprint 9 — Smart Form Ingestion (v0.14.0) — PENDIENTE
+
+### Objetivo
+Eliminar la dependencia de un formulario con campos fijos. Cualquier Google Form del host funciona: Gemini mapea sus campos al schema canónico. La ingesta lee respuestas via Forms API (sin sheets vinculados ni Apps Script).
+
+### Scope
+
+#### Backend
+- `POST /api/open-mic/analyze-form` (nuevo)
+  - Recibe `form_id`, lee estructura del form via Forms API
+  - Llama a Gemini con la lista de campos
+  - Devuelve `field_mapping` (campos → schema canónico) + `proposed_rules` (para Sprint 10)
+  - Guarda en `silver.open_mics.config.field_mapping` y `scoring_type`
+- `SheetIngestor` refactorizado → `FormIngestor`
+  - Lee respuestas via `forms.responses.list()` (Forms API)
+  - Aplica `field_mapping` para traducir campos al schema canónico
+  - Campos sin mapear → `solicitudes.metadata` JSONB como `metadata_extra`
+  - No requiere sheet vinculado ni Apps Script webhook
+
+#### Schema canónico
+`nombre_artistico`, `instagram`, `whatsapp`, `experiencia`, `fechas_disponibles`, `backup`, `show_proximo`, `como_nos_conociste`
+
+#### Frontend
+- `ScoringTypeSelector` — al crear open mic: `none | basic | custom`
+- `OpenMicDetail` info tab: añadir campo "Google Form ID/URL" para forms externos
+
+#### DB
+- `silver.open_mics.config.scoring_type`: `'none' | 'basic' | 'custom'`
+- `silver.open_mics.config.field_mapping`: JSON campo_form → campo_canónico
+- `silver.solicitudes.metadata`: JSONB con campos extra no canónicos
+
+### Notas de diseño
+- El field_mapping se genera una vez y se cachea en config
+- Si el host cambia el form, hay un botón "Re-analizar formulario"
+- La ingesta diaria (n8n) llamará `FormIngestor` en vez de `SheetIngestor`
+
+---
+
 ## Sprint 8 — Google OAuth Open Registration (v0.13.0) — 2026-03-07 ✅
 
 ### Objetivo
