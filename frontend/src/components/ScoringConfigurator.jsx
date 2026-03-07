@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
+import { ScoringTypeSelector } from './ScoringTypeSelector';
 
 // ---------------------------------------------------------------------------
 // Valores por defecto — deben mantenerse sincronizados con
@@ -252,6 +253,16 @@ export function ScoringConfigurator({ openMicId, onSaved }) {
           {error}
         </p>
       )}
+
+      {/* ── 0. Tipo de scoring ───────────────────────────────────── */}
+      <SectionCard title="Tipo de scoring">
+        <ScoringTypeSelector
+          openMicId={openMicId}
+          currentType={config.scoring_type ?? 'basic'}
+          hasFieldMapping={!!config.field_mapping}
+          onChanged={onSaved}
+        />
+      </SectionCard>
 
       {/* ── 1. Slots disponibles ─────────────────────────────────── */}
       <SectionCard title="Slots disponibles">
