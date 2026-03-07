@@ -125,6 +125,10 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
   const [deleteError,     setDeleteError]     = useState('');
   const [creatingForm,    setCreatingForm]    = useState(false);
   const [formError,       setFormError]       = useState('');
+  const [formUrlInput,    setFormUrlInput]    = useState('');
+  const [analyzing,       setAnalyzing]       = useState(false);
+  const [analyzeResult,   setAnalyzeResult]   = useState(null);
+  const [analyzeError,    setAnalyzeError]    = useState('');
 
   const fetchOpenMic = useCallback(() => {
     setLoading(true);
@@ -170,6 +174,39 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
       setFormError('No se pudo conectar con el backend.');
     } finally {
       setCreatingForm(false);
+    }
+  };
+
+  const extractFormId = (urlOrId) => {
+    const match = urlOrId.match(/\/forms\/d\/([a-zA-Z0-9_-]+)/);
+    return match ? match[1] : urlOrId.trim();
+  };
+
+  const handleAnalyzeForm = async () => {
+    const formId = extractFormId(formUrlInput);
+    if (!formId) return;
+    const backendUrl = import.meta.env.VITE_BACKEND_URL;
+    const apiKey = import.meta.env.VITE_WEBHOOK_API_KEY;
+    setAnalyzing(true);
+    setAnalyzeError('');
+    setAnalyzeResult(null);
+    try {
+      const res = await fetch(`${backendUrl}/api/open-mic/analyze-form`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-API-KEY': apiKey },
+        body: JSON.stringify({ open_mic_id: openMicId, form_id: formId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAnalyzeError(data.message ?? 'Error al analizar el formulario');
+        return;
+      }
+      setAnalyzeResult(data);
+      fetchOpenMic();
+    } catch {
+      setAnalyzeError('No se pudo conectar con el backend.');
+    } finally {
+      setAnalyzing(false);
     }
   };
 
@@ -245,8 +282,10 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
             {/* Google Form */}
             <div className="animate-slide-up stagger-1 paper-drop paper-tape"><div className="paper-rough paper-note border-[3px] border-[#1a1a1a] bg-[#fffef5] px-6 py-4">
               <h3 className="mb-3 font-['Bangers'] text-lg tracking-wide text-[#1a1a1a]">Google Form</h3>
-              {openMic.config?.form ? (
-                <div className="flex flex-col gap-2">
+
+              {/* Links al form auto-creado */}
+              {openMic.config?.form && (
+                <div className="mb-4 flex flex-col gap-2">
                   <a
                     href={openMic.config.form.form_url}
                     target="_blank"
@@ -266,11 +305,12 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
                     Ver respuestas (Sheet)
                   </a>
                 </div>
-              ) : (
-                <>
-                  {formError && (
-                    <p className="mb-2 text-xs text-[#DC2626]">{formError}</p>
-                  )}
+              )}
+
+              {/* Botón crear form si no existe */}
+              {!openMic.config?.form && (
+                <div className="mb-4">
+                  {formError && <p className="mb-2 text-xs text-[#DC2626]">{formError}</p>}
                   <button
                     type="button"
                     onClick={handleCreateForm}
@@ -280,7 +320,55 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
                     <UploadIcon />
                     {creatingForm ? 'Creando form...' : 'Crear Google Form'}
                   </button>
-                </>
+                </div>
+              )}
+
+              {/* Separador */}
+              <div className="mb-3 border-t border-[#C8B89A]" />
+
+              {/* Análisis de campos */}
+              <p className="mb-2 text-xs font-bold uppercase tracking-wide text-[#6B5C4A]">
+                {openMic.config?.field_mapping ? 'Re-analizar formulario' : 'Analizar campos del form'}
+              </p>
+              {openMic.config?.field_mapping && (
+                <p className="mb-2 flex items-center gap-1.5 text-xs text-[#22C55E]">
+                  <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
+                  Campos mapeados — {Object.values(openMic.config.field_mapping).filter(Boolean).length} de {Object.keys(openMic.config.field_mapping).length}
+                </p>
+              )}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={formUrlInput || openMic.config?.external_form_id || ''}
+                  onChange={(e) => setFormUrlInput(e.target.value)}
+                  placeholder="URL o ID del Google Form"
+                  className="flex-1 rounded-md border-2 border-[#1a1a1a] bg-[#F5F0E1] px-3 py-2 text-xs text-[#1a1a1a] outline-none focus:ring-2 focus:ring-[#DC2626]"
+                />
+                <button
+                  type="button"
+                  onClick={handleAnalyzeForm}
+                  disabled={analyzing || !(formUrlInput || openMic.config?.external_form_id || openMic.config?.form?.form_id)}
+                  className="shrink-0 cursor-pointer rounded-lg border-[3px] border-[#1a1a1a] bg-[#1a1a1a] px-3 py-2 text-xs font-bold text-[#fff8e7] transition-all duration-200 hover:bg-[#DC2626] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {analyzing ? 'Analizando...' : 'Analizar'}
+                </button>
+              </div>
+
+              {analyzeError && (
+                <p className="mt-2 text-xs text-[#DC2626]">{analyzeError}</p>
+              )}
+
+              {analyzeResult && (
+                <div className="mt-3 rounded-md border-2 border-[#22C55E]/40 bg-[#f0fdf4] p-3">
+                  <p className="mb-1 text-xs font-bold text-[#15803d]">
+                    {analyzeResult.canonical_coverage} de {analyzeResult.total_questions} campos mapeados
+                  </p>
+                  {analyzeResult.unmapped_fields.length > 0 && (
+                    <p className="text-xs text-[#6B5C4A]">
+                      Sin mapeo: {analyzeResult.unmapped_fields.join(', ')}
+                    </p>
+                  )}
+                </div>
               )}
             </div></div>
 
