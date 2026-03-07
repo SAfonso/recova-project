@@ -66,7 +66,8 @@ def _make_sb():
     sb = MagicMock()
     rpc_chain = MagicMock()
     rpc_chain.execute.return_value = MagicMock(data=None, error=None)
-    sb.rpc.return_value = rpc_chain
+    # El endpoint usa sb.schema("silver").rpc(...)
+    sb.schema.return_value.rpc.return_value = rpc_chain
     return sb
 
 
@@ -117,8 +118,10 @@ def test_analyze_form_saves_to_config():
                 headers=AUTH,
             )
 
-    sb.rpc.assert_called_once()
-    rpc_name, rpc_params = sb.rpc.call_args[0][0], sb.rpc.call_args[0][1]
+    sb.schema.assert_called_with("silver")
+    silver = sb.schema.return_value
+    silver.rpc.assert_called_once()
+    rpc_name, rpc_params = silver.rpc.call_args[0][0], silver.rpc.call_args[0][1]
     assert rpc_name == "update_open_mic_config_keys"
     assert rpc_params["p_open_mic_id"] == OPEN_MIC_ID
     assert rpc_params["p_keys"]["field_mapping"] == FIELD_MAPPING
