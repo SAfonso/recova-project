@@ -1,3 +1,22 @@
+## [0.12.0] - 2026-03-07
+
+### Added — Sprint 7: Poster Renderer (Gemini Flash Vision)
+
+- **Spec SDD** — `specs/poster_detector_spec.md`
+- **`poster_detector_base.py`** — tipos compartidos: `PlaceholderAnchor`, `AbstractDetector`, función pura `render_on_anchors`
+- **`poster_detector_gemini.py`** — `GeminiDetector`: envía el PNG sucio a Gemini 2.5 Flash Vision, recibe JSON con coordenadas/tamaño/color de cada placeholder `COMICO_N`, renderiza sobre PNG limpio con Pillow
+- **`backend/scripts/compare_poster_renderers.py`** — script CLI de prueba: `--dirty`, `--clean`, `--names`, `--date`, `--output`
+- **Assets** — `backend/assets/templates/base_poster_clean.png` + `base_poster_dirty.png`
+- **8 tests** en `backend/tests/core/test_poster_detector_gemini.py` — 8/8 verdes
+- **`google-genai>=1.0.0`** añadido a `requirements.txt`
+- **`GEMINI_API_KEY`** añadida a `.env` y `.env.example`
+
+### Decision log
+- EasyOCR evaluado y descartado: detectó 2/5 placeholders sobre fondo rojo complejo
+- Gemini 2.5 Flash detectó los 5/5 con posiciones correctas en el primer intento
+
+---
+
 ## [0.11.1] - 2026-03-07
 
 ### Changed — Consolidación de variables de entorno

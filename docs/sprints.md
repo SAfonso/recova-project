@@ -1,5 +1,37 @@
 # Historial de Sprints y Fases
 
+## Sprint 7 — Poster Renderer (v0.12.0) — 2026-03-07 ✅
+
+### Objetivo
+Generar el cartel PNG del evento automáticamente: detectar las posiciones de los placeholders `COMICO_N` en un PNG de referencia ("sucio") usando Gemini Flash Vision, y renderizar los nombres reales del lineup sobre un PNG de fondo limpio con Pillow.
+
+### Completado
+
+#### Detección de posiciones (Gemini Flash Vision)
+- **Spec SDD** — `specs/poster_detector_spec.md`
+- **`poster_detector_base.py`** — `PlaceholderAnchor` (dataclass), `AbstractDetector` (ABC), `render_on_anchors` (función pura Pillow)
+- **`poster_detector_gemini.py`** — `GeminiDetector`: envía PNG sucio a Gemini 2.5 Flash como bytes, prompt estructurado pide JSON con `{placeholder, slot, center_x, center_y, font_size, color}`, strip de markdown fences, parse robusto
+- **Modelo**: `gemini-2.5-flash` via SDK `google-genai>=1.0.0`
+- **Variable de entorno**: `GEMINI_API_KEY`
+
+#### Assets
+- `backend/assets/templates/base_poster_clean.png` — fondo sin texto
+- `backend/assets/templates/base_poster_dirty.png` — referencia con `COMICO_1..5`
+
+#### Script CLI
+- **`backend/scripts/compare_poster_renderers.py`** — prueba el renderer completo: detecta → renderiza → guarda `output_poster.png` + `anchors.json`
+
+#### Tests (TDD)
+- `backend/tests/core/test_poster_detector_gemini.py`: 8/8 verdes
+
+#### Decision log
+- EasyOCR evaluado: detectó 2/5 placeholders sobre fondo rojo complejo → descartado
+- Gemini 2.5 Flash: 5/5 detectados correctamente en el primer intento → elegido
+
+→ Spec: `specs/poster_detector_spec.md`
+
+---
+
 ## Sprint 6 — Ingesta Multi-Tenant + Scripts de Utilidad (v0.11.0) — 2026-03-07 ✅
 
 ### Objetivo
