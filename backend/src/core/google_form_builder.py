@@ -33,12 +33,8 @@ SCOPES = [
     "https://www.googleapis.com/auth/forms.body",
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive",
-    # Apps Script management
+    # Apps Script management (crear y desplegar proyectos via REST API)
     "https://www.googleapis.com/auth/script.projects",
-    # Requeridos por el script para que scripts.run() funcione
-    "https://www.googleapis.com/auth/forms.currentonly",
-    "https://www.googleapis.com/auth/script.external_request",
-    "https://www.googleapis.com/auth/script.scriptapp",
 ]
 
 # ---------------------------------------------------------------------------
