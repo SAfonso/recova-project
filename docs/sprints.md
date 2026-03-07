@@ -1,5 +1,38 @@
 # Historial de Sprints y Fases
 
+## Sprint 8 — Google OAuth Open Registration (v0.13.0) — 2026-03-07 ✅
+
+### Objetivo
+Eliminar el flujo de magic link (engorroso, requería pre-registro manual) y abrir el registro a cualquier usuario con cuenta Google. Primer login crea automáticamente el proveedor y la membresía del host.
+
+### Completado
+
+#### Base de datos
+- **RPC `silver.onboard_new_host(p_nombre_comercial)`** — `SECURITY DEFINER`: crea `silver.proveedores` + `silver.organization_members` (rol `host`); idempotente; slug generado sin colisiones con sufijo numérico
+- **Migración** — `specs/sql/migrations/20260307_onboard_new_host.sql`
+
+#### Frontend
+- **`LoginScreen.jsx`** — reemplaza campo email + magic link por botón único "Continuar con Google" (`supabase.auth.signInWithOAuth`)
+- **`OnboardingScreen.jsx`** (nuevo) — pantalla de bienvenida para nuevos usuarios: input nombre del venue → llama RPC `silver.onboard_new_host` → entra al app
+- **`main.jsx`** — nuevo estado `onboarding` detectado via `checkMembership` post-login; estados: `checking | no-session | onboarding | ready`
+
+#### Tests (TDD)
+- `backend/tests/core/test_onboard_new_host.py`: 11/11 verdes
+  - Creación de proveedor + membership
+  - Idempotencia (doble llamada)
+  - Rechazo de nombre vacío / solo espacios
+  - Colisión de slug resuelta
+  - Lógica de generación de slug
+  - `checkMembership`: con/sin datos, data=null
+
+#### Infraestructura (manual)
+- Google OAuth 2.0 Client ID configurado en Google Cloud Console
+- Provider Google activado en Supabase Authentication → Sign In Methods
+
+→ Spec: `specs/frontend/google_oauth_open_registration_spec.md`
+
+---
+
 ## Sprint 7 — Poster Renderer (v0.12.0) — 2026-03-07 ✅
 
 ### Objetivo
