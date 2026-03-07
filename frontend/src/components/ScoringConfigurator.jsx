@@ -158,12 +158,11 @@ export function ScoringConfigurator({ openMicId, onSaved }) {
   const [uploading, setUploading] = useState(false);
   const [proposing, setProposing] = useState(false);
 
-  // Carga inicial desde silver.open_mics
-  useEffect(() => {
+  // Carga/recarga config desde silver.open_mics
+  const fetchConfig = () => {
     if (!openMicId) return;
     setLoading(true);
     setError(null);
-
     supabase
       .schema('silver')
       .from('open_mics')
@@ -178,7 +177,9 @@ export function ScoringConfigurator({ openMicId, onSaved }) {
         }
         setLoading(false);
       });
-  }, [openMicId]);
+  };
+
+  useEffect(() => { fetchConfig(); }, [openMicId]);
 
   const update = (path, value) =>
     setConfig((prev) => setIn(prev, path, value));
@@ -286,7 +287,7 @@ export function ScoringConfigurator({ openMicId, onSaved }) {
           openMicId={openMicId}
           currentType={config.scoring_type ?? 'basic'}
           hasFieldMapping={!!config.field_mapping}
-          onChanged={onSaved}
+          onChanged={fetchConfig}
         />
       </SectionCard>
 
