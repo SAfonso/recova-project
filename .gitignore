@@ -52,3 +52,9 @@ Thumbs.db
 # --- Scripts locales de diagnóstico (Canva) ---
 backend/src/test.py
 backend/src/getVeri.py
+
+# --- Herramientas locales de desarrollo ---
+.agents/
+.claude/
+.continue/
+skills-lock.json
