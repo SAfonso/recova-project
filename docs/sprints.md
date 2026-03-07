@@ -30,41 +30,44 @@ Sprint 9 completado (`field_mapping` + `scoring_type` en config)
 
 ---
 
-## Sprint 9 — Smart Form Ingestion (v0.14.0) — PENDIENTE
+## Sprint 9 — Smart Form Ingestion (v0.14.0) — 2026-03-07 ✅
 
 ### Objetivo
 Eliminar la dependencia de un formulario con campos fijos. Cualquier Google Form del host funciona: Gemini mapea sus campos al schema canónico. La ingesta lee respuestas via Forms API (sin sheets vinculados ni Apps Script).
 
-### Scope
+### Completado
 
 #### Backend
-- `POST /api/open-mic/analyze-form` (nuevo)
-  - Recibe `form_id`, lee estructura del form via Forms API
-  - Llama a Gemini con la lista de campos
-  - Devuelve `field_mapping` (campos → schema canónico) + `proposed_rules` (para Sprint 10)
-  - Guarda en `silver.open_mics.config.field_mapping` y `scoring_type`
-- `SheetIngestor` refactorizado → `FormIngestor`
-  - Lee respuestas via `forms.responses.list()` (Forms API)
-  - Aplica `field_mapping` para traducir campos al schema canónico
-  - Campos sin mapear → `solicitudes.metadata` JSONB como `metadata_extra`
-  - No requiere sheet vinculado ni Apps Script webhook
-
-#### Schema canónico
-`nombre_artistico`, `instagram`, `whatsapp`, `experiencia`, `fechas_disponibles`, `backup`, `show_proximo`, `como_nos_conociste`
+- **`FormIngestor`** — `backend/src/core/form_ingestor.py`
+  - `get_form_questions(form_id)` → [{question_id, title, kind}]; ignora secciones/imágenes
+  - `get_responses(form_id, field_mapping)` → campos canónicos en raíz + campos extra en `metadata_extra`
+  - Scopes OAuth: `forms.body.readonly` + `forms.responses.readonly` (pendiente regenerar refresh token)
+- **`FormAnalyzer`** — `backend/src/core/form_analyzer.py`
+  - `analyze(questions)` → {titulo → campo_canónico | null}
+  - Gemini 2.5 Flash; strip markdown fences; ValueError en JSON inválido
+- **`POST /api/open-mic/analyze-form`** — orquesta analyze + guarda via RPC
+  - Responde con `field_mapping`, `canonical_coverage`, `total_questions`, `unmapped_fields`
+- **Migración aplicada**: `silver.solicitudes.metadata` JSONB + RPC `silver.update_open_mic_config_keys`
 
 #### Frontend
-- `ScoringTypeSelector` — al crear open mic: `none | basic | custom`
-- `OpenMicDetail` info tab: añadir campo "Google Form ID/URL" para forms externos
+- **`ScoringTypeSelector.jsx`** — radio pills none/basic/custom; `custom` disabled sin `field_mapping`; persiste via RPC
+- **`OpenMicDetail.jsx`** — campo URL/ID form externo + botón "Analizar campos" + badge estado mapeado
+- **`ScoringConfigurator.jsx`** — integra `ScoringTypeSelector` arriba de las secciones de scoring
+- **`frontend/src/utils/formUtils.js`** — `extractFormId(urlOrId)` para extraer form_id de URLs
 
-#### DB
-- `silver.open_mics.config.scoring_type`: `'none' | 'basic' | 'custom'`
-- `silver.open_mics.config.field_mapping`: JSON campo_form → campo_canónico
-- `silver.solicitudes.metadata`: JSONB con campos extra no canónicos
+#### Tests (TDD)
+- `backend/tests/core/test_form_ingestor.py`: 9/9 verdes
+- `backend/tests/core/test_form_analyzer.py`: 5/5 verdes
+- `backend/tests/test_analyze_form_endpoint.py`: 6/6 verdes
+- `frontend/src/test/formUtils.test.js`: 7/7 verdes
+- `frontend/src/test/ScoringTypeSelector.test.jsx`: 7/7 verdes
+- **Setup frontend tests**: Vitest + @testing-library/react + happy-dom (jsdom@28 incompatible con ESM)
 
-### Notas de diseño
-- El field_mapping se genera una vez y se cachea en config
-- Si el host cambia el form, hay un botón "Re-analizar formulario"
-- La ingesta diaria (n8n) llamará `FormIngestor` en vez de `SheetIngestor`
+#### Pendiente post-sprint
+- [ ] Regenerar refresh token OAuth con scopes `forms.body.readonly` + `forms.responses.readonly`
+- [ ] Endpoint `POST /api/ingest-from-forms` para ingesta diaria via n8n
+
+→ Spec: `specs/smart_form_ingestion_spec.md`
 
 ---
 
