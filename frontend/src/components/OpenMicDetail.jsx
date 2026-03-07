@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { InfoConfigurator } from './open-mic/InfoConfigurator';
 import { ScoringConfigurator } from './ScoringConfigurator';
+import { DevToolsPanel } from './DevToolsPanel';
 import { supabase } from '../supabaseClient';
 
 const DEFAULTS = {
@@ -253,7 +254,7 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
             <div className="paper-rough paper-note border-[3px] border-[#1a1a1a] bg-[#fffef5] px-6 py-4">
               {/* Subtabs Info / Scoring */}
               <div className="mb-4 flex gap-1 border-b-2 border-[#C8B89A] pb-0">
-                {[{ id: 'info', label: 'Info' }, { id: 'scoring', label: 'Scoring' }].map((tab) => (
+                {[{ id: 'info', label: 'Info' }, { id: 'scoring', label: 'Scoring' }, { id: 'dev', label: 'Dev' }].map((tab) => (
                   <button
                     key={tab.id}
                     type="button"
@@ -271,12 +272,23 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
 
               {configTab === 'info' ? (
                 <InfoConfigurator openMicId={openMicId} openMic={openMic} onSaved={handleSaved} />
-              ) : (
+              ) : configTab === 'scoring' ? (
                 <>
                   <h2 className="mb-4 font-['Bangers'] text-xl tracking-wide text-[#1a1a1a]">
                     Configuración de scoring
                   </h2>
                   <ScoringConfigurator openMicId={openMicId} openMicName={openMic?.nombre} onSaved={handleSaved} />
+                </>
+              ) : (
+                <>
+                  <h2 className="mb-4 font-['Bangers'] text-xl tracking-wide text-[#1a1a1a]">
+                    Herramientas de prueba
+                  </h2>
+                  <DevToolsPanel
+                    openMicId={openMicId}
+                    openMic={openMic}
+                    onSeedDone={handleSaved}
+                  />
                 </>
               )}
             </div>

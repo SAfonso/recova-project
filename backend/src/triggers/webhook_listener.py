@@ -12,11 +12,14 @@ from dotenv import load_dotenv
 import re
 from pathlib import Path as _Path
 
+import jwt
+
 from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
 from supabase import create_client
 
 from backend.src.core.poster_composer import PosterComposer
+from backend.src.core.dev_users_pool import get_random_users
 from backend.src.core.google_form_builder import GoogleFormBuilder
 from backend.src.core.sheet_ingestor import SheetIngestor
 from backend.src.core.form_ingestor import FormIngestor
@@ -36,12 +39,28 @@ API_KEY_HEADER = "X-API-KEY"
 EXPECTED_API_KEY = os.getenv("WEBHOOK_API_KEY", "")
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
+SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "")
 
 
 def _is_authorized() -> bool:
     """Validate request API key using shared webhook header logic."""
     provided_api_key = request.headers.get(API_KEY_HEADER, "")
     return bool(EXPECTED_API_KEY and provided_api_key == EXPECTED_API_KEY)
+
+
+def _is_authenticated_user() -> dict | None:
+    """Verifica el Supabase JWT del request. Devuelve el payload o None si inválido."""
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        return None
+    token = auth[7:]
+    secret = os.getenv("SUPABASE_JWT_SECRET", "")
+    if not secret:
+        return None
+    try:
+        return jwt.decode(token, secret, algorithms=["HS256"], audience="authenticated")
+    except jwt.PyJWTError:
+        return None
 
 
 @app.route("/ingest", methods=["POST"])
@@ -963,6 +982,85 @@ def propose_custom_rules() -> tuple:
         "unmapped_fields": unmapped_fields,
         "proposed_count": len(rules),
     }), 200
+
+
+@app.route("/api/dev/seed-open-mic", methods=["POST"])
+def dev_seed_open_mic():
+    """Siembra 10 usuarios de prueba en un open mic. Protegido por Supabase JWT."""
+    if not _is_authenticated_user():
+        return jsonify({"error": "unauthorized"}), 401
+
+    data = request.get_json(force=True) or {}
+    open_mic_id = data.get("open_mic_id")
+    if not open_mic_id:
+        return jsonify({"error": "open_mic_id requerido"}), 400
+
+    sb = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+    silver = sb.schema("silver")
+
+    result = silver.from_("open_mics").select("id, proveedor_id, config").eq("id", open_mic_id).execute()
+    if not result.data:
+        return jsonify({"error": "open mic no encontrado"}), 404
+
+    om = result.data[0]
+    config = om.get("config") or {}
+    if config.get("seed_used"):
+        return jsonify({"error": "este open mic ya fue sembrado"}), 409
+
+    proveedor_id = om["proveedor_id"]
+    bronze = sb.schema("bronze")
+    users = get_random_users(10)
+
+    from datetime import date, timedelta
+    today = date.today()
+    next_friday = today + timedelta(days=(4 - today.weekday()) % 7 or 7)
+
+    for user in users:
+        bronze.from_("solicitudes").insert({
+            "proveedor_id":                 proveedor_id,
+            "open_mic_id":                  open_mic_id,
+            "nombre_raw":                   user["nombre"],
+            "instagram_raw":                user["instagram"],
+            "telefono_raw":                 user["telefono"],
+            "experiencia_raw":              user["experiencia_raw"],
+            "fechas_seleccionadas_raw":     str(next_friday),
+            "disponibilidad_ultimo_minuto": user["disponibilidad_ultimo_minuto"],
+            "origen_conocimiento":          user["origen_conocimiento"],
+        }).execute()
+
+    subprocess.Popen([sys.executable, INGEST_SCRIPT_PATH])
+
+    silver.rpc(
+        "update_open_mic_config_keys",
+        {"p_open_mic_id": open_mic_id, "p_keys": {"seed_used": True}},
+    ).execute()
+
+    return jsonify({"status": "ok", "seeded": len(users)}), 200
+
+
+@app.route("/api/dev/trigger-ingest", methods=["POST"])
+def dev_trigger_ingest():
+    """Lanza ingesta de sheets y forms en background. Protegido por Supabase JWT."""
+    if not _is_authenticated_user():
+        return jsonify({"error": "unauthorized"}), 401
+
+    subprocess.Popen([sys.executable, INGEST_SCRIPT_PATH])
+    return jsonify({"status": "ok", "message": "ingesta lanzada en background"}), 200
+
+
+@app.route("/api/dev/trigger-scoring", methods=["POST"])
+def dev_trigger_scoring():
+    """Ejecuta scoring para un open mic. Protegido por Supabase JWT."""
+    if not _is_authenticated_user():
+        return jsonify({"error": "unauthorized"}), 401
+
+    data = request.get_json(force=True) or {}
+    open_mic_id = data.get("open_mic_id")
+    if not open_mic_id:
+        return jsonify({"error": "open_mic_id requerido"}), 400
+
+    result = execute_scoring(open_mic_id)
+    return jsonify({"status": "ok", "result": result}), 200
 
 
 @app.route("/api/render-poster", methods=["POST"])
