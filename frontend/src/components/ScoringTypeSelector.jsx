@@ -28,7 +28,7 @@ export function ScoringTypeSelector({ openMicId, currentType, hasFieldMapping, o
     if (id === selected) return;
     setSelected(id);
     setSaving(true);
-    await supabase.rpc('update_open_mic_config_keys', {
+    await supabase.schema('silver').rpc('update_open_mic_config_keys', {
       p_open_mic_id: openMicId,
       p_keys: { scoring_type: id },
     });
