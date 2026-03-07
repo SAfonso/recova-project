@@ -1,7 +1,7 @@
 # AI LineUp Architect
 
 **Estado:** En desarrollo activo
-**Versión:** `0.14.0`
+**Versión:** `0.15.0`
 **Metodología:** Spec-Driven Development (SDD) + TDD
 
 SaaS multi-tenant para gestión de open mics de comedia. Automatiza la recogida de solicitudes de cómicos (Google Forms), el scoring y la selección del lineup, y la generación del cartel en PNG.
@@ -175,6 +175,8 @@ cd frontend && npm install && npm run dev
 
 | Fase | Versión | Estado |
 |------|---------|--------|
+| Sprint 10 — Scoring Inteligente Custom | 0.15.0 | Completado |
+| Sprint 9 — Smart Form Ingestion | 0.14.0 | Completado |
 | Sprint 8 — Google OAuth Open Registration | 0.13.0 | Completado |
 | Sprint 7 — Poster Renderer (Gemini Flash Vision) | 0.12.0 | Completado |
 | Sprint 6 — Ingesta Multi-Tenant + Scripts de Utilidad | 0.11.0 | Completado |
@@ -186,52 +188,42 @@ cd frontend && npm install && npm run dev
 | Sprint 1 — Pivot SaaS Multi-Tenant | 0.6.0 | Completado |
 
 **Roadmap:**
-- **Sprint 9** — Smart Form Ingestion (AI field mapping + Forms API sin sheets vinculados)
-- **Sprint 10** — Scoring Inteligente por IA (scoring básico vs. custom basado en campos del form)
 - Conectar renderer al flujo: n8n → `POST /api/render-poster` → Supabase Storage → Telegram
 - Activar `Scoring & Draft` e `Ingesta-Solicitudes` en n8n producción
+- Endpoint `POST /api/ingest-from-forms` para ingesta diaria via n8n (sin Sheets)
 - Penalización recencia en `scoring_engine.py`
 
 ---
 
-## Visión — Scoring Inteligente (Sprint 9 + 10)
+## Scoring Inteligente (Sprint 9 + 10 — implementado)
 
-El sistema de scoring evolucionará para adaptarse a cualquier formulario, sin forzar al host a usar campos específicos.
+El sistema de scoring se adapta a cualquier formulario Google Forms sin forzar nombres de campo fijos.
 
-### Selección de scoring al crear el open mic
+### Selección de tipo de scoring
 
 ```
-¿Cómo quieres gestionar las solicitudes?
-
-  [ Sin scoring    ]  orden de llegada
-  [ Scoring básico ]  VIP, género, recencia, fecha única...
-  [ Scoring custom ]  basado en tu formulario (con IA)
+[ Sin scoring    ]  orden de llegada, sin algoritmo
+[ Scoring básico ]  VIP, género, recencia, fecha única...
+[ Scoring custom ]  reglas emergentes de tu formulario (con IA)
 ```
 
 ### Scoring básico — Smart Field Mapping
-Gemini lee los campos del form del host y los mapea a nuestro schema canónico.
-El host no necesita usar nombres de campo específicos.
+Gemini mapea los campos del form al schema canónico automáticamente.
 
 ```
 "Como te llamas?"   → nombre_artistico
 "IG handle?"        → instagram
 "¿Estarías de back?"→ backup
-"¿Eres de Madrid?"  → metadata_extra  (no matchea — se guarda aparte)
+"¿Haces humor negro?"→ sin mapeo → metadata (campo custom para scoring custom)
 ```
 
-### Scoring custom — Reglas emergentes del formulario
-Gemini lee TODOS los campos del form y propone reglas de scoring basadas en ellos.
-El host activa/desactiva cada regla y ajusta el peso.
+### Scoring custom — Reglas propuestas por IA
+Gemini lee los campos no mapeados y propone reglas. El host activa/desactiva y ajusta el peso con un slider.
 
 ```
-"¿eres de aquí?"
-  → [Boost local] +15 pts si respuesta = Sí   [toggle] [slider]
-
-"¿haces humor negro?"
-  → [Tipo humor]  +20 pts si respuesta = Sí   [toggle] [slider]
-
-"¿primera vez?"
-  → [Novatos]     +10 pts si respuesta = Sí   [toggle] [slider]
+"¿haces humor negro?"  → +20 pts si = "Sí"   [toggle ON]  [slider]
+"¿eres de aquí?"       → +15 pts si = "Sí"   [toggle ON]  [slider]
+"¿primera vez?"        → +10 pts si = "Sí"   [toggle OFF] [slider]
 ```
 
 ### Schema en `silver.open_mics.config`
@@ -239,13 +231,10 @@ El host activa/desactiva cada regla y ajusta el peso.
 ```json
 {
   "scoring_type": "basic | custom | none",
-  "field_mapping": {
-    "Como te llamas?": "nombre_artistico",
-    "IG handle?": "instagram"
-  },
+  "field_mapping": { "Como te llamas?": "nombre_artistico" },
   "custom_scoring_rules": [
-    { "field": "eres de aqui?", "rule_id": "local_boost",
-      "weight": 15, "condition": "eq", "value": "Sí", "enabled": true }
+    { "field": "haces humor negro?", "condition": "equals",
+      "value": "Sí", "points": 20, "enabled": true }
   ]
 }
 ```
@@ -259,7 +248,7 @@ source backend/venv/bin/activate
 PYTHONPATH=. pytest backend/tests/ -v
 ```
 
-Cobertura actual: 188 tests verdes — scoring config, google form builder, sheet ingestor, form submission, ingest-from-sheets, validate lineup, telegram register/QR, scripts de utilidad.
+Cobertura actual: ~268 tests verdes — scoring config (basic + custom), custom scoring proposer, google form builder, form ingestor, form analyzer, sheet ingestor, form submission, ingest-from-sheets, validate lineup, telegram register/QR, scripts de utilidad + 20 tests frontend (formUtils, ScoringTypeSelector, CustomScoringConfigurator).
 
 ---
 

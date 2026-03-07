@@ -31,7 +31,7 @@ def main():
     args = parser.parse_args()
 
     flow = InstalledAppFlow.from_client_secrets_file(args.client_secrets, SCOPES)
-    creds = flow.run_local_server(port=0)
+    creds = flow.run_local_server(port=8080)
 
     with open(args.client_secrets) as f:
         client_info = json.load(f)
