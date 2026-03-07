@@ -32,6 +32,7 @@ def load_webhook_module(monkeypatch, api_key: str = "test-key"):
     fake_flask.Flask = DummyFlask
     fake_flask.jsonify = lambda payload: payload
     fake_flask.request = types.SimpleNamespace(headers={})
+    fake_flask.send_file = lambda path, **kw: (path, 200)
     monkeypatch.setitem(sys.modules, "flask", fake_flask)
 
     # Mock flask_cors

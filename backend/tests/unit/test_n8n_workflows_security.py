@@ -52,3 +52,5 @@ def test_n8n_workflows_use_env_references_for_sensitive_values():
     assert "$env.SUPABASE_URL + '/rest/v1/lineup_candidates'" in lineup
     assert "$env.SUPABASE_KEY" in lineup
     assert "'Bearer ' + $env.SUPABASE_KEY" in lineup
+    assert "$env.RECOVA_BACKEND_URL" in lineup
+    assert "$env.WEBHOOK_API_KEY" in lineup
