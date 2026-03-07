@@ -1,3 +1,37 @@
+## [0.15.0] - 2026-03-07
+
+### Added — Sprint 10: Scoring Inteligente Custom
+
+- **Spec SDD** — `specs/custom_scoring_spec.md`
+- **`CustomRule` dataclass** en `scoring_config.py` — regla con `field`, `condition` (`equals`), `value`, `points`, `enabled`, `description`; método `matches(metadata)` insensible a mayúsculas
+- **`ScoringConfig.apply_custom_rules(metadata)`** — suma los puntos de las reglas activas que coinciden; devuelve 0 si `scoring_type != 'custom'`
+- **`custom_scoring_proposer.py`** — clase `CustomScoringProposer`: envía los campos no mapeados a Gemini 2.5 Flash y recibe una lista de reglas propuestas; devuelve `[]` si la lista de campos está vacía (sin llamada a Gemini); strip de markdown fences; `ValueError` en JSON inválido
+- **`POST /api/open-mic/propose-custom-rules`** — carga config del open mic, extrae campos sin mapear, llama a `CustomScoringProposer`, guarda reglas en `config.custom_scoring_rules` via RPC `update_open_mic_config_keys`
+- **`scoring_engine.py`** — `SilverRequest.metadata` (nuevo campo, leer `COALESCE(s.metadata, '{}')` de BD); tras calcular `compute_score` se suma `config.apply_custom_rules(request.metadata)`
+- **`CustomScoringConfigurator.jsx`** (nuevo) — lista de reglas con toggle (`role="switch"`) y slider de puntos (`min=-50`, `max=50`, `step=5`); estado vacío con botón "Proponer reglas automáticas"
+- **`ScoringConfigurator.jsx`** — sección de formulario (URL + análisis) movida a la pestaña Scoring; renderizado condicional por `scoring_type`:
+  - `none`: solo `ScoringTypeSelector`
+  - `basic`: `ScoringTypeSelector` + form + slots + categorías + recencia + boost + paridad + poster
+  - `custom`: `ScoringTypeSelector` + subir form + `CustomScoringConfigurator` + slots + categorías + paridad + poster
+
+### Fixed
+
+- **`ScoringTypeSelector.jsx`** — cambiado `supabase.rpc()` → `supabase.schema('silver').rpc()` (la función `update_open_mic_config_keys` está en schema `silver`, no `public`); corregía un bug donde seleccionar un tipo no persistía
+- **`ScoringConfigurator.jsx`** — `onChanged` del `ScoringTypeSelector` cambiado de `onSaved` a `fetchConfig`; `onSaved` llamaba a `setView('info')` y redirigía al hub al cambiar el tipo
+- **Variables de entorno en `handlePropose`** — corregidas de `VITE_API_KEY`/`VITE_API_URL` a `VITE_WEBHOOK_API_KEY`/`VITE_BACKEND_URL`; eliminaba el error "Error de red al proponer reglas"
+- **`OpenMicDetail.jsx`** — eliminada sección Google Form duplicada (movida a Scoring tab); limpieza de estados e imports innecesarios
+
+### Tests
+
+- 5 tests `backend/tests/core/test_custom_scoring_proposer.py` — todos verdes
+- 6 tests `backend/tests/core/test_scoring_config_custom.py` — todos verdes
+- 7 tests `backend/tests/test_propose_custom_rules_endpoint.py` — todos verdes
+- 4 tests `backend/tests/test_scoring_engine_custom.py` — todos verdes
+- 6 tests `frontend/src/test/CustomScoringConfigurator.test.jsx` — todos verdes
+- **Total acumulado**: ~268 tests verdes (248 backend + 20 frontend)
+
+---
+
 ## [0.14.0] - 2026-03-07
 
 ### Added — Sprint 9: Smart Form Ingestion

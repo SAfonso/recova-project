@@ -2,31 +2,40 @@
 
 ---
 
-## Sprint 10 — Scoring Inteligente Custom (v0.15.0) — PENDIENTE
+## Sprint 10 — Scoring Inteligente Custom (v0.15.0) — 2026-03-07 ✅
 
 ### Objetivo
 Permitir que cada host defina reglas de scoring emergentes de su propio formulario. Gemini propone las reglas, el host las configura con pesos, el engine las aplica.
 
-### Scope
+### Completado
 
 #### Backend
-- `scoring_engine.py`: soporte para `custom_scoring_rules` en config JSONB
-  - Por cada regla activa: busca el campo en `solicitudes.metadata`, evalúa la condición, suma el peso
-- `POST /api/open-mic/analyze-form` (ampliado): añade `proposed_rules` a la respuesta
-  - Para cada campo no canónico: Gemini propone `rule_id`, `description`, `suggested_weight`, `condition`, `value`
+- **`CustomRule`** (dataclass en `scoring_config.py`) — regla con `field`, `condition`, `value`, `points`, `enabled`; `matches(metadata)` case-insensitive
+- **`ScoringConfig.apply_custom_rules(metadata)`** — suma puntos de reglas activas que coinciden; retorna 0 si `scoring_type != 'custom'`
+- **`custom_scoring_proposer.py`** — `CustomScoringProposer`: Gemini 2.5 Flash propone reglas desde campos no canónicos; `[]` si no hay campos; strip markdown fences; `ValueError` en JSON inválido
+- **`POST /api/open-mic/propose-custom-rules`** — extrae campos sin mapear, llama al proposer, guarda `custom_scoring_rules` via RPC
+- **`scoring_engine.py`** — `SilverRequest.metadata` (lee `COALESCE(s.metadata, '{}')` de BD); aplica `apply_custom_rules` al calcular score
 
 #### Frontend
-- `CustomScoringConfigurator` (nuevo) — lista de reglas propuestas con:
-  - Toggle activar/desactivar
-  - Slider de peso (-50 a +50 pts)
-  - Descripción generada por IA
-- `ScoringTypeSelector` integrado en `OpenMicDetail` config tab
+- **`CustomScoringConfigurator.jsx`** (nuevo) — lista de reglas con toggle + slider de puntos (-50..+50); estado vacío con "Proponer reglas automáticas"
+- **`ScoringConfigurator.jsx`** — sección de formulario movida a pestaña Scoring; renderizado condicional por `scoring_type` (none / basic / custom)
+- **UX** — Si `none`: solo selector de tipo. Si `basic`: configuración completa. Si `custom`: form + reglas IA + slots + paridad + poster
 
-#### DB
-- `silver.open_mics.config.custom_scoring_rules` — array de reglas configuradas
+#### Bugs corregidos
+- `ScoringTypeSelector.jsx`: `supabase.rpc()` → `supabase.schema('silver').rpc()` (función en schema silver, no public)
+- `ScoringConfigurator.jsx`: `onChanged={onSaved}` → `onChanged={fetchConfig}` (onSaved redirigía al hub)
+- Variables de entorno en `handlePropose`: `VITE_API_KEY`/`VITE_API_URL` → `VITE_WEBHOOK_API_KEY`/`VITE_BACKEND_URL`
+- `OpenMicDetail.jsx`: eliminada sección Google Form duplicada (movida a Scoring tab)
 
-### Prerequisito
-Sprint 9 completado (`field_mapping` + `scoring_type` en config)
+#### Tests (TDD)
+- `backend/tests/core/test_custom_scoring_proposer.py`: 5/5 verdes
+- `backend/tests/core/test_scoring_config_custom.py`: 6/6 verdes
+- `backend/tests/test_propose_custom_rules_endpoint.py`: 7/7 verdes
+- `backend/tests/test_scoring_engine_custom.py`: 4/4 verdes
+- `frontend/src/test/CustomScoringConfigurator.test.jsx`: 6/6 verdes
+- **Total**: ~268 tests verdes (248 backend + 20 frontend)
+
+→ Spec: `specs/custom_scoring_spec.md`
 
 ---
 
