@@ -15,6 +15,8 @@ from supabase import create_client
 
 from backend.src.core.google_form_builder import GoogleFormBuilder
 from backend.src.core.sheet_ingestor import SheetIngestor
+from backend.src.core.form_ingestor import FormIngestor
+from backend.src.core.form_analyzer import FormAnalyzer
 from backend.src.scoring_engine import execute_scoring
 
 app = Flask(__name__)
@@ -767,6 +769,45 @@ def ingest_from_sheets():
         "status": "ok",
         "open_mics_processed": open_mics_processed,
         "rows_ingested": rows_ingested,
+    }), 200
+
+
+@app.route("/api/open-mic/analyze-form", methods=["POST"])
+def analyze_form() -> tuple:
+    """Analiza los campos de un Google Form y guarda el field_mapping en config."""
+    if not _is_authorized():
+        return jsonify({"status": "error", "message": "unauthorized"}), 401
+
+    body = request.get_json(silent=True) or {}
+    open_mic_id = body.get("open_mic_id")
+    form_id = body.get("form_id")
+
+    if not open_mic_id or not form_id:
+        return jsonify({"status": "error", "message": "open_mic_id y form_id son obligatorios"}), 400
+
+    try:
+        questions = FormIngestor().get_form_questions(form_id)
+        question_titles = [q["title"] for q in questions]
+        field_mapping = FormAnalyzer().analyze(question_titles)
+    except ValueError as exc:
+        return jsonify({"status": "error", "message": "Gemini devolvió JSON inválido", "raw": str(exc)}), 422
+
+    # Guardar en config del open mic via RPC
+    sb = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+    sb.rpc("update_open_mic_config_keys", {
+        "p_open_mic_id": open_mic_id,
+        "p_keys": {"field_mapping": field_mapping, "external_form_id": form_id},
+    }).execute()
+
+    total = len(question_titles)
+    unmapped = [t for t, v in field_mapping.items() if v is None]
+    canonical_coverage = total - len(unmapped)
+
+    return jsonify({
+        "field_mapping": field_mapping,
+        "canonical_coverage": canonical_coverage,
+        "total_questions": total,
+        "unmapped_fields": unmapped,
     }), 200
 
 

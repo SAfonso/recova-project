@@ -15,6 +15,10 @@ _mock_genai = MagicMock()
 _mock_types = MagicMock()
 sys.modules.setdefault("google.genai", _mock_genai)
 sys.modules.setdefault("google.genai.types", _mock_types)
+# Siempre apuntar al mock que realmente está en sys.modules (puede haber sido
+# registrado antes por otro test file si pytest los carga en un orden distinto)
+_mock_genai = sys.modules["google.genai"]
+_mock_types = sys.modules["google.genai.types"]
 
 from backend.src.core.poster_detector_gemini import GeminiDetector  # noqa: E402
 
