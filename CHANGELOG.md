@@ -1,3 +1,34 @@
+## [0.14.0] - 2026-03-07
+
+### Added — Sprint 9: Smart Form Ingestion
+
+- **Spec SDD** — `specs/smart_form_ingestion_spec.md`
+- **`form_ingestor.py`** — clase `FormIngestor`: lee preguntas y respuestas de cualquier Google Form via Forms API v1 (sin necesidad de Sheet vinculado)
+  - `get_form_questions(form_id)` → lista `[{question_id, title, kind}]`
+  - `get_responses(form_id, field_mapping)` → campos canónicos + `metadata_extra` para campos no mapeados
+- **`form_analyzer.py`** — clase `FormAnalyzer`: envía títulos de preguntas a Gemini 2.5 Flash y recibe `{titulo → campo_canónico | null}`; strip de markdown fences; `ValueError` en JSON inválido
+- **`POST /api/open-mic/analyze-form`** — orquesta `FormIngestor` + `FormAnalyzer`, guarda `field_mapping` y `external_form_id` en `silver.open_mics.config` via RPC, devuelve métricas de cobertura
+- **`ScoringTypeSelector.jsx`** (nuevo) — radio pills `none / basic / custom`; `custom` deshabilitado si no hay `field_mapping`; persiste via RPC `update_open_mic_config_keys`
+- **`OpenMicDetail.jsx`** — sección Google Form ampliada: campo URL/ID + botón "Analizar campos" + badge con resultado (N de M campos mapeados + lista sin mapeo)
+- **`ScoringConfigurator.jsx`** — integra `ScoringTypeSelector` en subtab Scoring
+- **`frontend/src/utils/formUtils.js`** — `extractFormId(urlOrId)`: extrae el ID de una URL de Google Forms o lo devuelve limpio
+- **Migración** — `specs/sql/migrations/20260307_smart_form_ingestion.sql`:
+  - `ALTER TABLE silver.solicitudes ADD COLUMN metadata JSONB DEFAULT '{}'`
+  - RPC `silver.update_open_mic_config_keys(p_open_mic_id, p_keys)` — merge JSONB seguro
+- **34 tests** — 9 `test_form_ingestor.py` + 5 `test_form_analyzer.py` + 6 `test_analyze_form_endpoint.py` + 7 `formUtils.test.js` + 7 `ScoringTypeSelector.test.jsx` — todos verdes
+- **Setup Vitest** — `vitest` + `@testing-library/react` + `happy-dom` (jsdom@28 incompatible con ESM)
+
+### Changed
+
+- Google OAuth scopes ampliados: añadidos `forms.body.readonly` y `forms.responses.readonly`
+- `google_oauth_setup.py` actualizado con los nuevos scopes; refresh token regenerado y desplegado en servidor
+
+### Fixed
+
+- `POST /api/open-mic/analyze-form`: cambiado `sb.rpc()` → `sb.schema("silver").rpc()` para evitar PGRST202 (función en schema `silver`, no `public`)
+
+---
+
 ## [0.13.0] - 2026-03-07
 
 ### Added — Sprint 8: Registro Abierto con Google OAuth
