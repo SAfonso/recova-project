@@ -51,15 +51,20 @@ def _is_authorized() -> bool:
 def _is_authenticated_user() -> dict | None:
     """Verifica el Supabase JWT del request. Devuelve el payload o None si inválido."""
     auth = request.headers.get("Authorization", "")
+    print(f"[AUTH DEBUG] auth header: {repr(auth[:30])}", flush=True)
     if not auth.startswith("Bearer "):
+        print("[AUTH DEBUG] no Bearer prefix", flush=True)
         return None
     token = auth[7:]
     secret = os.getenv("SUPABASE_JWT_SECRET", "")
+    print(f"[AUTH DEBUG] secret loaded: {bool(secret)}", flush=True)
     if not secret:
+        print("[AUTH DEBUG] secret empty", flush=True)
         return None
     try:
         return jwt.decode(token, secret, algorithms=["HS256"], audience="authenticated")
-    except jwt.PyJWTError:
+    except jwt.PyJWTError as e:
+        print(f"[AUTH DEBUG] JWT error: {type(e).__name__}: {e}", flush=True)
         return None
 
 
