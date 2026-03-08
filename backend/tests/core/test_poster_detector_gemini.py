@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+from PIL import Image as _PILImage
 
 # Inyecta mocks del nuevo SDK google-genai antes de importar GeminiDetector
 # para que funcione aunque la librería no esté instalada en el entorno de CI.
@@ -21,6 +22,14 @@ _mock_genai = sys.modules["google.genai"]
 _mock_types = sys.modules["google.genai.types"]
 
 from backend.src.core.poster_detector_gemini import GeminiDetector  # noqa: E402
+
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+def _make_valid_png(path: Path, width: int = 100, height: int = 100) -> None:
+    """Crea un PNG válido mínimo para que Pillow pueda abrirlo."""
+    img = _PILImage.new("RGB", (width, height), color=(0, 0, 0))
+    img.save(path, format="PNG")
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -77,7 +86,7 @@ def _setup_genai_mock(response: MagicMock) -> None:
 
 def test_detect_parses_valid_json_response(tmp_path: Path) -> None:
     dummy_png = tmp_path / "suxio.png"
-    dummy_png.write_bytes(b"\x89PNG\r\n" + b"\x00" * 100)
+    _make_valid_png(dummy_png)
 
     _setup_genai_mock(_make_gemini_response(_valid_payload(3)))
     detector = GeminiDetector(api_key="test-key")
@@ -92,7 +101,7 @@ def test_detect_parses_valid_json_response(tmp_path: Path) -> None:
 
 def test_detect_strips_markdown_fences(tmp_path: Path) -> None:
     dummy_png = tmp_path / "suxio.png"
-    dummy_png.write_bytes(b"\x89PNG\r\n" + b"\x00" * 100)
+    _make_valid_png(dummy_png)
 
     payload_with_fences = f"```json\n{json.dumps(_valid_payload(2))}\n```"
     _setup_genai_mock(_make_gemini_response(payload_with_fences))
@@ -105,7 +114,7 @@ def test_detect_strips_markdown_fences(tmp_path: Path) -> None:
 
 def test_detect_sorts_by_slot(tmp_path: Path) -> None:
     dummy_png = tmp_path / "suxio.png"
-    dummy_png.write_bytes(b"\x89PNG\r\n" + b"\x00" * 100)
+    _make_valid_png(dummy_png)
 
     shuffled = list(reversed(_valid_payload(4)))
     _setup_genai_mock(_make_gemini_response(shuffled))
@@ -118,7 +127,7 @@ def test_detect_sorts_by_slot(tmp_path: Path) -> None:
 
 def test_detect_raises_on_malformed_json(tmp_path: Path) -> None:
     dummy_png = tmp_path / "suxio.png"
-    dummy_png.write_bytes(b"\x89PNG\r\n" + b"\x00" * 100)
+    _make_valid_png(dummy_png)
 
     _setup_genai_mock(_make_gemini_response("esto no es json {{{"))
 
@@ -130,7 +139,7 @@ def test_detect_raises_on_malformed_json(tmp_path: Path) -> None:
 def test_detect_placeholder_normalized_from_slot(tmp_path: Path) -> None:
     """Si Gemini no incluye 'placeholder', se genera desde 'slot'."""
     dummy_png = tmp_path / "suxio.png"
-    dummy_png.write_bytes(b"\x89PNG\r\n" + b"\x00" * 100)
+    _make_valid_png(dummy_png)
 
     payload = [{"slot": 1, "center_x": 500, "center_y": 600, "font_size": 40}]
     _setup_genai_mock(_make_gemini_response(payload))
