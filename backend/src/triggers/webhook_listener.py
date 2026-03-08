@@ -10,6 +10,8 @@ from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 
 import re
+import tempfile
+import urllib.request
 from pathlib import Path as _Path
 
 import jwt
@@ -1093,12 +1095,30 @@ def render_poster() -> tuple:
 
     event_id = str(data.get("event_id") or "evento")
     date_text = str(data.get("date") or event_id)
+    open_mic_id = data.get("open_mic_id")
 
     safe_id = re.sub(r"[^\w-]", "_", event_id)
     output_path = _Path("/tmp") / f"render_{safe_id}.png"
 
+    # Intentar obtener la imagen base del open_mic config
+    base_image_path = None
+    tmp_image_file = None
+    if open_mic_id:
+        try:
+            sb = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+            row = sb.schema("silver").from_("open_mics").select("config").eq("id", open_mic_id).single().execute()
+            config = (row.data or {}).get("config") or {}
+            poster_cfg = config.get("poster") or {}
+            image_url = poster_cfg.get("base_image_url") or poster_cfg.get("dirty_image_url")
+            if image_url:
+                tmp_image_file = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
+                urllib.request.urlretrieve(image_url, tmp_image_file.name)
+                base_image_path = _Path(tmp_image_file.name)
+        except Exception:
+            pass  # fallback a imagen local
+
     try:
-        PosterComposer().render(
+        PosterComposer(base_image_path=base_image_path).render(
             lineup=lineup,
             date=date_text,
             event_id=event_id,
@@ -1106,6 +1126,12 @@ def render_poster() -> tuple:
         )
     except Exception as exc:
         return jsonify({"error": str(exc)}), 500
+    finally:
+        if tmp_image_file:
+            try:
+                _Path(tmp_image_file.name).unlink(missing_ok=True)
+            except Exception:
+                pass
 
     return send_file(str(output_path), mimetype="image/png")
 
