@@ -19,16 +19,18 @@ from .poster_detector_base import AbstractDetector, PlaceholderAnchor
 GEMINI_API_KEY_ENV = "GEMINI_API_KEY"
 DEFAULT_MODEL = "gemini-2.5-flash"
 
-_DETECT_PROMPT = """\
-Analyze this poster image (1080x1350 pixels).
-Find ALL text placeholders that look like COMICO_N (where N is a number 1, 2, 3...).
-The text may appear as "COMICO_1", "COMICO 1", "comico_1", etc.
+_DETECT_PROMPT_TEMPLATE = """\
+Analyze this poster image ({width}x{height} pixels).
 
-For each placeholder found, return a JSON array. Each element must have:
-- "placeholder": the normalized text (e.g. "COMICO_1")
-- "slot": integer N
-- "center_x": horizontal center in pixels (0=left edge, 1080=right edge)
-- "center_y": vertical center in pixels (0=top edge, 1350=bottom edge)
+Find ALL of these placeholders:
+1. Comic name placeholders: text like COMICO_1, COMICO_2, COMICO 1, comico_1, etc.
+2. Date placeholder: text like "Fecha", "FECHA", "DATE", "DD/MM", or any obvious date placeholder.
+
+Return a JSON array. Each element must have:
+- "placeholder": the exact text found (e.g. "COMICO_1" or "Fecha")
+- "slot": for COMICO_N use the integer N; for the date placeholder use 0
+- "center_x": horizontal center in pixels (0=left edge, {width}=right edge)
+- "center_y": vertical center in pixels (0=top edge, {height}=bottom edge)
 - "font_size": estimated text height in pixels
 - "color": hex color of the text (e.g. "#ffffff")
 
@@ -64,19 +66,26 @@ class GeminiDetector(AbstractDetector):
     # ── Detección ─────────────────────────────────────────────────────────────
 
     def detect(self, dirty_path: Path) -> list[PlaceholderAnchor]:
-        """Detecta los placeholders COMICO_N usando visión de Gemini.
+        """Detecta los placeholders COMICO_N y Fecha usando visión de Gemini.
 
         Args:
             dirty_path: Ruta al PNG con los placeholders visibles.
 
         Returns:
-            Lista de PlaceholderAnchor ordenada por slot.
+            Lista de PlaceholderAnchor ordenada por slot (0=fecha, 1..N=cómicos).
 
         Raises:
             RuntimeError: Si la clave API falta o el JSON es malformado.
         """
         from google import genai  # noqa: PLC0415
         from google.genai import types  # noqa: PLC0415
+        from PIL import Image as _Image  # noqa: PLC0415
+
+        # Leer dimensiones reales de la imagen para el prompt
+        with _Image.open(dirty_path) as _img:
+            width, height = _img.size
+
+        prompt = _DETECT_PROMPT_TEMPLATE.format(width=width, height=height)
 
         client = genai.Client(api_key=self._api_key)
 
@@ -87,7 +96,7 @@ class GeminiDetector(AbstractDetector):
             model=self._model,
             contents=[
                 types.Part.from_bytes(data=img_bytes, mime_type="image/png"),
-                _DETECT_PROMPT,
+                prompt,
             ],
         )
 

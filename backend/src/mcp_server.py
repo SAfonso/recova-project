@@ -130,17 +130,19 @@ async def execute_render(*, payload: dict[str, Any]) -> dict[str, Any]:
                 detector = GeminiDetector()
                 anchors  = await loop.run_in_executor(None, lambda: detector.detect(dirty_path))
 
-                if anchors:
+                comic_anchors = [a for a in anchors if a.slot >= 1]
+                if comic_anchors:
                     names = [c.get("name", "") for c in lineup]
                     assignments = [
                         (names[a.slot - 1], a)
-                        for a in anchors
+                        for a in comic_anchors
                         if 1 <= a.slot <= len(names)
                     ]
                     font_path = PosterComposer()._resolve_font(None)
-                    # Posición de la fecha: centro superior del cartel (fallback)
-                    date_anchor    = (540, 80)
-                    date_font_size = 60
+                    # Fecha: usar anchor detectado (slot=0) o fallback
+                    date_anchor_obj = next((a for a in anchors if a.slot == 0), None)
+                    date_anchor    = (date_anchor_obj.center_x, date_anchor_obj.center_y) if date_anchor_obj else (540, 80)
+                    date_font_size = date_anchor_obj.font_size if date_anchor_obj else 60
                     await loop.run_in_executor(
                         None,
                         lambda: render_on_anchors(
