@@ -3,6 +3,8 @@ import { QRCodeSVG } from 'qrcode.react';
 import { supabase } from '../supabaseClient';
 import { OpenMicIcon } from './open-mic/openmic-icons';
 
+const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+
 const PlusIcon = () => (
   <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
     <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
@@ -24,13 +26,17 @@ export function OpenMicSelector({ session, onSelect }) {
   const [loading,     setLoading]     = useState(true);
   const [creating,    setCreating]    = useState(false);
   const [newName,     setNewName]     = useState('');
+  const [newDia,      setNewDia]      = useState('');
+  const [newHora,     setNewHora]     = useState('');
   const [saving,      setSaving]      = useState(false);
   const [error,       setError]       = useState(null);
+  const [tgSeen,      setTgSeen]      = useState(() => !!localStorage.getItem('tg_btn_seen'));
   const [showTgTooltip, setShowTgTooltip] = useState(() => !localStorage.getItem('tg_btn_seen'));
   const [showTgModal,   setShowTgModal]   = useState(false);
   const [tgData,        setTgData]        = useState(null);
   const [tgLoading,     setTgLoading]     = useState(false);
   const [tgError,       setTgError]       = useState(null);
+  const [tgProveedorId, setTgProveedorId] = useState('');
 
   useEffect(() => {
     async function fetchOpenMics() {
@@ -42,6 +48,9 @@ export function OpenMicSelector({ session, onSelect }) {
       const memberships = membershipData ?? [];
       setMemberships(memberships);
       setCanCreate(memberships.some((m) => m.role === 'host'));
+      // Proveedor por defecto para Telegram
+      const firstHost = memberships.find((m) => m.role === 'host');
+      if (firstHost) setTgProveedorId(firstHost.proveedor_id);
       const proveedorIds = memberships.map((m) => m.proveedor_id);
       if (proveedorIds.length === 0) { setOpenMics([]); setLoading(false); return; }
       const { data: micsData, error: micsError } = await supabase
@@ -55,13 +64,19 @@ export function OpenMicSelector({ session, onSelect }) {
     fetchOpenMics();
   }, [session.user.id]);
 
+  const canCreate_ = () => newName.trim() && newDia && newHora;
+
   const handleCreate = async () => {
-    if (!newName.trim()) return;
+    if (!canCreate_()) return;
     setSaving(true); setError(null);
     const hostMembership = memberships.find((m) => m.role === 'host');
     const { data: newMic, error: insertError } = await supabase
       .schema('silver').from('open_mics')
-      .insert({ proveedor_id: hostMembership.proveedor_id, nombre: newName.trim(), config: {} })
+      .insert({
+        proveedor_id: hostMembership.proveedor_id,
+        nombre: newName.trim(),
+        config: { info: { dia_semana: newDia, hora: newHora } },
+      })
       .select('id, nombre').single();
     if (insertError) { setSaving(false); setError(insertError.message); return; }
     const backendUrl = import.meta.env.VITE_BACKEND_URL;
@@ -79,9 +94,13 @@ export function OpenMicSelector({ session, onSelect }) {
 
   const handleLogout = () => supabase.auth.signOut();
 
+  const hostMemberships = memberships.filter((m) => m.role === 'host');
+  const multiOrg = hostMemberships.length > 1;
+
   const handleTelegramClick = async () => {
     localStorage.setItem('tg_btn_seen', '1');
     setShowTgTooltip(false);
+    setTgSeen(true);
     setShowTgModal(true);
     if (tgData) return;
     setTgLoading(true);
@@ -90,7 +109,7 @@ export function OpenMicSelector({ session, onSelect }) {
       const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/telegram/generate-code`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-API-KEY': import.meta.env.VITE_WEBHOOK_API_KEY },
-        body: JSON.stringify({ host_id: session.user.id }),
+        body: JSON.stringify({ host_id: session.user.id, proveedor_id: tgProveedorId }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
@@ -167,20 +186,46 @@ export function OpenMicSelector({ session, onSelect }) {
                   placeholder="Ej: Recova Open Mic — Marzo 2026"
                   className="rounded-md border-2 border-[#1a1a1a] bg-[#F5F0E1] px-3 py-2 text-sm text-[#1a1a1a] outline-none focus:ring-2 focus:ring-[#DC2626]"
                 />
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-bold text-[#1a1a1a]">
+                      Día <span className="text-[#DC2626]">*</span>
+                    </label>
+                    <select
+                      value={newDia}
+                      onChange={(e) => setNewDia(e.target.value)}
+                      className="rounded-md border-2 border-[#1a1a1a] bg-[#F5F0E1] px-2 py-2 text-sm text-[#1a1a1a] outline-none focus:ring-2 focus:ring-[#DC2626]"
+                    >
+                      <option value="">— Día —</option>
+                      {DIAS.map((d) => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-bold text-[#1a1a1a]">
+                      Hora <span className="text-[#DC2626]">*</span>
+                    </label>
+                    <input
+                      type="time"
+                      value={newHora}
+                      onChange={(e) => setNewHora(e.target.value)}
+                      className="rounded-md border-2 border-[#1a1a1a] bg-[#F5F0E1] px-2 py-2 text-sm text-[#1a1a1a] outline-none focus:ring-2 focus:ring-[#DC2626]"
+                    />
+                  </div>
+                </div>
                 <div className="flex gap-2">
                   {!showEmptyForm && (
                     <button
                       type="button"
-                      onClick={() => { setCreating(false); setNewName(''); setError(null); }}
+                      onClick={() => { setCreating(false); setNewName(''); setNewDia(''); setNewHora(''); setError(null); }}
                       className="flex-1 cursor-pointer rounded-lg border-[3px] border-[#1a1a1a] bg-[#C8B89A] py-2 text-sm font-bold text-[#1a1a1a] transition-all duration-200 hover:bg-[#B8A88A]"
                     >
                       Cancelar
                     </button>
                   )}
                   <button
-                    type="button" disabled={!newName.trim() || saving} onClick={handleCreate}
+                    type="button" disabled={!canCreate_() || saving} onClick={handleCreate}
                     className={`flex-1 rounded-lg border-[3px] border-[#1a1a1a] py-2 text-sm font-bold transition-all duration-200
-                      ${!newName.trim() || saving
+                      ${!canCreate_() || saving
                         ? 'cursor-not-allowed bg-[#D1D5DB] text-[#6B5C4A]'
                         : 'comic-shadow cursor-pointer bg-[#1a1a1a] text-[#fff8e7] hover:bg-[#DC2626]'}`}
                   >
@@ -199,8 +244,12 @@ export function OpenMicSelector({ session, onSelect }) {
           </div>
         </div>
 
-        {/* Telegram connect — esquina superior derecha, fuera del card */}
-        <div className="absolute -right-5 -top-5 flex flex-col items-center">
+        {/* Telegram connect — esquina superior derecha */}
+        <div className={`absolute flex flex-col items-center transition-all duration-500 ${
+          tgSeen
+            ? '-right-2 -top-2'
+            : '-right-5 -top-5'
+        }`}>
           {showTgTooltip && (
             <div className="absolute bottom-full mb-2 animate-bounce whitespace-nowrap">
               <div className="rounded-xl bg-[#229ED9] px-3 py-1.5 text-xs font-bold text-white shadow-lg">
@@ -212,10 +261,14 @@ export function OpenMicSelector({ session, onSelect }) {
           <button
             type="button"
             onClick={handleTelegramClick}
-            className="flex h-16 w-16 cursor-pointer items-center justify-center rounded-full bg-[#229ED9] text-white shadow-[3px_3px_0px_rgba(0,0,0,0.35)] transition-all duration-200 hover:scale-110 hover:shadow-[4px_4px_0px_rgba(0,0,0,0.4)]"
+            className={`flex cursor-pointer items-center justify-center rounded-full bg-[#229ED9] text-white transition-all duration-300 hover:scale-110 ${
+              tgSeen
+                ? 'h-10 w-10 opacity-50 shadow-none hover:opacity-90'
+                : 'h-16 w-16 shadow-[3px_3px_0px_rgba(0,0,0,0.35)] hover:shadow-[4px_4px_0px_rgba(0,0,0,0.4)]'
+            }`}
             title="Conectar bot de Telegram"
           >
-            <TelegramIcon className="h-9 w-9" />
+            <TelegramIcon className={tgSeen ? 'h-5 w-5' : 'h-9 w-9'} />
           </button>
         </div>
         </div>{/* fin relative wrapper */}
@@ -241,6 +294,27 @@ export function OpenMicSelector({ session, onSelect }) {
               Conecta el bot
             </h3>
             <p className="mb-4 text-xs text-[#6B5C4A]">Escanea el QR desde Telegram en tu móvil</p>
+
+            {/* Selector de organización si hay más de una */}
+            {multiOrg && (
+              <div className="mb-4 flex flex-col gap-1.5 text-left">
+                <label className="text-xs font-bold text-[#6B5C4A]">Organización</label>
+                <select
+                  value={tgProveedorId}
+                  onChange={(e) => { setTgProveedorId(e.target.value); setTgData(null); setTgError(null); }}
+                  className="rounded-md border-2 border-[#1a1a1a] bg-[#F5F0E1] px-2 py-1.5 text-sm text-[#1a1a1a] outline-none"
+                >
+                  {hostMemberships.map((m) => {
+                    const mic = openMics.find((o) => o.proveedor_id === m.proveedor_id);
+                    return (
+                      <option key={m.proveedor_id} value={m.proveedor_id}>
+                        {mic?.nombre ?? m.proveedor_id}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+            )}
 
             <div className="flex justify-center">
               {tgLoading ? (

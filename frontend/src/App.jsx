@@ -299,6 +299,18 @@ function App({ session, openMicId, onBack }) {
     setShowCambiarConfirm(false);
   };
 
+  const handleGeneroUpdate = (candidateId, genero) => {
+    const targetCandidate = candidates.find((candidate) => candidate.row_key === candidateId);
+    if (!targetCandidate) return;
+    setEdits((previous) => ({
+      ...previous,
+      [candidateId]: {
+        ...getDraft(targetCandidate),
+        genero,
+      },
+    }));
+  };
+
   const handleCategoryUpdate = (candidateId, category) => {
     const targetCandidate = candidates.find((candidate) => candidate.row_key === candidateId);
     if (!targetCandidate) {
@@ -383,7 +395,6 @@ function App({ session, openMicId, onBack }) {
             selectedCandidates={selectedCandidates}
             getDraft={getDraft}
             onOpenExpanded={openExpanded}
-            openMicId={openMicId}
           />
         )}
 
@@ -468,6 +479,7 @@ function App({ session, openMicId, onBack }) {
           onCardExpand={setActiveId}
           onToggleSelected={toggleSelected}
           onUpdateCategory={handleCategoryUpdate}
+          onUpdateGenero={handleGeneroUpdate}
           getDraft={getDraft}
           hasPendingEdit={hasPendingEdit}
         />

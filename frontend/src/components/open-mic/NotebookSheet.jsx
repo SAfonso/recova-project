@@ -1,11 +1,8 @@
-import { ScoringConfigurator } from '../ScoringConfigurator';
-
 const TABS = [
   { value: 'lineup',     label: 'Line Up',    bg: 'bg-[#fff8e7]', activeText: 'text-[#1a1a1a]' },
   { value: 'gold',       label: 'Gold',       bg: 'bg-[#D4A017]', activeText: 'text-[#1a1a1a]' },
   { value: 'priority',   label: 'Priority',   bg: 'bg-[#A0A0A0]', activeText: 'text-[#fff8e7]' },
   { value: 'restricted', label: 'Restricted', bg: 'bg-[#DC2626]', activeText: 'text-[#fff8e7]' },
-  { value: 'config',     label: 'Config',     bg: 'bg-[#4B5563]', activeText: 'text-[#fff8e7]' },
 ];
 
 function getFilteredCandidates({ activeTab, candidates, selectedCandidates, getDraft }) {
@@ -29,12 +26,9 @@ function BindingHole() {
 
 export function NotebookSheet({
   activeTab, onTabChange, candidates, selectedCandidates,
-  getDraft, onOpenExpanded, openMicId,
+  getDraft, onOpenExpanded,
 }) {
-  const isConfig = activeTab === 'config';
-  const filteredCandidates = isConfig
-    ? []
-    : getFilteredCandidates({ activeTab, candidates, selectedCandidates, getDraft });
+  const filteredCandidates = getFilteredCandidates({ activeTab, candidates, selectedCandidates, getDraft });
 
   return (
     <section className="relative mx-auto w-full max-w-lg lg:max-w-4xl">
@@ -95,9 +89,7 @@ export function NotebookSheet({
 
           {/* Contenido */}
           <div className="ml-10 min-h-[240px]">
-            {isConfig ? (
-              <ScoringConfigurator openMicId={openMicId} />
-            ) : filteredCandidates.length === 0 ? (
+            {filteredCandidates.length === 0 ? (
               <p className="pt-4 font-['Patrick_Hand'] text-xl italic text-[#6B5C4A]/60">
                 No hay cómicos para esta vista...
               </p>
@@ -126,22 +118,20 @@ export function NotebookSheet({
           </div>
 
           {/* Botón editar */}
-          {!isConfig && (
-            <div className="absolute bottom-3 left-3 right-3 flex justify-center">
-              <button
-                type="button"
-                onClick={onOpenExpanded}
-                className="comic-shadow flex cursor-pointer items-center gap-2 rounded-md border-2 border-[#1a1a1a] bg-[#C8B89A] px-4 py-1.5 font-bold text-[#1a1a1a] transition-all duration-150 hover:bg-[#B8A88A]"
-                aria-label="Abrir vista ampliada"
-              >
-                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                </svg>
-                <span>Editar</span>
-              </button>
-            </div>
-          )}
+          <div className="absolute bottom-3 left-3 right-3 flex justify-center">
+            <button
+              type="button"
+              onClick={onOpenExpanded}
+              className="comic-shadow flex cursor-pointer items-center gap-2 rounded-md border-2 border-[#1a1a1a] bg-[#C8B89A] px-4 py-1.5 font-bold text-[#1a1a1a] transition-all duration-150 hover:bg-[#B8A88A]"
+              aria-label="Abrir vista ampliada"
+            >
+              <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+              </svg>
+              <span>Editar</span>
+            </button>
+          </div>
         </div>
       </div>
     </section>

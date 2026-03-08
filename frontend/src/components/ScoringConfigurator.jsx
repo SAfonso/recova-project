@@ -157,6 +157,7 @@ export function ScoringConfigurator({ openMicId, openMicName, onSaved }) {
   const [error, setError]     = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
   const [uploading, setUploading] = useState(false);
+  const [uploadingDirty, setUploadingDirty] = useState(false);
   const [proposing, setProposing] = useState(false);
   const [formUrlInput, setFormUrlInput] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
@@ -191,24 +192,33 @@ export function ScoringConfigurator({ openMicId, openMicName, onSaved }) {
   const update = (path, value) =>
     setConfig((prev) => setIn(prev, path, value));
 
-  const handlePosterUpload = async (file) => {
+  const handlePosterUpload = async (file, type = 'clean') => {
     if (!file) return;
-    setUploading(true);
+    const isClean = type === 'clean';
+    if (isClean) setUploading(true);
+    else setUploadingDirty(true);
     setError(null);
-    const path = `${openMicId}/background.png`;
+    const filename = isClean ? 'background.png' : 'background_dirty.png';
+    const path = `${openMicId}/${filename}`;
     const { error: uploadError } = await supabase.storage
       .from('poster-backgrounds')
       .upload(path, file, { upsert: true, contentType: 'image/png' });
     if (uploadError) {
       setError(`Error subiendo imagen: ${uploadError.message}`);
-      setUploading(false);
+      if (isClean) setUploading(false);
+      else setUploadingDirty(false);
       return;
     }
     const { data: { publicUrl } } = supabase.storage
       .from('poster-backgrounds')
       .getPublicUrl(path);
-    update(['poster', 'base_image_url'], publicUrl);
-    setUploading(false);
+    if (isClean) {
+      update(['poster', 'base_image_url'], publicUrl);
+      setUploading(false);
+    } else {
+      update(['poster', 'dirty_image_url'], publicUrl);
+      setUploadingDirty(false);
+    }
   };
 
   const handlePropose = async () => {
@@ -440,11 +450,7 @@ export function ScoringConfigurator({ openMicId, openMicName, onSaved }) {
         </SectionCard>
       )}
 
-      {/* ── Paneles visibles solo si scoring != 'none' ───────────── */}
-      {!isNone && (
-        <>
-
-      {/* ── 1. Slots disponibles ─────────────────────────────────── */}
+      {/* ── 1. Slots disponibles — visible siempre ───────────────── */}
       <SectionCard title="Slots disponibles">
         <div className="flex items-center gap-3">
           <NumberInput
@@ -458,6 +464,10 @@ export function ScoringConfigurator({ openMicId, openMicName, onSaved }) {
         </div>
         <FieldError errors={fieldErrors} field="available_slots" />
       </SectionCard>
+
+      {/* ── Paneles visibles solo si scoring != 'none' ───────────── */}
+      {!isNone && (
+        <>
 
       {/* ── 2. Categorías ────────────────────────────────────────── */}
       <SectionCard title="Puntuación base por categoría">
@@ -613,6 +623,16 @@ export function ScoringConfigurator({ openMicId, openMicName, onSaved }) {
       {/* ── 6. Póster del evento ─────────────────────────────────── */}
       <SectionCard title="Póster del evento">
         <div className="flex flex-col gap-3">
+          {/* Aviso beta */}
+          <div className="flex items-start gap-2 rounded-md border-2 border-[#EAB308] bg-[#FEF9C3] px-3 py-2">
+            <svg className="mt-0.5 h-4 w-4 shrink-0 text-[#854D0E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            <p className="text-xs font-bold text-[#854D0E]">
+              Funcionalidad en pruebas — el resultado visual puede ser inesperado.
+            </p>
+          </div>
+
           <div className="flex items-center gap-3">
             <Toggle
               checked={config.poster.enabled}
@@ -624,35 +644,60 @@ export function ScoringConfigurator({ openMicId, openMicName, onSaved }) {
           </div>
 
           {config.poster.enabled && (
-            <div className="flex flex-col gap-3 pl-2">
-              {config.poster.base_image_url && (
-                <img
-                  src={config.poster.base_image_url}
-                  alt="Fondo del póster"
-                  className="h-32 w-auto self-start rounded-md border-2 border-[#1a1a1a] object-cover"
-                />
-              )}
-              <label className={`flex cursor-pointer items-center gap-2 self-start rounded-lg border-[3px] border-[#1a1a1a] px-4 py-2 text-sm font-bold transition-all
-                ${uploading ? 'cursor-not-allowed bg-[#D1D5DB] text-[#6B5C4A]' : 'bg-[#fff8e7] text-[#1a1a1a] hover:bg-[#C8B89A]'}`}
-              >
-                <input
-                  type="file"
-                  accept="image/png"
-                  className="hidden"
-                  disabled={uploading}
-                  onChange={(e) => handlePosterUpload(e.target.files?.[0])}
-                />
-                {uploading
-                  ? 'Subiendo...'
-                  : config.poster.base_image_url
-                    ? 'Cambiar imagen de fondo'
-                    : 'Subir imagen de fondo (PNG)'}
-              </label>
-              {!config.poster.base_image_url && (
-                <p className="text-xs text-[#6B5C4A]">
-                  Sin imagen de fondo — se usará el template por defecto del servidor.
-                </p>
-              )}
+            <div className="flex flex-col gap-4 pl-2">
+              {/* Imagen limpia */}
+              <div className="flex flex-col gap-2">
+                <p className="text-xs font-bold uppercase tracking-wide text-[#6B5C4A]">Imagen limpia (fondo sin texto)</p>
+                {config.poster.base_image_url && (
+                  <img
+                    src={config.poster.base_image_url}
+                    alt="Fondo limpio del póster"
+                    className="h-24 w-auto self-start rounded-md border-2 border-[#1a1a1a] object-cover"
+                  />
+                )}
+                <label className={`flex cursor-pointer items-center gap-2 self-start rounded-lg border-[3px] border-[#1a1a1a] px-4 py-2 text-sm font-bold transition-all
+                  ${uploading ? 'cursor-not-allowed bg-[#D1D5DB] text-[#6B5C4A]' : 'bg-[#fff8e7] text-[#1a1a1a] hover:bg-[#C8B89A]'}`}
+                >
+                  <input
+                    type="file"
+                    accept="image/png"
+                    className="hidden"
+                    disabled={uploading}
+                    onChange={(e) => handlePosterUpload(e.target.files?.[0], 'clean')}
+                  />
+                  {uploading ? 'Subiendo...' : config.poster.base_image_url ? 'Cambiar imagen limpia' : 'Subir imagen limpia (PNG)'}
+                </label>
+                {!config.poster.base_image_url && (
+                  <p className="text-xs text-[#6B5C4A]">Sin imagen — se usará el template por defecto.</p>
+                )}
+              </div>
+
+              {/* Imagen sucia */}
+              <div className="flex flex-col gap-2">
+                <p className="text-xs font-bold uppercase tracking-wide text-[#6B5C4A]">Imagen sucia (con diseño original, para análisis IA)</p>
+                {config.poster.dirty_image_url && (
+                  <img
+                    src={config.poster.dirty_image_url}
+                    alt="Imagen sucia del póster"
+                    className="h-24 w-auto self-start rounded-md border-2 border-[#1a1a1a] object-cover"
+                  />
+                )}
+                <label className={`flex cursor-pointer items-center gap-2 self-start rounded-lg border-[3px] border-[#1a1a1a] px-4 py-2 text-sm font-bold transition-all
+                  ${uploadingDirty ? 'cursor-not-allowed bg-[#D1D5DB] text-[#6B5C4A]' : 'bg-[#fff8e7] text-[#1a1a1a] hover:bg-[#C8B89A]'}`}
+                >
+                  <input
+                    type="file"
+                    accept="image/png"
+                    className="hidden"
+                    disabled={uploadingDirty}
+                    onChange={(e) => handlePosterUpload(e.target.files?.[0], 'dirty')}
+                  />
+                  {uploadingDirty ? 'Subiendo...' : config.poster.dirty_image_url ? 'Cambiar imagen sucia' : 'Subir imagen sucia (PNG)'}
+                </label>
+                {!config.poster.dirty_image_url && (
+                  <p className="text-xs text-[#6B5C4A]">Opcional — sube el cartel con diseño para que la IA analice la composición.</p>
+                )}
+              </div>
             </div>
           )}
         </div>

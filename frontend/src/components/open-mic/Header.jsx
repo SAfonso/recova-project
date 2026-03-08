@@ -43,7 +43,7 @@ export function Header({ eventDate, onEventDateChange, selectedCount, hostEmail,
 
       <div className="relative inline-flex items-center gap-3">
         <div className="relative inline-block px-1">
-          <p className="font-['Patrick_Hand'] text-2xl text-[#1a1a1a]">{formatDateForSheet(eventDate)}</p>
+          <p className="font-['Bangers'] text-3xl tracking-wider text-[#fff8e7]">{formatDateForSheet(eventDate)}</p>
           <svg className="absolute -bottom-1 left-0 w-full" height="6" viewBox="0 0 200 6" fill="none" preserveAspectRatio="none" aria-hidden="true">
             <path d="M0,3 Q20,0 40,4 T80,2 T120,5 T160,1 T200,3" stroke="#DC2626" strokeWidth="3" fill="none" strokeLinecap="round" />
           </svg>
