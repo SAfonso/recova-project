@@ -252,6 +252,7 @@ function App({ session, openMicId, onBack }) {
         },
         body: JSON.stringify({
           fecha: rpcEventDate,
+          open_mic_id: openMicId,
           status: 'validado',
           total: selectedIds.length,
           trace: {
