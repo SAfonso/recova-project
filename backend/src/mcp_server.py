@@ -62,10 +62,32 @@ def _safe_event_slug(event_id: str) -> str:
     return "".join(c if c.isalnum() or c in {"-", "_"} else "_" for c in event_id)
 
 
+# Fuentes comerciales/no libres → sustitución con la alternativa libre más parecida
+_FONT_SUBSTITUTIONS: dict[str, str] = {
+    "badaboom bb": "Bangers",
+    "badaboombb": "Bangers",
+    "blambot": "Bangers",
+    "comic sans ms": "Comic Neue",
+    "helvetica": "Inter",
+    "helvetica neue": "Inter",
+    "futura": "Nunito",
+    "gotham": "Montserrat",
+    "brandon grotesque": "Raleway",
+    "proxima nova": "Nunito Sans",
+}
+
+
 def _resolve_font_by_name(font_name: str, fallback: Path) -> Path:
-    """Busca la fuente por nombre: sistema → Google Fonts CSS → GitHub fonts → fallback."""
+    """Busca la fuente por nombre: sistema → sustitución → Google Fonts CSS → GitHub fonts → fallback."""
     if not font_name:
         return fallback
+
+    # Sustitución de fuentes comerciales por alternativas libres
+    key = font_name.lower().strip()
+    if key in _FONT_SUBSTITUTIONS:
+        substitute = _FONT_SUBSTITUTIONS[key]
+        logger.info("Sustitución de fuente: '%s' → '%s'", font_name, substitute)
+        font_name = substitute
 
     import glob
     import re
