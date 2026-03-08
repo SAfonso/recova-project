@@ -13,6 +13,7 @@ import json
 import os
 import re
 from pathlib import Path
+from typing import Any
 
 from .poster_detector_base import AbstractDetector, PlaceholderAnchor
 
@@ -134,4 +135,29 @@ class GeminiDetector(AbstractDetector):
                 )
             )
 
-        return sorted(anchors, key=lambda a: a.slot)
+        anchors = sorted(anchors, key=lambda a: a.slot)
+
+        # Si Gemini no devolvió font_name, hacer una segunda llamada ligera
+        if not font_name and anchors:
+            font_name = self._detect_font_name(client, img_bytes) or ""
+            for a in anchors:
+                a.font_name = font_name
+
+        return anchors
+
+    def _detect_font_name(self, client: Any, img_bytes: bytes) -> str:
+        """Llamada secundaria a Gemini para identificar solo el nombre de fuente."""
+        try:
+            from google.genai import types as _types  # noqa: PLC0415
+            resp = client.models.generate_content(
+                model=self._model,
+                contents=[
+                    _types.Part.from_bytes(data=img_bytes, mime_type="image/png"),
+                    "What is the font family name used for the text in this image? "
+                    "Reply with ONLY the font name (e.g. 'Bangers', 'Impact'). "
+                    "No explanation, no quotes.",
+                ],
+            )
+            return resp.text.strip().strip('"').strip("'")
+        except Exception:
+            return ""
