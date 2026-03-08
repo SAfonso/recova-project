@@ -10,6 +10,7 @@ const CATEGORY_OPTIONS = [
   { value: 'gold', label: 'Gold' },
   { value: 'priority', label: 'Preferred' },
   { value: 'restricted', label: 'Restricted' },
+  { value: 'standard', label: 'Standard' },
 ];
 
 function App({ session, openMicId, onBack }) {
