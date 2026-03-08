@@ -63,7 +63,7 @@ def _safe_event_slug(event_id: str) -> str:
 
 
 def _resolve_font_by_name(font_name: str, fallback: Path) -> Path:
-    """Busca la fuente por nombre: primero en el sistema, luego Google Fonts."""
+    """Busca la fuente por nombre: sistema → Google Fonts CSS → GitHub fonts → fallback."""
     if not font_name:
         return fallback
 
@@ -72,34 +72,63 @@ def _resolve_font_by_name(font_name: str, fallback: Path) -> Path:
     import tempfile
     import urllib.request
 
-    search = font_name.lower().replace(" ", "").replace("-", "").replace("_", "")
+    slug = font_name.lower().replace(" ", "").replace("-", "").replace("_", "")
+
+    # 1. Buscar en fuentes del sistema
     font_dirs = ["/usr/share/fonts", "/usr/local/share/fonts", str(Path.home() / ".fonts")]
     for d in font_dirs:
         for ext in ("ttf", "otf", "TTF", "OTF"):
             for path in glob.glob(f"{d}/**/*.{ext}", recursive=True):
                 stem = Path(path).stem.lower().replace(" ", "").replace("-", "").replace("_", "")
-                if search in stem or stem in search:
-                    logger.info("Fuente del sistema encontrada: %s", path)
+                if slug in stem or stem in slug:
+                    logger.info("Fuente del sistema: %s", path)
                     return Path(path)
 
-    # Intentar descarga desde Google Fonts (UA antiguo → devuelve TTF)
-    family = font_name.strip().replace(" ", "+")
-    css_url = f"https://fonts.googleapis.com/css2?family={family}:wght@400;700"
-    try:
-        req = urllib.request.Request(
-            css_url,
-            headers={"User-Agent": "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)"},
-        )
-        css = urllib.request.urlopen(req, timeout=6).read().decode()
-        match = re.search(r"src:\s*url\(([^)]+\.ttf[^)]*)\)", css)
-        if match:
-            font_url = match.group(1)
-            tmp = tempfile.NamedTemporaryFile(suffix=".ttf", delete=False)
-            urllib.request.urlretrieve(font_url, tmp.name)
-            logger.info("Fuente descargada de Google Fonts: %s → %s", font_name, tmp.name)
+    def _download_url(url: str, suffix: str = ".ttf") -> Path | None:
+        try:
+            tmp = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
+            urllib.request.urlretrieve(url, tmp.name)
+            logger.info("Fuente descargada: %s", url)
             return Path(tmp.name)
-    except Exception as exc:
-        logger.warning("No se pudo descargar fuente '%s' de Google Fonts: %s", font_name, exc)
+        except Exception as exc:
+            logger.warning("Descarga fallida %s: %s", url, exc)
+            return None
+
+    # 2. Google Fonts CSS API con UA antiguo (devuelve TTF)
+    family = font_name.strip().replace(" ", "+")
+    for css_url in [
+        f"https://fonts.googleapis.com/css?family={family}",
+        f"https://fonts.googleapis.com/css2?family={family}:wght@400;700",
+    ]:
+        try:
+            req = urllib.request.Request(
+                css_url,
+                headers={"User-Agent": "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)"},
+            )
+            css = urllib.request.urlopen(req, timeout=6).read().decode()
+            # URL con o sin comillas: url(...) o url('...') o url("...")
+            match = re.search(r"url\(['\"]?(https://[^'\")]+\.ttf)['\"]?\)", css)
+            if match:
+                result = _download_url(match.group(1))
+                if result:
+                    logger.info("Fuente de Google Fonts CSS: %s", font_name)
+                    return result
+        except Exception as exc:
+            logger.warning("Google Fonts CSS fallido (%s): %s", css_url, exc)
+
+    # 3. Fallback directo desde repo oficial de Google Fonts en GitHub
+    github_slug = font_name.lower().replace(" ", "").replace("-", "")
+    github_name = font_name.replace(" ", "")
+    github_urls = [
+        f"https://github.com/google/fonts/raw/main/ofl/{github_slug}/{github_name}-Regular.ttf",
+        f"https://github.com/google/fonts/raw/main/apache/{github_slug}/{github_name}-Regular.ttf",
+        f"https://github.com/google/fonts/raw/main/ufl/{github_slug}/{github_name}-Regular.ttf",
+    ]
+    for url in github_urls:
+        result = _download_url(url)
+        if result and result.stat().st_size > 1000:
+            logger.info("Fuente de GitHub google/fonts: %s", font_name)
+            return result
 
     logger.info("Usando fuente fallback para '%s'", font_name)
     return fallback
