@@ -62,6 +62,9 @@ def _safe_event_slug(event_id: str) -> str:
 
 async def execute_render(*, payload: dict[str, Any]) -> dict[str, Any]:
     """Render del cartel con PosterComposer y devuelve payload estructurado."""
+    import tempfile
+    import urllib.request
+
     event_id = payload["event_id"]
     lineup   = payload.get("lineup", [])
 
@@ -76,17 +79,55 @@ async def execute_render(*, payload: dict[str, Any]) -> dict[str, Any]:
 
     output_path = Path("/tmp") / f"render_{_safe_event_slug(event_id)}.png"
 
+    # Intentar usar la imagen base del open_mic si viene en el payload
+    base_image_path = None
+    tmp_image_file = None
+    reference_image_url = payload.get("intent", {}).get("reference_image_url")
+    if not reference_image_url:
+        # También aceptar open_mic_id para buscarlo en Supabase
+        open_mic_id = payload.get("open_mic_id")
+        if open_mic_id:
+            try:
+                import os
+                from supabase import create_client as _create_client
+                _sb = _create_client(
+                    os.getenv("SUPABASE_URL", ""),
+                    os.getenv("SUPABASE_SERVICE_KEY", ""),
+                )
+                row = _sb.schema("silver").from_("open_mics").select("config").eq("id", open_mic_id).single().execute()
+                cfg = (row.data or {}).get("config") or {}
+                reference_image_url = (cfg.get("poster") or {}).get("base_image_url")
+            except Exception as exc:
+                logger.warning("No se pudo cargar base_image_url del open_mic: %s", exc)
+
+    if reference_image_url:
+        try:
+            tmp_image_file = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
+            urllib.request.urlretrieve(reference_image_url, tmp_image_file.name)
+            base_image_path = Path(tmp_image_file.name)
+            logger.info("Usando imagen base: %s", reference_image_url)
+        except Exception as exc:
+            logger.warning("No se pudo descargar la imagen base, usando template: %s", exc)
+            base_image_path = None
+
     loop = asyncio.get_running_loop()
-    composer = PosterComposer()
-    await loop.run_in_executor(
-        None,
-        lambda: composer.render(
-            lineup=lineup,
-            date=date_text,
-            event_id=event_id,
-            output_path=output_path,
-        ),
-    )
+    composer = PosterComposer(base_image_path=base_image_path)
+    try:
+        await loop.run_in_executor(
+            None,
+            lambda: composer.render(
+                lineup=lineup,
+                date=date_text,
+                event_id=event_id,
+                output_path=output_path,
+            ),
+        )
+    finally:
+        if tmp_image_file:
+            try:
+                Path(tmp_image_file.name).unlink(missing_ok=True)
+            except Exception:
+                pass
 
     return {
         "status": "success",
