@@ -12,14 +12,18 @@ from PIL import Image as _PILImage
 
 # Inyecta mocks del nuevo SDK google-genai antes de importar GeminiDetector
 # para que funcione aunque la librería no esté instalada en el entorno de CI.
+_mock_google = MagicMock()
 _mock_genai = MagicMock()
 _mock_types = MagicMock()
+sys.modules.setdefault("google", _mock_google)
 sys.modules.setdefault("google.genai", _mock_genai)
 sys.modules.setdefault("google.genai.types", _mock_types)
 # Siempre apuntar al mock que realmente está en sys.modules (puede haber sido
 # registrado antes por otro test file si pytest los carga en un orden distinto)
+_mock_google = sys.modules["google"]
 _mock_genai = sys.modules["google.genai"]
 _mock_types = sys.modules["google.genai.types"]
+_mock_google.genai = _mock_genai
 
 from backend.src.core.poster_detector_gemini import GeminiDetector  # noqa: E402
 
