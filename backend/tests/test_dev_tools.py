@@ -28,24 +28,23 @@ from backend.src.triggers.webhook_listener import app  # noqa: E402
 # JWT mock helpers
 # ---------------------------------------------------------------------------
 
-VALID_JWT_PAYLOAD = {"sub": "user-123", "email": "test@example.com", "aud": "authenticated"}
+VALID_USER_PAYLOAD = {"sub": "user-123", "email": "test@example.com"}
 VALID_AUTH = {"Authorization": "Bearer valid.jwt.token", "Content-Type": "application/json"}
 
 
-def _patch_jwt_valid():
-    """Contexto que hace que jwt.decode devuelva un payload válido."""
+def _patch_auth_valid():
+    """Contexto que hace que _is_authenticated_user devuelva un payload válido."""
     return patch(
-        "backend.src.triggers.webhook_listener.jwt.decode",
-        return_value=VALID_JWT_PAYLOAD,
+        "backend.src.triggers.webhook_listener._is_authenticated_user",
+        return_value=VALID_USER_PAYLOAD,
     )
 
 
-def _patch_jwt_invalid():
-    """Contexto que hace que jwt.decode lance PyJWTError."""
-    import jwt as _jwt
+def _patch_auth_invalid():
+    """Contexto que hace que _is_authenticated_user devuelva None (token inválido)."""
     return patch(
-        "backend.src.triggers.webhook_listener.jwt.decode",
-        side_effect=_jwt.PyJWTError("invalid token"),
+        "backend.src.triggers.webhook_listener._is_authenticated_user",
+        return_value=None,
     )
 
 
@@ -109,7 +108,7 @@ def test_seed_requires_jwt():
 
 def test_seed_invalid_jwt():
     """401 con token inválido."""
-    with _patch_jwt_invalid():
+    with _patch_auth_invalid():
         with app.test_client() as c:
             resp = c.post("/api/dev/seed-open-mic",
                           json={"open_mic_id": "om-001"},
@@ -119,7 +118,7 @@ def test_seed_invalid_jwt():
 
 def test_seed_requires_open_mic_id():
     """400 si open_mic_id está ausente."""
-    with _patch_jwt_valid():
+    with _patch_auth_valid():
         with app.test_client() as c:
             resp = c.post("/api/dev/seed-open-mic", json={}, headers=VALID_AUTH)
     assert resp.status_code == 400
@@ -129,7 +128,7 @@ def test_seed_open_mic_not_found():
     """404 si el open mic no existe."""
     sb = _make_sb({"silver": {"open_mics": _chain([])}})
 
-    with _patch_jwt_valid(), \
+    with _patch_auth_valid(), \
          patch("backend.src.triggers.webhook_listener.create_client", return_value=sb):
         with app.test_client() as c:
             resp = c.post("/api/dev/seed-open-mic",
@@ -142,7 +141,7 @@ def test_seed_already_seeded():
     """409 si config.seed_used es true."""
     sb = _make_sb({"silver": {"open_mics": _chain([OM_ALREADY_SEEDED])}})
 
-    with _patch_jwt_valid(), \
+    with _patch_auth_valid(), \
          patch("backend.src.triggers.webhook_listener.create_client", return_value=sb):
         with app.test_client() as c:
             resp = c.post("/api/dev/seed-open-mic",
@@ -158,7 +157,7 @@ def test_seed_happy_path():
         "bronze": {"solicitudes": _chain([{"id": "new"}])},
     })
 
-    with _patch_jwt_valid(), \
+    with _patch_auth_valid(), \
          patch("backend.src.triggers.webhook_listener.create_client", return_value=sb), \
          patch("backend.src.triggers.webhook_listener.subprocess.Popen") as mock_popen:
 
@@ -201,7 +200,7 @@ def test_trigger_ingest_requires_jwt():
 
 def test_trigger_ingest_happy_path():
     """200 y lanza los dos Popen de ingesta."""
-    with _patch_jwt_valid(), \
+    with _patch_auth_valid(), \
          patch("backend.src.triggers.webhook_listener.subprocess.Popen") as mock_popen:
 
         with app.test_client() as c:
@@ -231,7 +230,7 @@ def test_trigger_scoring_happy_path():
     """200 y devuelve resultado de execute_scoring."""
     fake_result = {"status": "ok", "scored": 10}
 
-    with _patch_jwt_valid(), \
+    with _patch_auth_valid(), \
          patch("backend.src.triggers.webhook_listener.execute_scoring",
                return_value=fake_result):
 
