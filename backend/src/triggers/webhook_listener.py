@@ -1015,7 +1015,21 @@ def dev_seed_open_mic():
 
     from datetime import date, timedelta
     today = date.today()
-    next_friday = today + timedelta(days=(4 - today.weekday()) % 7 or 7)
+    # Generar las próximas 4 fechas (viernes, sábado, el siguiente viernes, el siguiente sábado)
+    # en formato DD-MM-YY que espera parse_event_dates
+    def _next_weekday(d, weekday):  # 4=viernes, 5=sábado
+        days_ahead = weekday - d.weekday()
+        if days_ahead <= 0:
+            days_ahead += 7
+        return d + timedelta(days=days_ahead)
+
+    dates = [
+        _next_weekday(today, 4),
+        _next_weekday(today, 5),
+        _next_weekday(today + timedelta(weeks=1), 4),
+        _next_weekday(today + timedelta(weeks=1), 5),
+    ]
+    fechas_raw = ", ".join(d.strftime("%d-%m-%y") for d in dates)
 
     for user in users:
         bronze.from_("solicitudes").insert({
@@ -1025,7 +1039,7 @@ def dev_seed_open_mic():
             "instagram_raw":                user["instagram"],
             "telefono_raw":                 user["telefono"],
             "experiencia_raw":              user["experiencia_raw"],
-            "fechas_seleccionadas_raw":     str(next_friday),
+            "fechas_seleccionadas_raw":     fechas_raw,
             "disponibilidad_ultimo_minuto": user["disponibilidad_ultimo_minuto"],
             "origen_conocimiento":          user["origen_conocimiento"],
         }).execute()
