@@ -1,3 +1,11 @@
+## [0.17.8] - 2026-03-08
+
+### Fixed — pipeline Gemini para tipografía del cartel
+
+- **`mcp_server.py`** — conectado el pipeline completo: si hay `dirty_image_url` en el config del open_mic, `GeminiDetector` analiza el cartel sucio y detecta posición, tamaño y color exactos de cada `COMICO_N`; `render_on_anchors` estampa los nombres reales sobre el cartel limpio con esa tipografía. Fallback a `PosterComposer` si Gemini falla o no detecta anchors.
+
+---
+
 ## [0.17.7] - 2026-03-08
 
 ### Fixed — mcp_server usa base_image_url del open_mic config
