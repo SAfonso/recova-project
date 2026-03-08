@@ -212,11 +212,12 @@ export function ScoringConfigurator({ openMicId, openMicName, onSaved }) {
     const { data: { publicUrl } } = supabase.storage
       .from('poster-backgrounds')
       .getPublicUrl(path);
+    const cacheBustedUrl = `${publicUrl}?v=${Date.now()}`;
     if (isClean) {
-      update(['poster', 'base_image_url'], publicUrl);
+      update(['poster', 'base_image_url'], cacheBustedUrl);
       setUploading(false);
     } else {
-      update(['poster', 'dirty_image_url'], publicUrl);
+      update(['poster', 'dirty_image_url'], cacheBustedUrl);
       setUploadingDirty(false);
     }
   };

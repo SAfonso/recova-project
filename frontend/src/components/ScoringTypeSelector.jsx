@@ -44,21 +44,17 @@ export function ScoringTypeSelector({ openMicId, currentType, hasFieldMapping, o
       </span>
       <div className="flex flex-col gap-2">
         {OPTIONS.map((opt) => {
-          const disabled = opt.requiresMapping && !hasFieldMapping;
-          const active = selected === opt.id;
+            const active = selected === opt.id;
+          const pendingMapping = opt.requiresMapping && !hasFieldMapping && active;
           return (
             <button
               key={opt.id}
               type="button"
-              disabled={disabled}
-              onClick={() => !disabled && handleChange(opt.id)}
-              title={disabled ? 'Primero analiza tu formulario en la pestaña Info' : undefined}
+              onClick={() => handleChange(opt.id)}
               className={`flex items-start gap-3 rounded-lg border-2 px-3 py-2.5 text-left transition-all duration-150
                 ${active
                   ? 'border-[#1a1a1a] bg-[#1a1a1a] text-[#fff8e7]'
-                  : disabled
-                    ? 'cursor-not-allowed border-[#C8B89A] bg-[#F5F0E1] opacity-40'
-                    : 'cursor-pointer border-[#C8B89A] bg-[#F5F0E1] text-[#1a1a1a] hover:border-[#1a1a1a] hover:bg-[#E8DFC8]'
+                  : 'cursor-pointer border-[#C8B89A] bg-[#F5F0E1] text-[#1a1a1a] hover:border-[#1a1a1a] hover:bg-[#E8DFC8]'
                 }`}
             >
               {/* Radio dot */}
@@ -70,10 +66,9 @@ export function ScoringTypeSelector({ openMicId, currentType, hasFieldMapping, o
               <div>
                 <p className={`text-sm font-bold leading-tight ${active ? 'text-[#fff8e7]' : 'text-[#1a1a1a]'}`}>
                   {opt.label}
-                  {disabled && <span className="ml-1.5 text-[10px] font-normal opacity-70">(requiere análisis de form)</span>}
                 </p>
                 <p className={`text-xs leading-snug ${active ? 'text-[#fff8e7]/70' : 'text-[#6B5C4A]'}`}>
-                  {opt.description}
+                  {pendingMapping ? 'Selecciona y analiza tu formulario abajo para activar las reglas' : opt.description}
                 </p>
               </div>
             </button>

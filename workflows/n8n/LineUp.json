@@ -58,9 +58,10 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "fecha_evento", "value": "=eq.{{ $('Webhook').item.json.body.fecha }}" },
-            { "name": "estado",       "value": "=eq.aprobado" },
-            { "name": "select",       "value": "nombre,instagram,fecha_evento" }
+            { "name": "fecha_evento",  "value": "eq.{{ $('Webhook').item.json.body.fecha }}" },
+            { "name": "estado",        "value": "eq.aprobado" },
+            { "name": "open_mic_id",   "value": "eq.{{ $('Webhook').item.json.body.open_mic_id }}" },
+            { "name": "select",        "value": "nombre,instagram,fecha_evento" }
           ]
         },
         "sendHeaders": true,
