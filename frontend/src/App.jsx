@@ -25,7 +25,9 @@ function App({ session, openMicId, onBack }) {
   const [error, setError] = useState('');
   const [isExpanded, setIsExpanded] = useState(false);
   const [recoveryNotes, setRecoveryNotes] = useState('');
-  const [isValidated, setIsValidated] = useState(false);
+  const [isValidated, setIsValidated] = useState(
+    () => !!localStorage.getItem(`validated_${openMicId}`),
+  );
   const [showCambiarConfirm, setShowCambiarConfirm] = useState(false);
 
   const activeCandidate = useMemo(
@@ -247,19 +249,28 @@ function App({ session, openMicId, onBack }) {
       setEdits({});
 
       // Grabar slots confirmados ANTES de notificar a n8n
-      // para que el estado quede persistido aunque n8n falle
       const approvedIds = selectedCandidates
         .map((c) => c.solicitud_id)
         .filter(Boolean);
-      await supabase.rpc('upsert_confirmed_lineup', {
+      const { error: upsertError } = await supabase.rpc('upsert_confirmed_lineup', {
         p_open_mic_id: openMicId,
         p_fecha_evento: rpcEventDate,
         p_approved_solicitud_ids: approvedIds,
       });
+      if (upsertError) {
+        console.error('Error en upsert_confirmed_lineup:', upsertError);
+      }
 
+      // Persistir en localStorage para sobrevivir remounts
+      localStorage.setItem(`validated_${openMicId}`, '1');
       setIsValidated(true);
 
       // n8n es fire-and-forget: si falla no bloquea el estado validado
+      // Incluimos el lineup exacto seleccionado para evitar re-query en n8n
+      const lineupPayload = selectedCandidates.map((c) => ({
+        name: c.nombre,
+        instagram: (c.instagram || '').replace('@', '').trim(),
+      }));
       fetch(normalizedN8nWebhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -268,6 +279,7 @@ function App({ session, openMicId, onBack }) {
           open_mic_id: openMicId,
           status: 'validado',
           total: selectedIds.length,
+          lineup: lineupPayload,
           trace: { recovery_notes: recoveryNotes },
         }),
       }).then((res) => {
@@ -293,6 +305,7 @@ function App({ session, openMicId, onBack }) {
       p_open_mic_id: openMicId,
       p_fecha_evento: eventDate || null,
     });
+    localStorage.removeItem(`validated_${openMicId}`);
     setIsValidated(false);
     setShowCambiarConfirm(false);
   };
