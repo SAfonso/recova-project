@@ -102,7 +102,7 @@ function App({ session, openMicId, onBack }) {
         : (row.solicitud_id ?? `${row.comico_id ?? 'unknown'}-${index}`),
       fecha_evento: hasFechaEvento ? (row.fecha_evento ?? null) : null,
       genero: row.genero === 'unknown' ? 'nb' : row.genero ?? 'nb',
-      categoria: row.categoria === 'standard' ? 'priority' : row.categoria ?? 'priority',
+      categoria: row.categoria ?? 'standard',
     }));
     const scoredFirst = normalized.filter((candidate) => candidate.estado === 'scorado');
     const pendingLegacy = normalized.filter((candidate) => candidate.estado === 'pendiente');
