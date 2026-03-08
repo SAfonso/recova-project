@@ -134,13 +134,14 @@ def test_detect_font_name_propagated(tmp_path: Path) -> None:
 
 
 def test_detect_legacy_array_format(tmp_path: Path) -> None:
-    """Formato legacy (array) sigue funcionando; font_name queda vacío."""
+    """Formato legacy (array) sigue funcionando; _detect_font_name se llama como fallback."""
     dummy_png = tmp_path / "suxio.png"
     _make_valid_png(dummy_png)
 
     _setup_genai_mock(_make_gemini_response(_valid_payload_legacy(2)))
     detector = GeminiDetector(api_key="test-key")
-    anchors = detector.detect(dummy_png)
+    with patch.object(detector, "_detect_font_name", return_value=""):
+        anchors = detector.detect(dummy_png)
 
     assert len(anchors) == 2
     assert anchors[0].font_name == ""
