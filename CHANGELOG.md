@@ -1,3 +1,13 @@
+## [0.17.3] - 2026-03-08
+
+### Fixed — UX Telegram en móvil/tablet
+
+- **`OpenMicSelector.jsx`** — detección de dispositivo móvil/tablet via `navigator.userAgent` + `maxTouchPoints` (iPad)
+- **Modal Telegram en móvil** — en lugar del QR (imposible de escanear desde el mismo dispositivo), se muestran dos botones: "Sí, abrir Telegram" (deep link directo a `t.me`) y "No tengo Telegram — Descargar" (enlaza a `telegram.org`)
+- **Desktop** — comportamiento sin cambios: QR + instrucciones de escaneo
+
+---
+
 ## [0.17.2] - 2026-03-08
 
 ### Fixed — Correcciones UI post-deploy

@@ -19,6 +19,9 @@ const TelegramIcon = ({ className }) => (
 
 const STAGGER_CLASSES = ['stagger-1','stagger-2','stagger-3','stagger-4','stagger-5','stagger-6'];
 
+const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+  || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
 export function OpenMicSelector({ session, onSelect }) {
   const [openMics,    setOpenMics]    = useState([]);
   const [memberships, setMemberships] = useState([]);
@@ -293,7 +296,9 @@ export function OpenMicSelector({ session, onSelect }) {
             <h3 className="mb-1 font-['Bangers'] text-2xl tracking-wide text-[#1a1a1a]">
               Conecta el bot
             </h3>
-            <p className="mb-4 text-xs text-[#6B5C4A]">Escanea el QR desde Telegram en tu móvil</p>
+            <p className="mb-4 text-xs text-[#6B5C4A]">
+              {isMobile ? 'Conecta el bot directamente desde tu dispositivo' : 'Escanea el QR desde Telegram en tu móvil'}
+            </p>
 
             {/* Selector de organización si hay más de una */}
             {multiOrg && (
@@ -316,34 +321,63 @@ export function OpenMicSelector({ session, onSelect }) {
               </div>
             )}
 
-            <div className="flex justify-center">
-              {tgLoading ? (
-                <div className="flex h-[180px] w-[180px] items-center justify-center">
-                  <p className="text-sm text-[#6B5C4A]">Generando...</p>
-                </div>
-              ) : tgData?.qr_url ? (
-                <div className="rounded-xl border-[3px] border-[#1a1a1a] bg-white p-3 shadow-inner">
-                  <QRCodeSVG value={tgData.qr_url} size={160} level="M" />
+            {tgLoading ? (
+              <div className="flex h-[120px] items-center justify-center">
+                <p className="text-sm text-[#6B5C4A]">Generando...</p>
+              </div>
+            ) : tgData?.qr_url ? (
+              isMobile ? (
+                <div className="flex flex-col gap-3 w-full">
+                  <a
+                    href={tgData.qr_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-center gap-2 rounded-lg border-[3px] border-[#1a1a1a] bg-[#229ED9] py-3 text-sm font-bold text-white transition-all duration-200 hover:bg-[#1a8bbf]"
+                  >
+                    <TelegramIcon className="h-5 w-5" />
+                    Sí, abrir Telegram
+                  </a>
+                  <a
+                    href="https://telegram.org/"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-center gap-2 rounded-lg border-[3px] border-dashed border-[#C8B89A] bg-[#F5F0E1] py-2.5 text-xs font-bold text-[#6B5C4A] transition-all duration-200 hover:bg-[#e8e0d0]"
+                  >
+                    No tengo Telegram — Descargar
+                  </a>
+                  <ol className="mt-1 space-y-1 text-left text-xs text-[#6B5C4A]">
+                    <li>1. Pulsa <strong>Sí, abrir Telegram</strong></li>
+                    <li>2. En el bot, pulsa <strong>Enviar</strong></li>
+                    <li>3. El bot confirmará la conexión</li>
+                  </ol>
                 </div>
               ) : (
-                <div className="flex h-[180px] w-[180px] flex-col items-center justify-center gap-2">
-                  <p className="text-sm font-bold text-[#DC2626]">Error al generar el código</p>
-                  {tgError && <p className="text-center text-xs text-[#6B5C4A]">{tgError}</p>}
+                <div className="flex justify-center">
+                  <div className="rounded-xl border-[3px] border-[#1a1a1a] bg-white p-3 shadow-inner">
+                    <QRCodeSVG value={tgData.qr_url} size={160} level="M" />
+                  </div>
                 </div>
-              )}
-            </div>
+              )
+            ) : (
+              <div className="flex h-[120px] flex-col items-center justify-center gap-2">
+                <p className="text-sm font-bold text-[#DC2626]">Error al generar el código</p>
+                {tgError && <p className="text-center text-xs text-[#6B5C4A]">{tgError}</p>}
+              </div>
+            )}
 
-            {tgData?.code && (
+            {tgData?.code && !isMobile && (
               <div className="mt-4 rounded-lg border-2 border-dashed border-[#C8B89A] bg-[#F5F0E1] py-2">
                 <p className="font-mono text-lg font-bold tracking-widest text-[#1a1a1a]">{tgData.code}</p>
               </div>
             )}
 
-            <ol className="mt-4 space-y-1 text-left text-xs text-[#6B5C4A]">
-              <li>1. Escanea el QR con tu cámara</li>
-              <li>2. Se abrirá Telegram — pulsa <strong>Enviar</strong></li>
-              <li>3. El bot confirmará la conexión</li>
-            </ol>
+            {!isMobile && (
+              <ol className="mt-4 space-y-1 text-left text-xs text-[#6B5C4A]">
+                <li>1. Escanea el QR con tu cámara</li>
+                <li>2. Se abrirá Telegram — pulsa <strong>Enviar</strong></li>
+                <li>3. El bot confirmará la conexión</li>
+              </ol>
+            )}
             <p className="mt-3 text-[10px] text-[#C8B89A]">El código expira en 15 minutos</p>
 
             <button
