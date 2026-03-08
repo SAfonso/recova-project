@@ -16,11 +16,49 @@
     },
     {
       "parameters": {
+        "url": "={{ $env.SUPABASE_URL + '/rest/v1/open_mics?select=proveedor_id&id=eq.' + $json.body.open_mic_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey",         "value": "={{ $env.SUPABASE_KEY }}" },
+            { "name": "Authorization",  "value": "={{ 'Bearer ' + $env.SUPABASE_KEY }}" },
+            { "name": "Accept-Profile", "value": "silver" }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [0, 0],
+      "id": "f1a2b3c4-d5e6-7890-abcd-ef1234567890",
+      "name": "Get Host proveedor_id"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SUPABASE_URL + '/rest/v1/telegram_users?select=telegram_user_id&host_id=eq.' + $json[0].proveedor_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey",         "value": "={{ $env.SUPABASE_KEY }}" },
+            { "name": "Authorization",  "value": "={{ 'Bearer ' + $env.SUPABASE_KEY }}" },
+            { "name": "Accept-Profile", "value": "silver" }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [240, 0],
+      "id": "a1b2c3d4-e5f6-7890-abcd-012345678901",
+      "name": "Get Telegram chat_id"
+    },
+    {
+      "parameters": {
         "url": "={{ $env.SUPABASE_URL + '/rest/v1/lineup_candidates' }}",
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "fecha_evento", "value": "=eq.{{ $json.body.fecha }}" },
+            { "name": "fecha_evento", "value": "=eq.{{ $('Webhook').item.json.body.fecha }}" },
             { "name": "estado",       "value": "=eq.aprobado" },
             { "name": "select",       "value": "nombre,instagram,fecha_evento" }
           ]
@@ -37,18 +75,18 @@
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.3,
-      "position": [0, 0],
+      "position": [480, 0],
       "id": "4c76cabd-657f-4236-82ef-b8e906e1b78f",
       "name": "Get Approved Comics",
       "alwaysOutputData": true
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nif (items.length === 0) throw new Error('No hay cómicos aprobados para esta fecha');\n\nconst webhookBody = $('Webhook').first().json.body || {};\nconst fecha_evento = items[0].json.fecha_evento || webhookBody.fecha || 'evento';\nconst telegram_user_id = String(webhookBody.telegram_user_id || '');\n\nconst lineup = items.map((item, index) => ({\n  order: index + 1,\n  name: item.json.nombre,\n  instagram: (item.json.instagram || '').replace('@', '').trim()\n}));\n\nreturn [{\n  json: {\n    event_id: fecha_evento,\n    date: fecha_evento,\n    lineup: lineup,\n    telegram_user_id: telegram_user_id\n  }\n}];"
+        "jsCode": "const items = $input.all();\nif (items.length === 0) throw new Error('No hay cómicos aprobados para esta fecha');\n\nconst webhookBody = $('Webhook').first().json.body || {};\nconst fecha_evento = items[0].json.fecha_evento || webhookBody.fecha || 'evento';\nconst telegramData = $('Get Telegram chat_id').first().json;\nconst telegram_user_id = String((Array.isArray(telegramData) ? telegramData[0]?.telegram_user_id : telegramData?.telegram_user_id) || '');\n\nconst lineup = items.map((item, index) => ({\n  order: index + 1,\n  name: item.json.nombre,\n  instagram: (item.json.instagram || '').replace('@', '').trim()\n}));\n\nreturn [{\n  json: {\n    event_id: fecha_evento,\n    date: fecha_evento,\n    lineup: lineup,\n    telegram_user_id: telegram_user_id\n  }\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [240, 0],
+      "position": [720, 0],
       "id": "b8a87655-58d4-4f9c-87fa-5903657b8f84",
       "name": "Map Payload"
     },
@@ -78,7 +116,7 @@
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.3,
-      "position": [480, 0],
+      "position": [960, 0],
       "id": "0e4f3c1e-0c97-480e-a76f-1d776908c4c3",
       "name": "HTTP (render)"
     },
@@ -94,7 +132,7 @@
       },
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
-      "position": [720, 0],
+      "position": [1200, 0],
       "id": "e4bb2396-b923-40bb-9329-4bafc3ee6ae6",
       "name": "Telegram (enviar)",
       "credentials": {
@@ -108,6 +146,12 @@
   "pinData": {},
   "connections": {
     "Webhook": {
+      "main": [[{ "node": "Get Host proveedor_id", "type": "main", "index": 0 }]]
+    },
+    "Get Host proveedor_id": {
+      "main": [[{ "node": "Get Telegram chat_id", "type": "main", "index": 0 }]]
+    },
+    "Get Telegram chat_id": {
       "main": [[{ "node": "Get Approved Comics", "type": "main", "index": 0 }]]
     },
     "Get Approved Comics": {
