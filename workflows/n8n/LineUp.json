@@ -94,11 +94,10 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.RECOVA_BACKEND_URL }}/api/render-poster",
+        "url": "={{ $env.RECOVA_RENDERER_URL }}/tools/render_lineup",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "X-API-KEY",    "value": "={{ $env.WEBHOOK_API_KEY }}" },
             { "name": "Content-Type", "value": "application/json" }
           ]
         },

@@ -1,3 +1,12 @@
+## [0.17.7] - 2026-03-08
+
+### Fixed — mcp_server usa base_image_url del open_mic config
+
+- **`mcp_server.py` `execute_render`** — ahora lee `open_mic_id` del payload y busca `config.poster.base_image_url` en Supabase; descarga la imagen a tempfile y la pasa a `PosterComposer`; fallback a template local si falla. También soporta `intent.reference_image_url` directo
+- **n8n `LineUp.json`** — "HTTP (render)" actualizado para llamar al endpoint real de producción (`/tools/render_lineup` en `recova-renderer:5050`) e incluir `open_mic_id` en el payload
+
+---
+
 ## [0.17.6] - 2026-03-08
 
 ### Fixed — validación persistente + lineup exacto en cartel
