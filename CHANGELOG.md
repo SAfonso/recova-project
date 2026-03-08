@@ -1,3 +1,14 @@
+## [0.17.6] - 2026-03-08
+
+### Fixed — validación persistente + lineup exacto en cartel
+
+- **`isValidated` persistente** — inicializado desde `localStorage` (`validated_${openMicId}`) para sobrevivir remounts del componente; guardado al validar, borrado al "Cambiar"
+- **`upsert_confirmed_lineup`** — añadido logging del error para diagnóstico; ya no silencioso
+- **Lineup exacto en cartel** — `validateLineup` incluye `lineup: [{name, instagram}]` en el payload del webhook a n8n con los 5 cómicos exactamente como los seleccionó el host
+- **n8n `Map Payload`** — usa `webhookBody.lineup` si viene en el payload (fuente de verdad: selección del host); cae en query DB solo si no viene el lineup
+
+---
+
 ## [0.17.5] - 2026-03-08
 
 ### Fixed — 4 bugs post-deploy
