@@ -269,6 +269,25 @@ async def execute_render(*, payload: dict[str, Any]) -> dict[str, Any]:
                 )
 
                 comic_anchors = [a for a in anchors if a.slot >= 1]
+                # Normalizar posiciones Y: si hay anchors con spacing < 40px
+                # (detección errónea de Gemini), redistribuir equitativamente
+                if len(comic_anchors) >= 2:
+                    sorted_by_y = sorted(comic_anchors, key=lambda a: a.center_y)
+                    min_spacing = min(
+                        sorted_by_y[i+1].center_y - sorted_by_y[i].center_y
+                        for i in range(len(sorted_by_y) - 1)
+                    )
+                    if min_spacing < 40:
+                        y_min = sorted_by_y[0].center_y
+                        y_max = sorted_by_y[-1].center_y
+                        y_range = max(y_max - y_min, 60 * (len(sorted_by_y) - 1))
+                        step = y_range // (len(sorted_by_y) - 1)
+                        for i, a in enumerate(sorted_by_y):
+                            a.center_y = y_min + i * step
+                        logger.info(
+                            "Anchors Y normalizados (spacing mín %dpx < 40): step=%dpx",
+                            min_spacing, step,
+                        )
                 if comic_anchors:
                     names = [c.get("name", "") for c in lineup]
                     assignments = [
