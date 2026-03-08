@@ -4,15 +4,16 @@ Cobertura (spec render_poster_spec):
   - Auth: 401 sin API key
   - 400 si lineup vacío o ausente
   - 200 + Content-Type image/png en happy path
-  - PosterComposer.render llamado con args correctos
-  - 500 si PosterComposer lanza excepción
+  - orchestrate_render llamado con payload correcto
+  - 500 si orchestrate_render devuelve error
 """
 
 from __future__ import annotations
 
+import asyncio
 import os
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 os.environ.setdefault("WEBHOOK_API_KEY", "test-key")
 os.environ.setdefault("SUPABASE_URL", "http://fake-supabase")
@@ -39,17 +40,29 @@ VALID_BODY = {
     "date": "15 ABR",
 }
 
+_TMP_PNG = Path("/tmp/render_2026-04-15.png")
 
-def _mock_composer_render(output_path_kwarg: str = "output_path"):
-    """Devuelve un mock de PosterComposer cuyo render escribe un PNG mínimo."""
-    mock = MagicMock()
 
-    def fake_render(**kwargs):
-        path = kwargs.get(output_path_kwarg) or kwargs.get("output_path")
-        Path(str(path)).write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 20)
+def _mock_orchestrate_ok():
+    """AsyncMock que escribe un PNG mínimo y devuelve status=success."""
+    async def _fake(payload):
+        _TMP_PNG.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 20)
+        return {
+            "status": "success",
+            "image_path": str(_TMP_PNG),
+            "output": {"image_path": str(_TMP_PNG)},
+        }
+    return _fake
 
-    mock.return_value.render.side_effect = fake_render
-    return mock
+
+def _mock_orchestrate_error():
+    """AsyncMock que devuelve status=error."""
+    async def _fake(payload):
+        return {
+            "status": "error",
+            "output": {"message": "Pillow error"},
+        }
+    return _fake
 
 
 # ---------------------------------------------------------------------------
@@ -67,20 +80,18 @@ def test_render_poster_requires_api_key():
 
 def test_render_poster_requires_lineup():
     """400 si lineup está vacío o ausente."""
-    with patch("backend.src.triggers.webhook_listener.PosterComposer", _mock_composer_render()):
+    with patch("backend.src.mcp_server.orchestrate_render", new=_mock_orchestrate_ok()):
         with app.test_client() as c:
-            # Sin lineup
             resp = c.post("/api/render-poster", json={"event_id": "evt-1"}, headers=AUTH)
             assert resp.status_code == 400
 
-            # Lineup vacío
             resp = c.post("/api/render-poster", json={"event_id": "evt-1", "lineup": []}, headers=AUTH)
             assert resp.status_code == 400
 
 
 def test_render_poster_returns_png():
     """200 con Content-Type image/png en happy path."""
-    with patch("backend.src.triggers.webhook_listener.PosterComposer", _mock_composer_render()):
+    with patch("backend.src.mcp_server.orchestrate_render", new=_mock_orchestrate_ok()):
         with app.test_client() as c:
             resp = c.post("/api/render-poster", json=VALID_BODY, headers=AUTH)
 
@@ -88,26 +99,27 @@ def test_render_poster_returns_png():
     assert "image/png" in resp.content_type
 
 
-def test_render_poster_calls_composer_with_correct_args():
-    """PosterComposer.render se llama con lineup, date y event_id correctos."""
-    MockComposer = _mock_composer_render()
+def test_render_poster_calls_orchestrate_with_correct_payload():
+    """orchestrate_render recibe event_id, lineup y date correctos."""
+    received = {}
 
-    with patch("backend.src.triggers.webhook_listener.PosterComposer", MockComposer):
+    async def _capture(payload):
+        received.update(payload)
+        _TMP_PNG.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 20)
+        return {"status": "success", "image_path": str(_TMP_PNG), "output": {"image_path": str(_TMP_PNG)}}
+
+    with patch("backend.src.mcp_server.orchestrate_render", new=_capture):
         with app.test_client() as c:
             c.post("/api/render-poster", json=VALID_BODY, headers=AUTH)
 
-    call_kwargs = MockComposer.return_value.render.call_args[1]
-    assert call_kwargs["lineup"] == LINEUP
-    assert call_kwargs["date"] == "15 ABR"
-    assert call_kwargs["event_id"] == "2026-04-15"
+    assert received["lineup"] == LINEUP
+    assert received["date"] == "15 ABR"
+    assert received["event_id"] == "2026-04-15"
 
 
 def test_render_poster_returns_500_on_render_error():
-    """500 si PosterComposer.render lanza excepción."""
-    MockComposer = MagicMock()
-    MockComposer.return_value.render.side_effect = RuntimeError("Pillow error")
-
-    with patch("backend.src.triggers.webhook_listener.PosterComposer", MockComposer):
+    """500 si orchestrate_render devuelve status=error."""
+    with patch("backend.src.mcp_server.orchestrate_render", new=_mock_orchestrate_error()):
         with app.test_client() as c:
             resp = c.post("/api/render-poster", json=VALID_BODY, headers=AUTH)
 
