@@ -21,12 +21,13 @@ from PIL import Image, ImageDraw, ImageFont
 class PlaceholderAnchor:
     """Posición y estilo detectados para un placeholder COMICO_N."""
 
-    placeholder: str  # e.g. "COMICO_1"
-    slot: int         # 1-based
-    center_x: int     # px desde izquierda
-    center_y: int     # px desde arriba
-    font_size: int    # altura estimada en px
+    placeholder: str       # e.g. "COMICO_1"
+    slot: int              # 1-based
+    center_x: int          # px desde izquierda
+    center_y: int          # px desde arriba
+    font_size: int         # altura estimada en px
     color: str = "#ffffff"
+    font_name: str = ""    # nombre de fuente detectado (e.g. "Bebas Neue")
 
 
 class AbstractDetector(ABC):

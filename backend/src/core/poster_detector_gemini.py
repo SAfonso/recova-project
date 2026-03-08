@@ -26,15 +26,17 @@ Find ALL of these placeholders:
 1. Comic name placeholders: text like COMICO_1, COMICO_2, COMICO 1, comico_1, etc.
 2. Date placeholder: text like "Fecha", "FECHA", "DATE", "DD/MM", or any obvious date placeholder.
 
-Return a JSON array. Each element must have:
-- "placeholder": the exact text found (e.g. "COMICO_1" or "Fecha")
-- "slot": for COMICO_N use the integer N; for the date placeholder use 0
-- "center_x": horizontal center in pixels (0=left edge, {width}=right edge)
-- "center_y": vertical center in pixels (0=top edge, {height}=bottom edge)
-- "font_size": estimated text height in pixels
-- "color": hex color of the text (e.g. "#ffffff")
+Return a JSON object with exactly two keys:
+- "font_name": the font family name used for the placeholder text (e.g. "Bebas Neue", "Impact", "Montserrat"). Use the most common/recognizable name. If unsure, return "".
+- "placeholders": a JSON array where each element has:
+  - "placeholder": the exact text found (e.g. "COMICO_1" or "Fecha")
+  - "slot": for COMICO_N use the integer N; for the date placeholder use 0
+  - "center_x": horizontal center in pixels (0=left edge, {width}=right edge)
+  - "center_y": vertical center in pixels (0=top edge, {height}=bottom edge)
+  - "font_size": estimated text height in pixels
+  - "color": hex color of the text (e.g. "#ffffff")
 
-Return ONLY a valid JSON array. No explanation. No markdown code fences.\
+Return ONLY valid JSON. No explanation. No markdown code fences.\
 """
 
 # Elimina ```json ... ``` o ``` ... ``` si Gemini los añade igualmente
@@ -110,8 +112,16 @@ class GeminiDetector(AbstractDetector):
                 f"ERR_GEMINI_PARSE: respuesta no es JSON válido — {exc}\nRaw: {raw[:200]}"
             ) from exc
 
+        # Soporte formato nuevo {font_name, placeholders} y legacy array
+        if isinstance(data, dict):
+            font_name = str(data.get("font_name", ""))
+            items = data.get("placeholders", data.get("anchors", []))
+        else:
+            font_name = ""
+            items = data
+
         anchors: list[PlaceholderAnchor] = []
-        for item in data:
+        for item in items:
             anchors.append(
                 PlaceholderAnchor(
                     placeholder=str(item.get("placeholder", f"COMICO_{item['slot']}")),
@@ -120,6 +130,7 @@ class GeminiDetector(AbstractDetector):
                     center_y=int(item["center_y"]),
                     font_size=int(item["font_size"]),
                     color=str(item.get("color", "#ffffff")),
+                    font_name=font_name,
                 )
             )
 
