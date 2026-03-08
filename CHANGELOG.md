@@ -1,3 +1,37 @@
+## [0.17.0] - 2026-03-08
+
+### Added — Sprint 12: Dev Tools Panel
+
+- **Spec SDD** — `specs/dev_tools_spec.md`
+- **`dev_users_pool.py`** — pool de 100 usuarios de prueba con campos variados (`nombre`, `instagram`, `telefono`, `experiencia_raw`, `disponibilidad_ultimo_minuto`, `origen_conocimiento`); función `get_random_users(n)`
+- **`POST /api/dev/seed-open-mic`** — siembra 10 usuarios aleatorios del pool en un open mic; genera fechas futuras en formato `DD-MM-YY`; marca `config.seed_used=true` para evitar repetición; auth via Supabase JWT (`auth.get_user`)
+- **`POST /api/dev/trigger-ingest`** — lanza `bronze_to_silver_ingestion.py` via `subprocess.Popen`; auth Supabase JWT
+- **`POST /api/dev/trigger-scoring`** — ejecuta `execute_scoring(open_mic_id)` directamente; auth Supabase JWT
+- **`DevToolsPanel.jsx`** (nuevo) — panel con 3 botones: Poblar datos, Forzar ingesta, Forzar scoring; JWT via `supabase.auth.getSession()`; toast 4s; spinner de carga
+- **`OpenMicDetail.jsx`** — añadida pestaña "Dev" en la vista Configurar que monta `DevToolsPanel`
+- **10 tests** `backend/tests/test_dev_tools.py` — todos verdes
+
+### Added — Sprint 11: n8n Integration
+
+- **Spec SDD** — `specs/forms_batch_ingest_spec.md`, `specs/render_poster_spec.md`
+- **`POST /api/ingest-from-forms`** — ingesta batch desde Google Forms con deduplicación por cursor `last_form_ingestion_at`; mapeo canónico → bronze
+- **`POST /api/render-poster`** — llama a `PosterComposer` directamente (sin MCP); devuelve PNG binario via `send_file`
+- **`workflows/n8n/LineUp.json`** — workflow reescrito: Webhook → Get Comics → Map Payload → HTTP render → Telegram; usa `$env.RECOVA_BACKEND_URL` y `$env.WEBHOOK_API_KEY`
+- **`Ingesta-Solicitudes.json`** actualizado para llamar `POST /api/ingest-from-forms`
+
+### Fixed
+
+- **Auth JWT** — `_is_authenticated_user` cambiado de `jwt.decode` (HS256) a `supabase.auth.get_user()` para soportar tokens ES256 que usa Supabase en proyectos nuevos
+- **Fechas en seed** — formato corregido de ISO (`YYYY-MM-DD`) a `DD-MM-YY` que espera `parse_event_dates`
+- **`silver.solicitudes`** — añadida constraint unique `(comico_id, open_mic_id, fecha_evento)` requerida por el `ON CONFLICT` del script de ingesta
+- **`App.jsx`** — añadido `schema('silver')` en query `lineup_slots` que devolvía 404 al buscar en schema `public`
+
+### Tests
+
+- **Total acumulado**: ~300 tests verdes (backend + frontend)
+
+---
+
 ## [0.15.0] - 2026-03-07
 
 ### Added — Sprint 10: Scoring Inteligente Custom
