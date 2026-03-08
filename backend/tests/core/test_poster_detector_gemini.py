@@ -34,17 +34,36 @@ def _make_valid_png(path: Path, width: int = 100, height: int = 100) -> None:
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
-def _make_gemini_response(payload: list[dict] | str) -> MagicMock:
+def _make_gemini_response(payload: list[dict] | dict | str) -> MagicMock:
     """Mock de response de Gemini con texto JSON."""
     response = MagicMock()
-    if isinstance(payload, list):
+    if isinstance(payload, (list, dict)):
         response.text = json.dumps(payload)
     else:
         response.text = payload
     return response
 
 
-def _valid_payload(n: int = 3) -> list[dict]:
+def _valid_payload(n: int = 3) -> dict:
+    """Formato nuevo: objeto con font_name + placeholders."""
+    return {
+        "font_name": "Bebas Neue",
+        "placeholders": [
+            {
+                "placeholder": f"COMICO_{i+1}",
+                "slot": i + 1,
+                "center_x": 490 + i * 5,
+                "center_y": 500 + i * 80,
+                "font_size": 45,
+                "color": "#ffffff",
+            }
+            for i in range(n)
+        ],
+    }
+
+
+def _valid_payload_legacy(n: int = 3) -> list[dict]:
+    """Formato legacy: array directo."""
     return [
         {
             "placeholder": f"COMICO_{i+1}",
@@ -97,6 +116,34 @@ def test_detect_parses_valid_json_response(tmp_path: Path) -> None:
     assert anchors[0].center_x == 490
     assert anchors[0].font_size == 45
     assert anchors[0].color == "#ffffff"
+    assert anchors[0].font_name == "Bebas Neue"
+
+
+def test_detect_font_name_propagated(tmp_path: Path) -> None:
+    """font_name del objeto raíz se propaga a todos los anchors."""
+    dummy_png = tmp_path / "suxio.png"
+    _make_valid_png(dummy_png)
+
+    payload = {"font_name": "Impact", "placeholders": _valid_payload_legacy(2)}
+    _setup_genai_mock(_make_gemini_response(payload))
+
+    detector = GeminiDetector(api_key="test-key")
+    anchors = detector.detect(dummy_png)
+
+    assert all(a.font_name == "Impact" for a in anchors)
+
+
+def test_detect_legacy_array_format(tmp_path: Path) -> None:
+    """Formato legacy (array) sigue funcionando; font_name queda vacío."""
+    dummy_png = tmp_path / "suxio.png"
+    _make_valid_png(dummy_png)
+
+    _setup_genai_mock(_make_gemini_response(_valid_payload_legacy(2)))
+    detector = GeminiDetector(api_key="test-key")
+    anchors = detector.detect(dummy_png)
+
+    assert len(anchors) == 2
+    assert anchors[0].font_name == ""
 
 
 def test_detect_strips_markdown_fences(tmp_path: Path) -> None:
@@ -116,8 +163,10 @@ def test_detect_sorts_by_slot(tmp_path: Path) -> None:
     dummy_png = tmp_path / "suxio.png"
     _make_valid_png(dummy_png)
 
-    shuffled = list(reversed(_valid_payload(4)))
-    _setup_genai_mock(_make_gemini_response(shuffled))
+    # Usar placeholders en orden inverso dentro del objeto nuevo
+    payload = _valid_payload(4)
+    payload["placeholders"] = list(reversed(payload["placeholders"]))
+    _setup_genai_mock(_make_gemini_response(payload))
 
     detector = GeminiDetector(api_key="test-key")
     anchors = detector.detect(dummy_png)

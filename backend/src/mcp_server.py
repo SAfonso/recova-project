@@ -62,6 +62,49 @@ def _safe_event_slug(event_id: str) -> str:
     return "".join(c if c.isalnum() or c in {"-", "_"} else "_" for c in event_id)
 
 
+def _resolve_font_by_name(font_name: str, fallback: Path) -> Path:
+    """Busca la fuente por nombre: primero en el sistema, luego Google Fonts."""
+    if not font_name:
+        return fallback
+
+    import glob
+    import re
+    import tempfile
+    import urllib.request
+
+    search = font_name.lower().replace(" ", "").replace("-", "").replace("_", "")
+    font_dirs = ["/usr/share/fonts", "/usr/local/share/fonts", str(Path.home() / ".fonts")]
+    for d in font_dirs:
+        for ext in ("ttf", "otf", "TTF", "OTF"):
+            for path in glob.glob(f"{d}/**/*.{ext}", recursive=True):
+                stem = Path(path).stem.lower().replace(" ", "").replace("-", "").replace("_", "")
+                if search in stem or stem in search:
+                    logger.info("Fuente del sistema encontrada: %s", path)
+                    return Path(path)
+
+    # Intentar descarga desde Google Fonts (UA antiguo → devuelve TTF)
+    family = font_name.strip().replace(" ", "+")
+    css_url = f"https://fonts.googleapis.com/css2?family={family}:wght@400;700"
+    try:
+        req = urllib.request.Request(
+            css_url,
+            headers={"User-Agent": "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)"},
+        )
+        css = urllib.request.urlopen(req, timeout=6).read().decode()
+        match = re.search(r"src:\s*url\(([^)]+\.ttf[^)]*)\)", css)
+        if match:
+            font_url = match.group(1)
+            tmp = tempfile.NamedTemporaryFile(suffix=".ttf", delete=False)
+            urllib.request.urlretrieve(font_url, tmp.name)
+            logger.info("Fuente descargada de Google Fonts: %s → %s", font_name, tmp.name)
+            return Path(tmp.name)
+    except Exception as exc:
+        logger.warning("No se pudo descargar fuente '%s' de Google Fonts: %s", font_name, exc)
+
+    logger.info("Usando fuente fallback para '%s'", font_name)
+    return fallback
+
+
 def _download_tmp(url: str, suffix: str = ".png") -> Path:
     """Descarga una URL a un archivo temporal y devuelve su Path."""
     import tempfile
@@ -138,7 +181,11 @@ async def execute_render(*, payload: dict[str, Any]) -> dict[str, Any]:
                         for a in comic_anchors
                         if 1 <= a.slot <= len(names)
                     ]
-                    font_path = PosterComposer()._resolve_font(None)
+                    fallback_font = PosterComposer()._resolve_font(None)
+                    detected_font_name = comic_anchors[0].font_name
+                    font_path = _resolve_font_by_name(detected_font_name, fallback_font)
+                    if detected_font_name:
+                        logger.info("Fuente detectada por Gemini: '%s'", detected_font_name)
                     # Fecha: usar anchor detectado (slot=0) o fallback
                     date_anchor_obj = next((a for a in anchors if a.slot == 0), None)
                     date_anchor    = (date_anchor_obj.center_x, date_anchor_obj.center_y) if date_anchor_obj else (540, 80)
