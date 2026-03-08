@@ -35,7 +35,7 @@
     },
     {
       "parameters": {
-        "url": "={{ $env.SUPABASE_URL + '/rest/v1/telegram_users?select=telegram_user_id&host_id=eq.' + $json[0].proveedor_id }}",
+        "url": "={{ $env.SUPABASE_URL + '/rest/v1/telegram_users?select=telegram_user_id&host_id=eq.' + $json.proveedor_id }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -103,7 +103,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ event_id: $json.event_id, lineup: $json.lineup, date: $json.date }) }}",
+        "jsonBody": "={{ JSON.stringify({ event_id: $json.event_id, lineup: $json.lineup, date: $json.date, open_mic_id: $('Webhook').item.json.body.open_mic_id }) }}",
         "options": {
           "response": {
             "response": {

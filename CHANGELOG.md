@@ -1,3 +1,13 @@
+## [0.17.4] - 2026-03-08
+
+### Fixed — Telegram render: chat_id vacío + poster viejo
+
+- **n8n `LineUp.json`** — "Get Telegram chat_id": `$json[0].proveedor_id` → `$json.proveedor_id` (n8n ya divide los items, `$json[0]` era `undefined` → lookup fallaba → `chat_id` vacío)
+- **n8n `LineUp.json`** — "HTTP (render)": añadido `open_mic_id` al body del render para que el backend sepa qué plantilla usar
+- **`render_poster` endpoint** — si llega `open_mic_id`, busca `config.poster.base_image_url` en Supabase, descarga la imagen a un temp file y la pasa a `PosterComposer`; si falla, usa la imagen local como fallback
+
+---
+
 ## [0.17.3] - 2026-03-08
 
 ### Fixed — UX Telegram en móvil/tablet
