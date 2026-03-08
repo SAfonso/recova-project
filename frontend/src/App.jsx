@@ -117,6 +117,7 @@ function App({ session, openMicId, onBack }) {
 
     // Detectar si ya está validado: hay slots confirmados en silver.lineup_slots
     const { data: slots } = await supabase
+      .schema('silver')
       .from('lineup_slots')
       .select('id')
       .eq('open_mic_id', openMicId)
