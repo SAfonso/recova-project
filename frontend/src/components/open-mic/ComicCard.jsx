@@ -10,6 +10,12 @@ const CATEGORY_BUTTONS = [
   { value: 'restricted', label: 'Restricted', className: 'bg-[#1a1a1a] text-[#fff8e7]' },
 ];
 
+const GENDER_OPTIONS = [
+  { value: 'm',  label: 'M' },
+  { value: 'f',  label: 'F' },
+  { value: 'nb', label: 'NB' },
+];
+
 const CARD_BORDER = {
   gold:       'border-[#D4A017] bg-[#fffef5]',
   priority:   'border-[#A0A0A0] bg-[#fffef5]',
@@ -33,10 +39,19 @@ function categoryBadge(category) {
 
 export function ComicCard({
   candidate, draft, selected, expanded, canSelect,
-  onExpand, onToggleSelected, onUpdateCategory, hasPendingEdit,
+  onExpand, onToggleSelected, onUpdateCategory, onUpdateGenero, hasPendingEdit,
 }) {
   const borderClass = CARD_BORDER[draft.categoria] ?? CARD_BORDER.default;
   const shadow = DROP_SHADOW[draft.categoria] ?? DROP_SHADOW.default;
+
+  const handleCategoryClick = (value) => {
+    // Si ya está activo, volver a standard (quitar categoría especial)
+    if (draft.categoria === value) {
+      onUpdateCategory('standard');
+    } else {
+      onUpdateCategory(value);
+    }
+  };
 
   return (
     <div style={{ filter: shadow }}>
@@ -56,23 +71,51 @@ export function ComicCard({
         {expanded && (
           <div className="relative z-10 border-t-2 border-dashed border-[#1a1a1a]/20 px-3 pb-3 pt-2">
             <div className="flex items-start gap-3">
-              <div className="flex flex-col gap-1.5">
-                <span className="text-[10px] text-[#6B5C4A]">Categoria</span>
-                <div className="flex gap-1.5">
-                  {CATEGORY_BUTTONS.map((btn) => {
-                    const active = draft.categoria === btn.value;
-                    return (
-                      <button
-                        key={btn.value}
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); onUpdateCategory(btn.value); }}
-                        className={`h-7 min-w-16 cursor-pointer rounded-md border-2 border-[#1a1a1a] px-1 text-[10px] font-bold transition-all duration-150 ${btn.className} ${active ? 'ring-2 ring-[#1a1a1a] ring-offset-1' : 'opacity-70 hover:opacity-100'}`}
-                        aria-label={`Asignar categoria ${btn.label}`}
-                      >
-                        {btn.label}
-                      </button>
-                    );
-                  })}
+              <div className="flex flex-col gap-2.5">
+                {/* Categoría */}
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] text-[#6B5C4A]">Categoría <span className="text-[#9ca3af]">(clic activo = quitar)</span></span>
+                  <div className="flex gap-1.5">
+                    {CATEGORY_BUTTONS.map((btn) => {
+                      const active = draft.categoria === btn.value;
+                      return (
+                        <button
+                          key={btn.value}
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); handleCategoryClick(btn.value); }}
+                          className={`h-7 min-w-16 cursor-pointer rounded-md border-2 border-[#1a1a1a] px-1 text-[10px] font-bold transition-all duration-150 ${btn.className} ${active ? 'ring-2 ring-[#1a1a1a] ring-offset-1' : 'opacity-70 hover:opacity-100'}`}
+                          aria-label={`Asignar categoría ${btn.label}`}
+                        >
+                          {btn.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Género */}
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] text-[#6B5C4A]">Género</span>
+                  <div className="flex gap-1.5">
+                    {GENDER_OPTIONS.map((opt) => {
+                      const active = draft.genero === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); onUpdateGenero(opt.value); }}
+                          className={`h-7 w-10 cursor-pointer rounded-md border-2 border-[#1a1a1a] text-[10px] font-bold transition-all duration-150
+                            ${active
+                              ? 'bg-[#1a1a1a] text-[#fff8e7] ring-2 ring-[#1a1a1a] ring-offset-1'
+                              : 'bg-[#F5F0E1] text-[#1a1a1a] opacity-70 hover:opacity-100'
+                            }`}
+                          aria-label={`Género ${opt.label}`}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 

@@ -29,6 +29,7 @@ export function ExpandedView({
   onCardExpand,
   onToggleSelected,
   onUpdateCategory,
+  onUpdateGenero,
   getDraft,
   hasPendingEdit,
 }) {
@@ -85,6 +86,7 @@ export function ExpandedView({
                 onExpand={() => onCardExpand(candidate.row_key)}
                 onToggleSelected={() => onToggleSelected(candidate.row_key)}
                 onUpdateCategory={(value) => onUpdateCategory(candidate.row_key, value)}
+                onUpdateGenero={(value) => onUpdateGenero(candidate.row_key, value)}
                 hasPendingEdit={hasPendingEdit(candidate)}
               />
             ))}
