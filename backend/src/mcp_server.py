@@ -116,41 +116,62 @@ def _resolve_font_by_name(font_name: str, fallback: Path) -> Path:
             logger.warning("Descarga fallida %s: %s", url, exc)
             return None
 
-    # 2. Google Fonts CSS API con UA antiguo (devuelve TTF)
     family = font_name.strip().replace(" ", "+")
-    for css_url in [
-        f"https://fonts.googleapis.com/css?family={family}",
-        f"https://fonts.googleapis.com/css2?family={family}:wght@400;700",
-    ]:
+    family_lower = font_name.strip().replace(" ", "-").lower()
+
+    def _fetch_css_ttf(css_url: str, source_name: str) -> Path | None:
+        """Descarga CSS de una fuente API y extrae la URL TTF."""
         try:
             req = urllib.request.Request(
                 css_url,
                 headers={"User-Agent": "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)"},
             )
             css = urllib.request.urlopen(req, timeout=6).read().decode()
-            # URL con o sin comillas: url(...) o url('...') o url("...")
             match = re.search(r"url\(['\"]?(https://[^'\")]+\.ttf)['\"]?\)", css)
             if match:
                 result = _download_url(match.group(1))
                 if result:
-                    logger.info("Fuente de Google Fonts CSS: %s", font_name)
+                    logger.info("Fuente de %s: %s", source_name, font_name)
                     return result
         except Exception as exc:
-            logger.warning("Google Fonts CSS fallido (%s): %s", css_url, exc)
+            logger.warning("%s fallido (%s): %s", source_name, css_url, exc)
+        return None
 
-    # 3. Fallback directo desde repo oficial de Google Fonts en GitHub
+    # 2. Google Fonts (CSS v1 y v2 con UA antiguo → devuelve TTF)
+    for css_url in [
+        f"https://fonts.googleapis.com/css?family={family}",
+        f"https://fonts.googleapis.com/css2?family={family}:wght@400;700",
+    ]:
+        result = _fetch_css_ttf(css_url, "Google Fonts")
+        if result:
+            return result
+
+    # 3. Bunny Fonts (mirror privado de Google Fonts, misma API)
+    for css_url in [
+        f"https://fonts.bunny.net/css?family={family_lower}",
+        f"https://fonts.bunny.net/css2?family={family_lower}:wght@400;700",
+    ]:
+        result = _fetch_css_ttf(css_url, "Bunny Fonts")
+        if result:
+            return result
+
+    # 4. FontShare (fuentes de alta calidad, acceso libre)
+    fontshare_url = f"https://api.fontshare.com/v2/css?f[]={family_lower}@400,700&display=swap"
+    result = _fetch_css_ttf(fontshare_url, "FontShare")
+    if result:
+        return result
+
+    # 5. Repo oficial google/fonts en GitHub (TTF directos, varios licencias)
     github_slug = font_name.lower().replace(" ", "").replace("-", "")
     github_name = font_name.replace(" ", "")
-    github_urls = [
-        f"https://github.com/google/fonts/raw/main/ofl/{github_slug}/{github_name}-Regular.ttf",
-        f"https://github.com/google/fonts/raw/main/apache/{github_slug}/{github_name}-Regular.ttf",
-        f"https://github.com/google/fonts/raw/main/ufl/{github_slug}/{github_name}-Regular.ttf",
-    ]
-    for url in github_urls:
-        result = _download_url(url)
-        if result and result.stat().st_size > 1000:
-            logger.info("Fuente de GitHub google/fonts: %s", font_name)
-            return result
+    for license_dir in ("ofl", "apache", "ufl"):
+        for style in ("Regular", "Bold", ""):
+            suffix = f"-{style}" if style else ""
+            url = f"https://github.com/google/fonts/raw/main/{license_dir}/{github_slug}/{github_name}{suffix}.ttf"
+            result = _download_url(url)
+            if result and result.stat().st_size > 1000:
+                logger.info("Fuente de GitHub google/fonts (%s): %s", license_dir, font_name)
+                return result
 
     logger.info("Usando fuente fallback para '%s'", font_name)
     return fallback
