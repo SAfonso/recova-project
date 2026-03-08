@@ -1,3 +1,14 @@
+## [0.17.5] - 2026-03-08
+
+### Fixed — 4 bugs post-deploy
+
+- **Poster viejo** — `handlePosterUpload` añade `?v=Date.now()` a la URL pública de Supabase Storage para romper la caché del CDN al re-subir imagen
+- **Nombres extra en cartel** — n8n "Get Approved Comics": añadido filtro `open_mic_id` para no traer cómicos de otros open mics con la misma fecha; corregido `=eq.` → `eq.` en todos los query params (el `=` extra generaba URLs mal formadas)
+- **Validar de nuevo al volver** — `upsert_confirmed_lineup` y `setIsValidated(true)` se ejecutan ahora ANTES del webhook a n8n; n8n pasa a ser fire-and-forget → el estado validado persiste aunque n8n falle
+- **Scoring personalizado bloqueado** — eliminado el `disabled` en la opción "Scoring personalizado" de `ScoringTypeSelector`; ahora se puede seleccionar siempre y el aviso de "analiza tu formulario" aparece como hint descriptivo cuando aún no hay `field_mapping`
+
+---
+
 ## [0.17.4] - 2026-03-08
 
 ### Fixed — Telegram render: chat_id vacío + poster viejo

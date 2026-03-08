@@ -246,33 +246,8 @@ function App({ session, openMicId, onBack }) {
 
       setEdits({});
 
-      const n8nResponse = await fetch(normalizedN8nWebhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          fecha: rpcEventDate,
-          open_mic_id: openMicId,
-          status: 'validado',
-          total: selectedIds.length,
-          trace: {
-            recovery_notes: recoveryNotes,
-          },
-        }),
-      });
-
-      if (!n8nResponse.ok) {
-        const n8nErrorBody = await n8nResponse.text();
-        console.error('Error HTTP desde n8n webhook', {
-          status: n8nResponse.status,
-          statusText: n8nResponse.statusText,
-          body: n8nErrorBody,
-          webhookUrl: normalizedN8nWebhookUrl,
-        });
-        throw new Error(`HTTP ${n8nResponse.status}`);
-      }
-
+      // Grabar slots confirmados ANTES de notificar a n8n
+      // para que el estado quede persistido aunque n8n falle
       const approvedIds = selectedCandidates
         .map((c) => c.solicitud_id)
         .filter(Boolean);
@@ -283,9 +258,31 @@ function App({ session, openMicId, onBack }) {
       });
 
       setIsValidated(true);
+
+      // n8n es fire-and-forget: si falla no bloquea el estado validado
+      fetch(normalizedN8nWebhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fecha: rpcEventDate,
+          open_mic_id: openMicId,
+          status: 'validado',
+          total: selectedIds.length,
+          trace: { recovery_notes: recoveryNotes },
+        }),
+      }).then((res) => {
+        if (!res.ok) {
+          res.text().then((body) =>
+            console.error('n8n webhook error', { status: res.status, body }),
+          );
+        }
+      }).catch((err) => {
+        console.error('Error enviando webhook a n8n:', err);
+      });
+
     } catch (n8nError) {
-      console.error('Error enviando webhook a n8n:', n8nError);
-      setError('No se pudo notificar a n8n. Revisa la consola para más detalle.');
+      console.error('Error en validateLineup:', n8nError);
+      setError('Error al validar. Revisa la consola para más detalle.');
     } finally {
       setSaving(false);
     }
