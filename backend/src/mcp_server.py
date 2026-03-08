@@ -245,6 +245,29 @@ async def execute_render(*, payload: dict[str, Any]) -> dict[str, Any]:
                 detector = GeminiDetector()
                 anchors  = await loop.run_in_executor(None, lambda: detector.detect(dirty_path))
 
+                # Escalar coordenadas si dirty y clean tienen distinto tamaño
+                from PIL import Image as _PILImg
+                with _PILImg.open(dirty_path) as _di:
+                    dirty_w, dirty_h = _di.size
+                with _PILImg.open(clean_path) as _ci:
+                    clean_w, clean_h = _ci.size
+                scale_x = clean_w / dirty_w if dirty_w else 1.0
+                scale_y = clean_h / dirty_h if dirty_h else 1.0
+                if scale_x != 1.0 or scale_y != 1.0:
+                    logger.info(
+                        "Escalando anchors dirty(%dx%d)→clean(%dx%d): sx=%.3f sy=%.3f",
+                        dirty_w, dirty_h, clean_w, clean_h, scale_x, scale_y,
+                    )
+                    for a in anchors:
+                        a.center_x  = int(a.center_x  * scale_x)
+                        a.center_y  = int(a.center_y  * scale_y)
+                        a.font_size = int(a.font_size  * scale_y)
+
+                logger.info(
+                    "Anchors detectados: %s",
+                    [(a.slot, a.center_x, a.center_y, a.font_size) for a in anchors],
+                )
+
                 comic_anchors = [a for a in anchors if a.slot >= 1]
                 if comic_anchors:
                     names = [c.get("name", "") for c in lineup]
