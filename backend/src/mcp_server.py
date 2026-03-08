@@ -229,6 +229,7 @@ async def orchestrate_render(
 
     safe_payload = {
         "event_id": event_id,
+        "open_mic_id": payload.get("open_mic_id"),
         "lineup": payload.get("lineup", []),
         "date": payload.get("date"),
         "event": payload.get("event", {}),
