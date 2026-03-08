@@ -52,6 +52,27 @@ STROKE_FILL  = "#000000"
 STROKE_WIDTH = 3
 
 
+def _font_size_for_height(font_path: Path, target_px: int) -> int:
+    """Devuelve el tamaño en puntos que produce texto de target_px píxeles de alto.
+
+    Gemini reporta font_size como altura visual en píxeles. PIL usa puntos
+    tipográficos (1pt ≠ 1px). Esta función calibra el tamaño por búsqueda
+    binaria midiendo el bbox real de la fuente cargada.
+    """
+    size = max(target_px, 4)
+    for _ in range(20):
+        font = ImageFont.truetype(str(font_path), size=size)
+        ascent, descent = font.getmetrics()
+        actual_px = ascent  # altura sobre la línea base (≈ cap height)
+        if actual_px <= 0:
+            break
+        new_size = int(size * target_px / actual_px)
+        if new_size == size:
+            break
+        size = max(new_size, 4)
+    return size
+
+
 def render_on_anchors(
     clean_path: Path,
     assignments: list[tuple[str, PlaceholderAnchor]],
@@ -79,7 +100,8 @@ def render_on_anchors(
     draw = ImageDraw.Draw(img)
 
     for name, anchor in assignments:
-        font = ImageFont.truetype(str(font_path), size=anchor.font_size)
+        pt_size = _font_size_for_height(font_path, anchor.font_size)
+        font = ImageFont.truetype(str(font_path), size=pt_size)
         draw.text(
             xy=(anchor.center_x, anchor.center_y),
             text=name.upper(),
@@ -91,7 +113,8 @@ def render_on_anchors(
         )
 
     # Fecha
-    date_font = ImageFont.truetype(str(font_path), size=date_font_size)
+    date_pt_size = _font_size_for_height(font_path, date_font_size)
+    date_font = ImageFont.truetype(str(font_path), size=date_pt_size)
     draw.text(
         xy=date_anchor,
         text=date.upper(),
