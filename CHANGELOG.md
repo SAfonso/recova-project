@@ -1,3 +1,15 @@
+## [0.17.1] - 2026-03-08
+
+### Fixed — Hotfixes post-deploy
+
+- **Auth JWT** — `_is_authenticated_user` reemplazado de `jwt.decode` (HS256) a `supabase.auth.get_user()`: Supabase usa ES256 en proyectos nuevos y PyJWT no puede verificarlo sin la clave pública
+- **`silver.solicitudes`** — añadida constraint unique `(comico_id, open_mic_id, fecha_evento)` requerida por el `ON CONFLICT` del script de ingesta multi-tenant
+- **`App.jsx`** — `schema('silver')` en query `lineup_slots` (devolvía 404 al buscar en schema `public`)
+- **`App.jsx`** — `open_mic_id` añadido al body del webhook n8n para que el workflow pueda hacer lookup del `telegram_user_id`
+- **`LineUp.json`** — workflow actualizado con nodos "Get Host proveedor_id" y "Get Telegram chat_id" para obtener el `chat_id` de Telegram del host via `open_mics → telegram_users`
+
+---
+
 ## [0.17.0] - 2026-03-08
 
 ### Added — Sprint 12: Dev Tools Panel
