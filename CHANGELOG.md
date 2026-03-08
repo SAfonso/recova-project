@@ -1,3 +1,19 @@
+## [0.17.2] - 2026-03-08
+
+### Fixed — Correcciones UI post-deploy
+
+- **Crear Open Mic** — día de la semana y hora son ahora campos obligatorios en el formulario de creación; se guardan en `config.info`
+- **Poster** — sección dividida en dos uploads: "imagen limpia" (`poster.base_image_url`) e "imagen sucia" (`poster.dirty_image_url`) para que la IA analice el diseño original; aviso de funcionalidad en pruebas (banner amarillo)
+- **Sin scoring** — "Slots disponibles" ahora siempre visible, independientemente del tipo de scoring
+- **Telegram** — icono semioculto tras el primer uso (más pequeño y con opacidad reducida); soporte para usuarios con múltiples organizaciones (selector de org en el modal)
+- **ComicCard** — clic en la categoría ya activa (gold/priority/restricted) la resetea a `standard`; `CATEGORY_OPTIONS` ampliado para incluir `standard` y así el reseteo no quedaba bloqueado por el guard
+- **ComicCard** — selector de género M / F / NB en la ficha expandida de cada cómico; propagado via `onUpdateGenero` desde `ExpandedView` y `App`
+- **Header lineup** — fecha del evento en `font-['Bangers']` blanco y legible sobre fondo oscuro
+- **NotebookSheet** — eliminada pestaña "Config" de la vista de validación del lineup
+- **Candidatos** — eliminada conversión forzada `standard → priority` en `fetchCandidates`; los cómicos con categoría `standard` ahora se muestran correctamente en lugar de aparecer todos como "Preferred"
+
+---
+
 ## [0.17.1] - 2026-03-08
 
 ### Fixed — Hotfixes post-deploy
