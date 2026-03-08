@@ -17,11 +17,15 @@ from unittest.mock import MagicMock
 import pytest
 
 # Inyecta mock de google.genai antes de importar CustomScoringProposer.
+_mock_google = MagicMock()
 _mock_genai = MagicMock()
+sys.modules.setdefault("google", _mock_google)
 sys.modules.setdefault("google.genai", _mock_genai)
 sys.modules.setdefault("google.genai.types", MagicMock())
 # Siempre apuntar al mock que realmente está en sys.modules.
+_mock_google = sys.modules["google"]
 _mock_genai = sys.modules["google.genai"]
+_mock_google.genai = _mock_genai
 
 from backend.src.core.custom_scoring_proposer import CustomScoringProposer  # noqa: E402
 

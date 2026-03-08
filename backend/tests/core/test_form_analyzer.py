@@ -16,12 +16,16 @@ import pytest
 
 # Inyecta mock de google.genai antes de importar FormAnalyzer,
 # igual que en test_poster_detector_gemini.py para soportar entornos sin la lib.
+_mock_google = MagicMock()
 _mock_genai = MagicMock()
+sys.modules.setdefault("google", _mock_google)
 sys.modules.setdefault("google.genai", _mock_genai)
 sys.modules.setdefault("google.genai.types", MagicMock())
 # Siempre apuntar al mock que realmente está en sys.modules (puede haber sido
 # registrado antes por otro test file si pytest los carga en paralelo/orden distinto)
+_mock_google = sys.modules["google"]
 _mock_genai = sys.modules["google.genai"]
+_mock_google.genai = _mock_genai
 
 from backend.src.core.form_analyzer import FormAnalyzer  # noqa: E402
 
