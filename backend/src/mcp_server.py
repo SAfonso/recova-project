@@ -13,6 +13,8 @@ from pathlib import Path
 from typing import Any
 
 from backend.src.core.poster_composer import PosterComposer
+from backend.src.core.poster_detector_base import render_on_anchors
+from backend.src.core.poster_detector_gemini import GeminiDetector
 from backend.src.core.security import validate_reference_image
 
 
@@ -60,11 +62,25 @@ def _safe_event_slug(event_id: str) -> str:
     return "".join(c if c.isalnum() or c in {"-", "_"} else "_" for c in event_id)
 
 
-async def execute_render(*, payload: dict[str, Any]) -> dict[str, Any]:
-    """Render del cartel con PosterComposer y devuelve payload estructurado."""
+def _download_tmp(url: str, suffix: str = ".png") -> Path:
+    """Descarga una URL a un archivo temporal y devuelve su Path."""
     import tempfile
     import urllib.request
+    tmp = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
+    urllib.request.urlretrieve(url, tmp.name)
+    return Path(tmp.name)
 
+
+async def execute_render(*, payload: dict[str, Any]) -> dict[str, Any]:
+    """Render del cartel y devuelve payload estructurado.
+
+    Pipeline A (preferido): dirty_image_url disponible
+        GeminiDetector detecta anchors → render_on_anchors estampa nombres
+        con la tipografía, tamaño y posición del diseño original.
+
+    Pipeline B (fallback): solo base_image_url o template local
+        PosterComposer con layout adaptativo propio.
+    """
     event_id = payload["event_id"]
     lineup   = payload.get("lineup", [])
 
@@ -79,40 +95,83 @@ async def execute_render(*, payload: dict[str, Any]) -> dict[str, Any]:
 
     output_path = Path("/tmp") / f"render_{_safe_event_slug(event_id)}.png"
 
-    # Intentar usar la imagen base del open_mic si viene en el payload
-    base_image_path = None
-    tmp_image_file = None
-    reference_image_url = payload.get("intent", {}).get("reference_image_url")
-    if not reference_image_url:
-        # También aceptar open_mic_id para buscarlo en Supabase
-        open_mic_id = payload.get("open_mic_id")
-        if open_mic_id:
-            try:
-                import os
-                from supabase import create_client as _create_client
-                _sb = _create_client(
-                    os.getenv("SUPABASE_URL", ""),
-                    os.getenv("SUPABASE_SERVICE_KEY", ""),
-                )
-                row = _sb.schema("silver").from_("open_mics").select("config").eq("id", open_mic_id).single().execute()
-                cfg = (row.data or {}).get("config") or {}
-                reference_image_url = (cfg.get("poster") or {}).get("base_image_url")
-            except Exception as exc:
-                logger.warning("No se pudo cargar base_image_url del open_mic: %s", exc)
+    # ── Obtener URLs de imágenes del config del open_mic ──────────────
+    base_image_url  = payload.get("intent", {}).get("reference_image_url")
+    dirty_image_url = None
 
-    if reference_image_url:
+    open_mic_id = payload.get("open_mic_id")
+    if open_mic_id:
         try:
-            tmp_image_file = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
-            urllib.request.urlretrieve(reference_image_url, tmp_image_file.name)
-            base_image_path = Path(tmp_image_file.name)
-            logger.info("Usando imagen base: %s", reference_image_url)
+            from supabase import create_client as _create_client
+            _sb = _create_client(
+                os.getenv("SUPABASE_URL", ""),
+                os.getenv("SUPABASE_SERVICE_KEY", ""),
+            )
+            row = _sb.schema("silver").from_("open_mics").select("config").eq("id", open_mic_id).single().execute()
+            cfg = (row.data or {}).get("config") or {}
+            poster_cfg = cfg.get("poster") or {}
+            base_image_url  = base_image_url or poster_cfg.get("base_image_url")
+            dirty_image_url = poster_cfg.get("dirty_image_url")
         except Exception as exc:
-            logger.warning("No se pudo descargar la imagen base, usando template: %s", exc)
-            base_image_path = None
+            logger.warning("No se pudo cargar config del open_mic: %s", exc)
 
     loop = asyncio.get_running_loop()
-    composer = PosterComposer(base_image_path=base_image_path)
+    tmp_files: list[Path] = []
+
     try:
+        # ── Pipeline A: Gemini detecta anchors del cartel sucio ───────
+        if dirty_image_url and base_image_url and lineup:
+            try:
+                dirty_path = await loop.run_in_executor(None, lambda: _download_tmp(dirty_image_url))
+                tmp_files.append(dirty_path)
+                clean_path = await loop.run_in_executor(None, lambda: _download_tmp(base_image_url))
+                tmp_files.append(clean_path)
+
+                detector = GeminiDetector()
+                anchors  = await loop.run_in_executor(None, lambda: detector.detect(dirty_path))
+
+                if anchors:
+                    names = [c.get("name", "") for c in lineup]
+                    assignments = [
+                        (names[a.slot - 1], a)
+                        for a in anchors
+                        if 1 <= a.slot <= len(names)
+                    ]
+                    font_path = PosterComposer()._resolve_font(None)
+                    # Posición de la fecha: centro superior del cartel (fallback)
+                    date_anchor    = (540, 80)
+                    date_font_size = 60
+                    await loop.run_in_executor(
+                        None,
+                        lambda: render_on_anchors(
+                            clean_path=clean_path,
+                            assignments=assignments,
+                            font_path=font_path,
+                            date=date_text,
+                            date_anchor=date_anchor,
+                            date_font_size=date_font_size,
+                            output_path=output_path,
+                        ),
+                    )
+                    logger.info("Pipeline A (Gemini anchors): %d anchors detectados", len(anchors))
+                    return _render_success(output_path, payload)
+                else:
+                    logger.warning("Gemini no detectó anchors — fallback a PosterComposer")
+            except Exception as exc:
+                logger.warning("Pipeline A falló (%s) — fallback a PosterComposer", exc)
+
+        # ── Pipeline B: PosterComposer con imagen limpia o template ───
+        base_image_path = None
+        if base_image_url:
+            try:
+                tmp_clean = await loop.run_in_executor(None, lambda: _download_tmp(base_image_url))
+                tmp_files.append(tmp_clean)
+                base_image_path = tmp_clean
+                logger.info("Pipeline B: usando base_image_url")
+            except Exception as exc:
+                logger.warning("No se pudo descargar base_image_url: %s", exc)
+
+        composer = PosterComposer(base_image_path=base_image_path)
         await loop.run_in_executor(
             None,
             lambda: composer.render(
@@ -122,13 +181,18 @@ async def execute_render(*, payload: dict[str, Any]) -> dict[str, Any]:
                 output_path=output_path,
             ),
         )
+
     finally:
-        if tmp_image_file:
+        for f in tmp_files:
             try:
-                Path(tmp_image_file.name).unlink(missing_ok=True)
+                f.unlink(missing_ok=True)
             except Exception:
                 pass
 
+    return _render_success(output_path, payload)
+
+
+def _render_success(output_path: Path, payload: dict[str, Any]) -> dict[str, Any]:
     return {
         "status": "success",
         "output": {
