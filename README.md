@@ -1,7 +1,7 @@
 # AI LineUp Architect
 
 **Estado:** En desarrollo activo
-**Versión:** `0.17.8`
+**Versión:** `0.17.9`
 **Metodología:** Spec-Driven Development (SDD) + TDD
 
 SaaS multi-tenant para gestión de open mics de comedia. Automatiza la recogida de solicitudes de cómicos (Google Forms), el scoring y la selección del lineup, y la generación del cartel en PNG.
