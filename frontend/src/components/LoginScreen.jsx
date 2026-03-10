@@ -17,8 +17,10 @@ const GoogleIcon = () => (
 );
 
 export function LoginScreen() {
-  const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState(null);
+  const [loading,   setLoading]   = useState(false);
+  const [linkSent,  setLinkSent]  = useState(false);
+  const [email,     setEmail]     = useState('');
+  const [error,     setError]     = useState(null);
 
   const handleGoogleLogin = async () => {
     setLoading(true);
@@ -28,7 +30,20 @@ export function LoginScreen() {
       options: { redirectTo: window.location.origin },
     });
     if (err) { setError(err.message); setLoading(false); }
-    // Si OK: redirect externo → Supabase callback → onAuthStateChange
+  };
+
+  const handleMagicLink = async (e) => {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setLoading(true);
+    setError(null);
+    const { error: err } = await supabase.auth.signInWithOtp({
+      email: email.trim(),
+      options: { emailRedirectTo: window.location.origin },
+    });
+    setLoading(false);
+    if (err) { setError(err.message); }
+    else      { setLinkSent(true); }
   };
 
   return (
@@ -57,6 +72,7 @@ export function LoginScreen() {
               </p>
             )}
 
+            {/* Google OAuth */}
             <button
               type="button"
               onClick={handleGoogleLogin}
@@ -70,6 +86,52 @@ export function LoginScreen() {
               {!loading && <GoogleIcon />}
               {loading ? 'Redirigiendo...' : 'Continuar con Google'}
             </button>
+
+            {/* Divider */}
+            <div className="flex items-center gap-3">
+              <div className="flex-1 border-t-2 border-dashed border-[#1a1a1a]/20" />
+              <span className="text-xs font-bold uppercase tracking-widest text-[#1a1a1a]/40">o</span>
+              <div className="flex-1 border-t-2 border-dashed border-[#1a1a1a]/20" />
+            </div>
+
+            {/* Magic link */}
+            {linkSent ? (
+              <div className="rounded-lg border-2 border-[#166534] bg-[#dcfce7] px-4 py-3 text-center">
+                <p className="text-sm font-bold text-[#166534]">✉️ ¡Revisa tu email!</p>
+                <p className="mt-1 text-xs text-[#166534]/80">
+                  Hemos enviado un enlace de acceso a <strong>{email}</strong>
+                </p>
+                <button
+                  type="button"
+                  onClick={() => { setLinkSent(false); setEmail(''); }}
+                  className="mt-2 text-xs underline text-[#166534]/70 hover:text-[#166534]"
+                >
+                  Usar otro email
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleMagicLink} className="flex flex-col gap-2">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="tu@email.com"
+                  required
+                  className="rounded-lg border-[3px] border-[#1a1a1a] bg-white px-3 py-2 text-sm text-[#1a1a1a] placeholder-[#1a1a1a]/30 outline-none focus:border-[#F97316] transition-colors"
+                />
+                <button
+                  type="submit"
+                  disabled={loading || !email.trim()}
+                  className={`comic-shadow cursor-pointer rounded-lg border-[3px] border-[#1a1a1a] py-2.5 px-4 text-sm font-bold transition-all duration-200
+                    ${loading || !email.trim()
+                      ? 'cursor-not-allowed bg-[#D1D5DB] text-[#6B5C4A]'
+                      : 'bg-[#F97316] text-white hover:bg-[#ea6c0a] hover:scale-[1.02] active:scale-[0.98]'
+                    }`}
+                >
+                  {loading ? 'Enviando...' : '✉️ Enviar enlace de acceso'}
+                </button>
+              </form>
+            )}
 
           </div>
         </div>
