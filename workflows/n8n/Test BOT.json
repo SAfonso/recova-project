@@ -41,7 +41,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        -640,
+        -380,
         208
       ]
     },
@@ -89,7 +89,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -640,
+        -380,
         420
       ]
     },
@@ -109,7 +109,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        -400,
+        -140,
         420
       ]
     },
@@ -130,7 +130,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        -160,
+        100,
         420
       ]
     },
@@ -145,7 +145,7 @@
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1,
       "position": [
-        -160,
+        100,
         600
       ],
       "credentials": {
@@ -166,7 +166,7 @@
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1,
       "position": [
-        80,
+        340,
         420
       ],
       "credentials": {
@@ -187,7 +187,7 @@
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1,
       "position": [
-        -400,
+        -140,
         600
       ],
       "credentials": {
@@ -213,7 +213,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        -320,
+        -60,
         208
       ]
     },
@@ -228,7 +228,7 @@
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1,
       "position": [
-        -368,
+        -108,
         480
       ],
       "webhookId": "a58cf06b-bba1-425f-b911-bcf8c6e3681c",
@@ -251,7 +251,7 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1,
       "position": [
-        -80,
+        180,
         96
       ]
     },
@@ -262,7 +262,7 @@
       "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
       "typeVersion": 1,
       "position": [
-        -64,
+        196,
         448
       ]
     },
@@ -277,7 +277,7 @@
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1,
       "position": [
-        240,
+        500,
         96
       ],
       "webhookId": "28c2672b-46fe-48f2-b544-48660e105449",
@@ -321,7 +321,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -544,
+        -284,
         208
       ]
     },
@@ -352,7 +352,7 @@
       "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
       "typeVersion": 1,
       "position": [
-        64,
+        324,
         336
       ]
     },
@@ -386,7 +386,7 @@
       "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
       "typeVersion": 1,
       "position": [
-        192,
+        452,
         336
       ]
     },
@@ -420,7 +420,7 @@
       "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
       "typeVersion": 1,
       "position": [
-        336,
+        596,
         336
       ]
     },
@@ -455,7 +455,7 @@
       "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
       "typeVersion": 1,
       "position": [
-        480,
+        740,
         336
       ]
     },
@@ -493,7 +493,7 @@
       "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
       "typeVersion": 1,
       "position": [
-        624,
+        884,
         336
       ]
     },
@@ -504,15 +504,25 @@
         "sendHeaders": true,
         "parametersHeaders": {
           "values": [
-            { "name": "X-API-KEY", "valueProvider": "fieldValue", "value": "={{ $env.WEBHOOK_API_KEY }}" },
-            { "name": "Content-Type" }
+            {
+              "name": "X-API-KEY",
+              "valueProvider": "fieldValue",
+              "value": "={{ $env.WEBHOOK_API_KEY }}"
+            },
+            {
+              "name": "Content-Type"
+            }
           ]
         },
         "sendBody": true,
         "parametersBody": {
           "values": [
-            { "name": "host_id" },
-            { "name": "open_mic_id" }
+            {
+              "name": "host_id"
+            },
+            {
+              "name": "open_mic_id"
+            }
           ]
         },
         "toolDescription": "Obtiene el lineup del proximo show de un open mic y genera un link de validacion. Requiere host_id y open_mic_id. Devuelve: fecha_evento, lineup (lista de comicos con nombre e instagram), validate_url (link para validar el lineup, expira al empezar el show)."
@@ -522,7 +532,7 @@
       "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
       "typeVersion": 1,
       "position": [
-        752,
+        1012,
         336
       ]
     },
@@ -533,7 +543,7 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1,
       "position": [
-        -128,
+        132,
         272
       ],
       "id": "b790e5a8-0c2e-472c-9fe1-690389b22a41",
@@ -544,6 +554,44 @@
           "name": "Google Gemini(PaLM) Api account 2"
         }
       }
+    },
+    {
+      "id": "if-bienvenida-001",
+      "name": "If (¿Bienvenida?)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -640,
+        208
+      ],
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.message.text }}",
+              "operation": "equal",
+              "value2": "/start"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "telegram-bienvenida-001",
+      "name": "Telegram (Bienvenida)",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        -480,
+        80
+      ],
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "👋 ¡Hola! Soy *AIline*, tu asistente de gestión de Open Mics 🎤\n\nEstoy aquí para ayudarte a organizar tus noches de comedia de forma sencilla. Esto es lo que puedo hacer por ti:\n\n📋 *Ver tu lineup* — consulta quién está apuntado al próximo open mic\n🏆 *Gestionar candidatos* — revisa la lista de cómicos con su puntuación\n🧮 *Ejecutar scoring* — calcula y actualiza las puntuaciones automáticamente\n🎨 *Generar el cartel* — crea el poster del evento listo para compartir\n📲 *Enviar el lineup* — manda el cartel directamente a este chat\n\n⚠️ *Antes de empezar*, necesitas conectar tu cuenta:\n\n1️⃣ Entra en la web y crea tu Open Mic\n2️⃣ Configúralo a tu gusto (scoring, formulario, poster…)\n3️⃣ En la sección de Telegram, genera tu código de conexión y envíamelo aquí\n\n¡Cuando estés listo, escríbeme! 🚀",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      }
     }
   ],
   "pinData": {},
@@ -552,7 +600,7 @@
       "main": [
         [
           {
-            "node": "If (¿Registro QR?)",
+            "node": "If (¿Bienvenida?)",
             "type": "main",
             "index": 0
           }
@@ -747,6 +795,24 @@
           {
             "node": "AI Agent (Recova MCP)",
             "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If (¿Bienvenida?)": {
+      "main": [
+        [
+          {
+            "node": "Telegram (Bienvenida)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If (¿Registro QR?)",
+            "type": "main",
             "index": 0
           }
         ]
