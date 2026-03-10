@@ -1,7 +1,7 @@
 # AI LineUp Architect
 
 **Estado:** En desarrollo activo
-**Versión:** `0.17.2`
+**Versión:** `0.17.8`
 **Metodología:** Spec-Driven Development (SDD) + TDD
 
 SaaS multi-tenant para gestión de open mics de comedia. Automatiza la recogida de solicitudes de cómicos (Google Forms), el scoring y la selección del lineup, y la generación del cartel en PNG.
@@ -106,7 +106,7 @@ flowchart TD
 | Auth | Supabase (Google OAuth — registro abierto) |
 | Orquestación | n8n |
 | Formularios | Google Forms + Sheets API (OAuth2) |
-| Render de carteles | Playwright + Jinja2 |
+| Render de carteles | Gemini Vision + Pillow (detección automática de fuente/posición) |
 | Procesos en producción | PM2 en VPS Ubuntu (Hetzner) |
 | Proxy / HTTPS | Traefik vía Coolify — `api.machango.org` |
 | Bot Telegram | `@ailineup_bot` (n8n + Gemini 2.5 Flash) |
@@ -175,6 +175,8 @@ cd frontend && npm install && npm run dev
 
 | Fase | Versión | Estado |
 |------|---------|--------|
+| Sprint 12 — Dev Tools Panel (seed/ingesta/scoring desde frontend) | 0.17.0 | Completado |
+| Sprint 11 — n8n Integration: Forms Batch + Render Poster | 0.16.0 | Completado |
 | Sprint 10 — Scoring Inteligente Custom | 0.15.0 | Completado |
 | Sprint 9 — Smart Form Ingestion | 0.14.0 | Completado |
 | Sprint 8 — Google OAuth Open Registration | 0.13.0 | Completado |
@@ -188,9 +190,9 @@ cd frontend && npm install && npm run dev
 | Sprint 1 — Pivot SaaS Multi-Tenant | 0.6.0 | Completado |
 
 **Roadmap:**
-- Conectar renderer al flujo: n8n → `POST /api/render-poster` → Supabase Storage → Telegram
-- Activar `Scoring & Draft` e `Ingesta-Solicitudes` en n8n producción
-- Endpoint `POST /api/ingest-from-forms` para ingesta diaria via n8n (sin Sheets)
+- Mejorar precisión posición/espaciado en render de carteles (Gemini Vision)
+- Cachear `font_name` detectado en Supabase (evitar re-detección por render)
+- Fix crash `GoogleFormBuilder` al arranque (lazy init Apps Script API)
 - Penalización recencia en `scoring_engine.py`
 
 ---
@@ -248,7 +250,7 @@ source backend/venv/bin/activate
 PYTHONPATH=. pytest backend/tests/ -v
 ```
 
-Cobertura actual: ~268 tests verdes — scoring config (basic + custom), custom scoring proposer, google form builder, form ingestor, form analyzer, sheet ingestor, form submission, ingest-from-sheets, validate lineup, telegram register/QR, scripts de utilidad + 20 tests frontend (formUtils, ScoringTypeSelector, CustomScoringConfigurator).
+Cobertura actual: ~268 tests verdes — scoring config (basic + custom), custom scoring proposer, google form builder, form ingestor, form analyzer, sheet ingestor, form submission, ingest-from-sheets, validate lineup, telegram register/QR, scripts de utilidad, poster detector + 20 tests frontend (formUtils, ScoringTypeSelector, CustomScoringConfigurator).
 
 ---
 
