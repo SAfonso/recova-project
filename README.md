@@ -1,10 +1,8 @@
 # AI LineUp Architect
 
-**Estado:** En desarrollo activo
-**Versión:** `0.17.9`
-**Metodología:** Spec-Driven Development (SDD) + TDD
+**Versión:** `0.17.9` · **Estado:** Desarrollo activo · **Metodología:** SDD + TDD
 
-SaaS multi-tenant para gestión de open mics de comedia. Automatiza la recogida de solicitudes de cómicos (Google Forms), el scoring y la selección del lineup, y la generación del cartel en PNG.
+SaaS multi-tenant para gestión de open mics de comedia. Automatiza la recogida de solicitudes (Google Forms), el scoring con IA y la generación del cartel en PNG.
 
 ---
 
@@ -26,12 +24,16 @@ flowchart TD
         Login["🔐 Login"]
         Selector["📋 OpenMicSelector"]
         Detail["🎯 OpenMicDetail"]
-        App["✏️ Lineup App\n(curación)"]
+        App["✏️ Lineup App"]
     end
 
     subgraph BE ["⚙️ Backend Flask :5000"]
         WH["🪝 webhook_listener"]
-        FB["📝 GoogleFormBuilder\n(OAuth2)"]
+        FB["📝 GoogleFormBuilder"]
+    end
+
+    subgraph Renderer ["🖼️ recova-renderer :5050"]
+        MCP["🎨 mcp_server\nGemini Vision + Pillow"]
     end
 
     subgraph Google ["🔵 Google"]
@@ -39,48 +41,31 @@ flowchart TD
         GS["📊 Google Sheets"]
     end
 
-    subgraph Pipe ["🔄 n8n Orquestador"]
+    subgraph Pipe ["🔄 n8n"]
         Ingesta["📥 Ingesta"]
         Scoring["🧮 Scoring"]
         Render["🎨 Render"]
     end
 
     subgraph DB ["🗄️ Supabase"]
-        Bronze["🥉 Bronze\n(raw)"]
-        Silver["🥈 Silver\n(clean)"]
-        Gold["🥇 Gold\n(scoring)"]
+        Bronze["🥉 Bronze"]
+        Silver["🥈 Silver"]
+        Gold["🥇 Gold"]
     end
 
-    subgraph Renderer ["🖼️ Renderer Flask :5000"]
-        PW["🎨 Gemini Vision\n+ Pillow PNG"]
-    end
+    Storage[("☁️ Supabase Storage")]
 
-    Storage[("☁️ Supabase Storage\nposters / poster-backgrounds")]
-
-    %% Flujo de formulario
     Comico -->|rellena| GF
     Host -->|gestiona| FE
-    Selector -->|"POST /create-form"| WH
-    WH --> FB
-    FB -->|"Forms+Sheets API"| GF
-    GF -->|respuestas| GS
+    Selector -->|POST /create-form| WH
+    WH --> FB --> GF -->|respuestas| GS
 
-    %% Ingesta
-    GS -->|trigger| Ingesta
-    Ingesta -->|"POST /ingest"| WH
-    WH --> Bronze --> Silver --> Gold
+    GS -->|trigger| Ingesta -->|POST /ingest| WH
+    WH --> Bronze --> Silver --> Gold --> App
 
-    %% Curación y scoring
-    Gold --> App
-    App -->|valida lineup| Scoring
-    Scoring --> Silver
+    App -->|valida lineup| Scoring --> Silver
+    App -->|dispara render| Render -->|POST /tools/render_lineup| MCP --> Storage
 
-    %% Render
-    App -->|"dispara render"| Render
-    Render -->|"POST /render-lineup"| PW
-    PW --> Storage
-
-    %% Auth
     FE <-->|auth + data| DB
 
     class GF,GS google
@@ -91,8 +76,6 @@ flowchart TD
     class Storage storage
 ```
 
-→ Detalle de capas y variables de entorno: [`docs/architecture.md`](docs/architecture.md)
-
 ---
 
 ## Stack
@@ -100,146 +83,61 @@ flowchart TD
 | Capa | Tecnología |
 |------|-----------|
 | Frontend | React + Vite + Tailwind |
-| Backend | Python / Flask |
-| Base de datos | Supabase (PostgreSQL — Bronze/Silver/Gold) |
-| Almacenamiento | Supabase Storage |
-| Auth | Supabase (Google OAuth — registro abierto) |
+| Backend | Python / Flask :5000 |
+| Renderer | mcp_server.py — FastAPI :5050 (Gemini Vision + Pillow) |
+| Base de datos | Supabase (PostgreSQL — Bronze / Silver / Gold) |
+| Auth | Supabase (Google OAuth) |
 | Orquestación | n8n |
 | Formularios | Google Forms + Sheets API (OAuth2) |
-| Render de carteles | Gemini Vision + Pillow (detección automática de fuente/posición) |
-| Procesos en producción | PM2 en VPS Ubuntu (Hetzner) |
-| Proxy / HTTPS | Traefik vía Coolify — `api.machango.org` |
+| Procesos | PM2 en VPS Ubuntu (Hetzner) · Traefik — `api.machango.org` |
 | Bot Telegram | `@ailineup_bot` (n8n + Gemini 2.5 Flash) |
 
 ---
 
-## Estructura del repositorio
+## Estructura
 
 ```
 recova-project/
 ├── backend/
-│   ├── scripts/              # Utilidades: OAuth2, seed condicional, seed completo, reset
+│   ├── assets/               # Fuentes y posters base (Pillow)
+│   ├── scripts/              # OAuth2, seed, reset
 │   ├── src/
 │   │   ├── core/             # Módulos: scoring, render, forms, security
 │   │   ├── triggers/         # webhook_listener.py (Flask :5000)
-│   │   ├── templates/        # Plantillas HTML para render de carteles
 │   │   ├── bronze_to_silver_ingestion.py
 │   │   ├── scoring_engine.py
-│   │   └── mcp_server.py     # Renderer API (Flask :5050)
+│   │   └── mcp_server.py     # Renderer API (FastAPI :5050)
 │   └── tests/
-│       ├── core/             # Tests unitarios de módulos core
-│       ├── scripts/          # Tests de scripts de utilidad
-│       ├── unit/             # Tests unitarios generales
-│       └── mcp/              # Tests del renderer
+│       ├── core/             # Tests módulos core
+│       ├── mcp/              # Tests renderer
+│       ├── scripts/          # Tests scripts utilidad
+│       └── unit/             # Tests unitarios generales
 ├── frontend/
 │   └── src/
-│       ├── components/       # OpenMicSelector, OpenMicDetail, ScoringConfigurator...
+│       ├── components/       # OpenMicSelector, OpenMicDetail, ScoringConfigurator…
 │       ├── App.jsx           # Lineup app (curación)
 │       └── main.jsx          # Root: Login → Selector → Detail → App
-├── specs/                    # Specs SDD activas
-│   ├── google_form_autocreation_spec.md
-│   ├── google_form_campos_spec.md
-│   └── sql/                  # Esquemas y migraciones SQL
+├── specs/                    # Specs SDD + esquemas y migraciones SQL
 ├── docs/                     # Documentación técnica
-│   ├── architecture.md
-│   ├── sprints.md
-│   └── setup.md
-├── workflows/
-│   └── n8n/                  # Workflows exportados de n8n
-├── CHANGELOG.md
-└── pyproject.toml
+├── workflows/n8n/            # Workflows exportados
+└── CHANGELOG.md
 ```
 
 ---
 
 ## Inicio rápido
 
-→ Instrucciones completas: [`docs/setup.md`](docs/setup.md)
-
 ```bash
 # Backend
-cd backend && python3 -m venv venv && source venv/bin/activate
-pip install python-dotenv flask flask-cors supabase google-api-python-client google-auth
-# Configurar backend/.env (ver docs/setup.md)
-cd .. && PYTHONPATH=. python backend/src/triggers/webhook_listener.py
+pip install -r requirements.txt
+PYTHONPATH=. python backend/src/triggers/webhook_listener.py   # Flask :5000
+PYTHONPATH=. python -m backend.src.mcp_server                  # Renderer :5050
 
 # Frontend
 cd frontend && npm install && npm run dev
 ```
 
----
-
-## Sprints
-
-→ Historial completo: [`docs/sprints.md`](docs/sprints.md)
-
-| Fase | Versión | Estado |
-|------|---------|--------|
-| Sprint 12 — Dev Tools Panel (seed/ingesta/scoring desde frontend) | 0.17.0 | Completado |
-| Sprint 11 — n8n Integration: Forms Batch + Render Poster | 0.16.0 | Completado |
-| Sprint 10 — Scoring Inteligente Custom | 0.15.0 | Completado |
-| Sprint 9 — Smart Form Ingestion | 0.14.0 | Completado |
-| Sprint 8 — Google OAuth Open Registration | 0.13.0 | Completado |
-| Sprint 7 — Poster Renderer (Gemini Flash Vision) | 0.12.0 | Completado |
-| Sprint 6 — Ingesta Multi-Tenant + Scripts de Utilidad | 0.11.0 | Completado |
-| Sprint 5 — Validación de Lineup via Telegram | 0.10.0 | Completado |
-| Sprint 4b — Telegram Register Endpoint | 0.9.1 | Completado |
-| Sprint 4a — Telegram QR Self-Registration | 0.9.0 | Completado |
-| Sprint 3 — Telegram Lineup Agent (LLM + MCP) | 0.8.0 | Completado |
-| Sprint 2 — Google Forms + Backend integration | 0.7.0 | Completado |
-| Sprint 1 — Pivot SaaS Multi-Tenant | 0.6.0 | Completado |
-
-**Roadmap:**
-- Mejorar precisión posición/espaciado en render de carteles (Gemini Vision)
-- Cachear `font_name` detectado en Supabase (evitar re-detección por render)
-- Fix crash `GoogleFormBuilder` al arranque (lazy init Apps Script API)
-- Penalización recencia en `scoring_engine.py`
-
----
-
-## Scoring Inteligente (Sprint 9 + 10 — implementado)
-
-El sistema de scoring se adapta a cualquier formulario Google Forms sin forzar nombres de campo fijos.
-
-### Selección de tipo de scoring
-
-```
-[ Sin scoring    ]  orden de llegada, sin algoritmo
-[ Scoring básico ]  VIP, género, recencia, fecha única...
-[ Scoring custom ]  reglas emergentes de tu formulario (con IA)
-```
-
-### Scoring básico — Smart Field Mapping
-Gemini mapea los campos del form al schema canónico automáticamente.
-
-```
-"Como te llamas?"   → nombre_artistico
-"IG handle?"        → instagram
-"¿Estarías de back?"→ backup
-"¿Haces humor negro?"→ sin mapeo → metadata (campo custom para scoring custom)
-```
-
-### Scoring custom — Reglas propuestas por IA
-Gemini lee los campos no mapeados y propone reglas. El host activa/desactiva y ajusta el peso con un slider.
-
-```
-"¿haces humor negro?"  → +20 pts si = "Sí"   [toggle ON]  [slider]
-"¿eres de aquí?"       → +15 pts si = "Sí"   [toggle ON]  [slider]
-"¿primera vez?"        → +10 pts si = "Sí"   [toggle OFF] [slider]
-```
-
-### Schema en `silver.open_mics.config`
-
-```json
-{
-  "scoring_type": "basic | custom | none",
-  "field_mapping": { "Como te llamas?": "nombre_artistico" },
-  "custom_scoring_rules": [
-    { "field": "haces humor negro?", "condition": "equals",
-      "value": "Sí", "points": 20, "enabled": true }
-  ]
-}
-```
+Variables de entorno: [`docs/setup.md`](docs/setup.md)
 
 ---
 
@@ -247,10 +145,9 @@ Gemini lee los campos no mapeados y propone reglas. El host activa/desactiva y a
 
 ```bash
 source backend/venv/bin/activate
-PYTHONPATH=. pytest backend/tests/ -v
+PYTHONPATH=. pytest backend/tests/        # 312 tests backend
+cd frontend && npm test                   # 20 tests frontend
 ```
-
-Cobertura actual: ~268 tests verdes — scoring config (basic + custom), custom scoring proposer, google form builder, form ingestor, form analyzer, sheet ingestor, form submission, ingest-from-sheets, validate lineup, telegram register/QR, scripts de utilidad, poster detector + 20 tests frontend (formUtils, ScoringTypeSelector, CustomScoringConfigurator).
 
 ---
 
@@ -258,8 +155,7 @@ Cobertura actual: ~268 tests verdes — scoring config (basic + custom), custom 
 
 | Documento | Descripción |
 |-----------|-------------|
-| [`docs/architecture.md`](docs/architecture.md) | Diagrama de sistema y variables de entorno |
-| [`docs/sprints.md`](docs/sprints.md) | Historial de sprints y pendientes |
+| [`docs/architecture.md`](docs/architecture.md) | Variables de entorno y capas |
 | [`docs/setup.md`](docs/setup.md) | Setup local y producción |
-| [`specs/google_form_autocreation_spec.md`](specs/google_form_autocreation_spec.md) | Spec auto-creación Google Forms |
+| [`docs/sprints.md`](docs/sprints.md) | Historial de sprints y roadmap |
 | [`CHANGELOG.md`](CHANGELOG.md) | Historial de versiones |
