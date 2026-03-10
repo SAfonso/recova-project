@@ -1,3 +1,13 @@
+## [0.17.9] - 2026-03-10
+
+### Fixed — seguridad: autenticación en endpoint form-submission
+
+- **`webhook_listener.py`** — añadido `_is_authorized()` al endpoint `POST /api/form-submission`; cualquier petición sin header `X-API-Key` válido recibe 401. El endpoint era accesible sin autenticación, permitiendo inyectar solicitudes falsas en cualquier open mic.
+- **`google_form_builder.py`** — template de Apps Script actualizado para incluir `"X-API-Key": API_KEY` en la cabecera del `UrlFetchApp.fetch`; la clave se bake-in desde `WEBHOOK_API_KEY` en el momento de desplegar el script.
+- **`test_form_submission.py`** — todos los tests actualizados con header `X-API-Key`; añadido test `test_form_submission_unauthorized` que verifica el 401.
+
+---
+
 ## [0.17.8] - 2026-03-08
 
 ### Fixed — pipeline Gemini para tipografía del cartel
