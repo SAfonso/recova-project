@@ -17,10 +17,11 @@ const GoogleIcon = () => (
 );
 
 export function LoginScreen() {
-  const [loading,   setLoading]   = useState(false);
-  const [linkSent,  setLinkSent]  = useState(false);
-  const [email,     setEmail]     = useState('');
-  const [error,     setError]     = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [step,    setStep]    = useState('email'); // 'email' | 'code'
+  const [email,   setEmail]   = useState('');
+  const [code,    setCode]    = useState('');
+  const [error,   setError]   = useState(null);
 
   const handleGoogleLogin = async () => {
     setLoading(true);
@@ -32,18 +33,33 @@ export function LoginScreen() {
     if (err) { setError(err.message); setLoading(false); }
   };
 
-  const handleMagicLink = async (e) => {
+  const handleSendCode = async (e) => {
     e.preventDefault();
     if (!email.trim()) return;
     setLoading(true);
     setError(null);
     const { error: err } = await supabase.auth.signInWithOtp({
       email: email.trim(),
-      options: { emailRedirectTo: window.location.origin },
+      options: { shouldCreateUser: true },
     });
     setLoading(false);
     if (err) { setError(err.message); }
-    else      { setLinkSent(true); }
+    else      { setStep('code'); }
+  };
+
+  const handleVerifyCode = async (e) => {
+    e.preventDefault();
+    if (!code.trim()) return;
+    setLoading(true);
+    setError(null);
+    const { error: err } = await supabase.auth.verifyOtp({
+      email: email.trim(),
+      token: code.trim(),
+      type: 'email',
+    });
+    setLoading(false);
+    if (err) { setError(err.message); }
+    // Si OK: onAuthStateChange en main.jsx detecta la sesión automáticamente
   };
 
   return (
@@ -94,23 +110,9 @@ export function LoginScreen() {
               <div className="flex-1 border-t-2 border-dashed border-[#1a1a1a]/20" />
             </div>
 
-            {/* Magic link */}
-            {linkSent ? (
-              <div className="rounded-lg border-2 border-[#166534] bg-[#dcfce7] px-4 py-3 text-center">
-                <p className="text-sm font-bold text-[#166534]">✉️ ¡Revisa tu email!</p>
-                <p className="mt-1 text-xs text-[#166534]/80">
-                  Hemos enviado un enlace de acceso a <strong>{email}</strong>
-                </p>
-                <button
-                  type="button"
-                  onClick={() => { setLinkSent(false); setEmail(''); }}
-                  className="mt-2 text-xs underline text-[#166534]/70 hover:text-[#166534]"
-                >
-                  Usar otro email
-                </button>
-              </div>
-            ) : (
-              <form onSubmit={handleMagicLink} className="flex flex-col gap-2">
+            {/* Step 1: email */}
+            {step === 'email' && (
+              <form onSubmit={handleSendCode} className="flex flex-col gap-2">
                 <input
                   type="email"
                   value={email}
@@ -128,7 +130,45 @@ export function LoginScreen() {
                       : 'bg-[#F97316] text-white hover:bg-[#ea6c0a] hover:scale-[1.02] active:scale-[0.98]'
                     }`}
                 >
-                  {loading ? 'Enviando...' : '✉️ Enviar enlace de acceso'}
+                  {loading ? 'Enviando...' : '✉️ Enviar código de acceso'}
+                </button>
+              </form>
+            )}
+
+            {/* Step 2: código OTP */}
+            {step === 'code' && (
+              <form onSubmit={handleVerifyCode} className="flex flex-col gap-2">
+                <p className="text-xs text-[#1a1a1a]/60 text-center">
+                  Código enviado a <strong className="text-[#1a1a1a]">{email}</strong>
+                </p>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="000000"
+                  maxLength={6}
+                  autoFocus
+                  required
+                  className="rounded-lg border-[3px] border-[#1a1a1a] bg-white px-3 py-2 text-2xl font-bold text-center tracking-[0.4em] text-[#1a1a1a] placeholder-[#1a1a1a]/20 outline-none focus:border-[#F97316] transition-colors"
+                />
+                <button
+                  type="submit"
+                  disabled={loading || code.length < 6}
+                  className={`comic-shadow cursor-pointer rounded-lg border-[3px] border-[#1a1a1a] py-2.5 px-4 text-sm font-bold transition-all duration-200
+                    ${loading || code.length < 6
+                      ? 'cursor-not-allowed bg-[#D1D5DB] text-[#6B5C4A]'
+                      : 'bg-[#F97316] text-white hover:bg-[#ea6c0a] hover:scale-[1.02] active:scale-[0.98]'
+                    }`}
+                >
+                  {loading ? 'Verificando...' : '🔓 Entrar'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setStep('email'); setCode(''); setError(null); }}
+                  className="text-xs text-[#1a1a1a]/50 underline hover:text-[#1a1a1a]/80 text-center"
+                >
+                  Usar otro email
                 </button>
               </form>
             )}
