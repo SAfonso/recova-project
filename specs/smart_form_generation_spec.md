@@ -288,7 +288,128 @@ Host pulsa "Crear formulario":
 
 ---
 
-## 6. Fuera de alcance
+## 6. Avisos de formulario desactualizado
 
-- Cambiar la cadencia de un open mic ya existente no regenera el form automáticamente (el form ya fue creado). Si el host quiere regenerarlo deberá borrarlo y recrearlo.
-- El color del form solo es visible en Google Forms directamente; no se replica en la UI de la app (salvo que en el futuro se use `form_bg_color` para estilizar algo).
+### 6.1 Info del open mic cambiada con form existente
+
+**Trigger:** el host guarda cualquier campo de info (cadencia, local, dirección, dia_semana, fecha_inicio) y ya existe un form creado (`config.form.form_id` presente).
+
+#### 6.1.1 Popup inmediato al guardar
+
+Al detectar el cambio en el frontend (al hacer save de info), si hay form creado, mostrar un modal de aviso:
+
+```
+⚠️ El formulario puede haber quedado desactualizado
+
+Has modificado información del open mic. El formulario de Google
+que tienes creado puede contener fechas o descripción incorrectas.
+
+Te recomendamos borrarlo y volver a generarlo para que refleje
+los nuevos datos.
+
+[ Entendido ]
+```
+
+#### 6.1.2 Flag persistido en config
+
+Junto al save de info, si hay form creado, se guarda también en Supabase:
+```json
+{ "form": { "info_changed": true } }
+```
+via `update_open_mic_config_keys`. Se limpia (`info_changed: false`) cuando el form se regenera.
+
+#### 6.1.3 Badge ⚠️ persistente en la sección del formulario
+
+Mientras `config.form.info_changed === true`, mostrar junto al título de la sección del formulario un icono `⚠️` amarillo con tooltip en hover:
+
+```
+⚠️  La información del open mic ha cambiado.
+    El formulario actual puede mostrar fechas o
+    descripción incorrectas. Reconsidera regenerarlo.
+```
+
+El badge desaparece cuando `info_changed` vuelve a `false` (form regenerado).
+
+---
+
+### 6.2 Fechas del formulario obsoletas
+
+**Trigger:** las fechas calculadas al generar el form han quedado en el pasado o están a punto de hacerlo.
+
+#### 6.2.1 Dato necesario: `config.form.last_date`
+
+Al crear el form, el backend almacena la fecha más tardía de las opciones calculadas:
+```python
+dates = self._build_date_options(info)   # lista de strings "dd-MM-YY"
+last_date = dates[-1] if dates else None # última fecha
+```
+Se persiste en `config.form.last_date` (string `dd-MM-YY`). Si `cadencia == 'unico'` y no hay fechas, campo omitido.
+
+#### 6.2.2 Lógica de detección en el frontend
+
+```
+hoy = Date.now()
+last_date = parseDDMMYY(config.form.last_date)   // dd-MM-YY → Date
+dias_restantes = diff(last_date, hoy) en días
+
+SI dias_restantes <= 7 Y dias_restantes >= 0:
+  → mostrar aviso "última semana"
+SI dias_restantes < 0:
+  → mostrar aviso "fechas expiradas"
+```
+
+#### 6.2.3 Badge en la sección del formulario
+
+Se muestra **adicionalmente** al badge de `info_changed` (pueden convivir ambos, o fusionarse en uno si los dos están activos).
+
+Icono: 🗓️ rojo/naranja con tooltip en hover:
+
+```
+// Última semana:
+🗓️  Las fechas del formulario caducan en X días.
+    Considera regenerarlo para el próximo mes.
+
+// Expiradas:
+🗓️  Las fechas del formulario ya han pasado.
+    El formulario actual no acepta inscripciones útiles.
+    Regenera el formulario.
+```
+
+#### 6.2.4 Sin aviso para `cadencia == 'unico'`
+
+Si no hay `last_date` en config (evento único o form sin fechas), no se muestra ningún aviso de caducidad.
+
+---
+
+## 7. Archivos afectados (actualizado)
+
+| Archivo | Cambio |
+|---------|--------|
+| `backend/src/core/google_form_builder.py` | Mayor: descripción, fechas calculadas, color, info param, last_date |
+| `backend/src/triggers/webhook_listener.py` | Menor: pasar info al builder, guardar bg_color + last_date + info_changed |
+| `frontend/src/components/OpenMicDetail.jsx` | Mayor: selector cadencia, fecha_inicio, popup aviso, badges ⚠️ 🗓️ |
+| `backend/tests/core/test_google_form_builder.py` | Nuevo: 9 tests |
+| `frontend/src/test/OpenMicDetail.test.jsx` | Menor: tests nuevos (popup + badges) |
+
+---
+
+## 8. Tests adicionales (sección 6)
+
+### Frontend (Vitest)
+
+| Test | Descripción |
+|------|-------------|
+| `shows_popup_on_save_when_form_exists` | Modal aparece al guardar info si hay form creado |
+| `no_popup_if_no_form` | Sin form creado, no muestra popup |
+| `shows_info_changed_badge` | Badge ⚠️ visible cuando `info_changed=true` |
+| `hides_info_changed_badge` | Badge oculto cuando `info_changed=false` |
+| `shows_expiry_badge_last_week` | Badge 🗓️ visible si `last_date` ≤ 7 días |
+| `shows_expiry_badge_expired` | Badge 🗓️ visible si `last_date` en el pasado |
+| `no_expiry_badge_if_no_last_date` | Sin `last_date` (evento único), no muestra badge de caducidad |
+
+---
+
+## 9. Nota sobre el campo anterior "Fuera de alcance"
+
+- Cambiar la cadencia de un open mic ya existente no regenera el form automáticamente — el sistema avisa (sección 6.1) pero no actúa solo.
+- El color del form solo es visible en Google Forms directamente; no se replica en la UI de la app (salvo uso futuro de `form_bg_color` para estilizar).
