@@ -695,6 +695,8 @@ def telegram_register():
 @app.route("/api/form-submission", methods=["POST"])
 def form_submission():
     """Recibe datos de Google Form via Apps Script y los ingesta en bronze."""
+    if not _is_authorized():
+        return jsonify({"error": "unauthorized"}), 401
     data = request.get_json(force=True) or {}
 
     open_mic_id = data.get("open_mic_id")

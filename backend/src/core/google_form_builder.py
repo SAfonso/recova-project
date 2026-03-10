@@ -43,6 +43,7 @@ SCOPES = [
 _APPS_SCRIPT_TEMPLATE = """\
 var OPEN_MIC_ID = "{open_mic_id}";
 var BACKEND_URL = "{backend_url}";
+var API_KEY = "{api_key}";
 
 function onFormSubmitHandler(e) {{
   var itemResponses = e.response.getItemResponses();
@@ -53,6 +54,7 @@ function onFormSubmitHandler(e) {{
   UrlFetchApp.fetch(BACKEND_URL, {{
     method: "post",
     contentType: "application/json",
+    headers: {{ "X-API-Key": API_KEY }},
     payload: JSON.stringify(payload),
     muteHttpExceptions: true
   }});
@@ -355,6 +357,7 @@ class GoogleFormBuilder:
             open_mic_id=open_mic_id,
             backend_url=self._backend_url,
             form_id=form_id,
+            api_key=os.environ.get("WEBHOOK_API_KEY", ""),
         )
         self._script.projects().updateContent(
             scriptId=script_id,

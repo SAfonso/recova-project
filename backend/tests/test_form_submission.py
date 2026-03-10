@@ -87,11 +87,21 @@ def test_form_submission_happy_path():
         with app.test_client() as c:
             resp = c.post("/api/form-submission",
                           json=VALID_PAYLOAD,
-                          headers={"Content-Type": "application/json"})
+                          headers={"Content-Type": "application/json", "X-API-Key": "test-key"})
 
     assert resp.status_code == 200
     assert resp.get_json()["status"] == "ok"
     mock_popen.assert_called_once()
+
+
+def test_form_submission_unauthorized():
+    """401 si falta el header X-API-Key."""
+    with app.test_client() as c:
+        resp = c.post("/api/form-submission",
+                      json=VALID_PAYLOAD,
+                      headers={"Content-Type": "application/json"})
+
+    assert resp.status_code == 401
 
 
 def test_form_submission_missing_open_mic_id():
@@ -101,7 +111,7 @@ def test_form_submission_missing_open_mic_id():
     with app.test_client() as c:
         resp = c.post("/api/form-submission",
                       json=payload,
-                      headers={"Content-Type": "application/json"})
+                      headers={"Content-Type": "application/json", "X-API-Key": "test-key"})
 
     assert resp.status_code == 400
 
@@ -116,7 +126,7 @@ def test_form_submission_open_mic_not_found():
         with app.test_client() as c:
             resp = c.post("/api/form-submission",
                           json={**VALID_PAYLOAD, "open_mic_id": "nonexistent-uuid"},
-                          headers={"Content-Type": "application/json"})
+                          headers={"Content-Type": "application/json", "X-API-Key": "test-key"})
 
     assert resp.status_code == 404
 
@@ -134,7 +144,7 @@ def test_form_submission_inserts_correct_proveedor_id():
         with app.test_client() as c:
             c.post("/api/form-submission",
                    json=VALID_PAYLOAD,
-                   headers={"Content-Type": "application/json"})
+                   headers={"Content-Type": "application/json", "X-API-Key": "test-key"})
 
     # Verificar que el insert se llamó con el proveedor_id correcto
     insert_call_args = bronze_chain.insert.call_args
@@ -157,7 +167,7 @@ def test_form_submission_maps_form_fields():
         with app.test_client() as c:
             c.post("/api/form-submission",
                    json=VALID_PAYLOAD,
-                   headers={"Content-Type": "application/json"})
+                   headers={"Content-Type": "application/json", "X-API-Key": "test-key"})
 
     inserted_data = bronze_chain.insert.call_args[0][0]
     assert inserted_data["nombre_raw"] == "Juan García"
@@ -186,7 +196,7 @@ def test_form_submission_optional_fields_default_none():
         with app.test_client() as c:
             resp = c.post("/api/form-submission",
                           json=payload_minimal,
-                          headers={"Content-Type": "application/json"})
+                          headers={"Content-Type": "application/json", "X-API-Key": "test-key"})
 
     assert resp.status_code == 200
     inserted_data = bronze_chain.insert.call_args[0][0]
@@ -212,7 +222,7 @@ def test_form_submission_ingesta_launched_with_ingest_script():
         with app.test_client() as c:
             c.post("/api/form-submission",
                    json=VALID_PAYLOAD,
-                   headers={"Content-Type": "application/json"})
+                   headers={"Content-Type": "application/json", "X-API-Key": "test-key"})
 
     args = mock_popen.call_args[0][0]  # primer argumento posicional (lista del comando)
     assert any("ingestion" in str(a) or "ingest" in str(a) for a in args)
