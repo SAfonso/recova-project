@@ -8,73 +8,9 @@ SaaS multi-tenant para gestión de open mics de comedia. Automatiza la recogida 
 
 ## Arquitectura
 
-```mermaid
-flowchart TD
-    classDef google fill:#4285F4,color:#fff,stroke:#2a6dd9
-    classDef supabase fill:#3ECF8E,color:#fff,stroke:#29a870
-    classDef flask fill:#FF6B35,color:#fff,stroke:#cc5520
-    classDef frontend fill:#61DAFB,color:#1a1a1a,stroke:#38b2cc
-    classDef n8n fill:#EA4B71,color:#fff,stroke:#c73059
-    classDef storage fill:#9B59B6,color:#fff,stroke:#7d3f9e
+![Stack del sistema](docs/architecture.svg)
 
-    Host(["👤 Host\n(Google OAuth)"])
-    Comico(["🎤 Cómico\n(formulario)"])
-
-    subgraph FE ["🖥️ Frontend React/Vite"]
-        Login["🔐 Login"]
-        Selector["📋 OpenMicSelector"]
-        Detail["🎯 OpenMicDetail"]
-        App["✏️ Lineup App"]
-    end
-
-    subgraph BE ["⚙️ Backend Flask :5000"]
-        WH["🪝 webhook_listener"]
-        FB["📝 GoogleFormBuilder"]
-    end
-
-    subgraph Renderer ["🖼️ recova-renderer :5050"]
-        MCP["🎨 mcp_server\nGemini Vision + Pillow"]
-    end
-
-    subgraph Google ["🔵 Google"]
-        GF["📋 Google Forms"]
-        GS["📊 Google Sheets"]
-    end
-
-    subgraph Pipe ["🔄 n8n"]
-        Ingesta["📥 Ingesta"]
-        Scoring["🧮 Scoring"]
-        Render["🎨 Render"]
-    end
-
-    subgraph DB ["🗄️ Supabase"]
-        Bronze["🥉 Bronze"]
-        Silver["🥈 Silver"]
-        Gold["🥇 Gold"]
-    end
-
-    Storage[("☁️ Supabase Storage")]
-
-    Comico -->|rellena| GF
-    Host -->|gestiona| FE
-    Selector -->|POST /create-form| WH
-    WH --> FB --> GF -->|respuestas| GS
-
-    GS -->|trigger| Ingesta -->|POST /ingest| WH
-    WH --> Bronze --> Silver --> Gold --> App
-
-    App -->|valida lineup| Scoring --> Silver
-    App -->|dispara render| Render -->|POST /tools/render_lineup| MCP --> Storage
-
-    FE <-->|auth + data| DB
-
-    class GF,GS google
-    class Bronze,Silver,Gold supabase
-    class WH,FB flask
-    class Login,Selector,Detail,App frontend
-    class Ingesta,Scoring,Render n8n
-    class Storage storage
-```
+![Flujo de datos](docs/dataflow.svg)
 
 ---
 
