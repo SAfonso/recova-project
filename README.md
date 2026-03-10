@@ -51,8 +51,8 @@ flowchart TD
         Gold["🥇 Gold\n(scoring)"]
     end
 
-    subgraph Renderer ["🖼️ Renderer :5050"]
-        PW["🎭 Playwright\nPNG"]
+    subgraph Renderer ["🖼️ Renderer Flask :5000"]
+        PW["🎨 Gemini Vision\n+ Pillow PNG"]
     end
 
     Storage[("☁️ Supabase Storage\nposters / poster-backgrounds")]
