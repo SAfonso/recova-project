@@ -52,12 +52,12 @@ const ChevronRightIcon = () => (
 
 function InfoRow({ label, value, dot }) {
   return (
-    <div className="flex items-center justify-between border-b border-[#C8B89A] py-2 last:border-0">
+    <div className="flex items-center justify-between border-b border-[#C8B89A] py-2.5 last:border-0">
       <div className="flex items-center gap-2">
-        {dot && <span className={`h-2 w-2 shrink-0 rounded-full border border-[#1a1a1a]/20 ${dot}`} />}
-        <span className="text-xs text-[#6B5C4A]">{label}</span>
+        {dot && <span className={`h-2.5 w-2.5 shrink-0 rounded-full border border-[#1a1a1a]/20 ${dot}`} />}
+        <span className="text-sm text-[#6B5C4A] md:text-base">{label}</span>
       </div>
-      <span className="text-sm font-bold text-[#1a1a1a]">{value}</span>
+      <span className="text-sm font-bold text-[#1a1a1a] md:text-base">{value}</span>
     </div>
   );
 }
@@ -69,11 +69,11 @@ function InfoCard({ openMic }) {
   });
 
   return (
-    <div className="animate-pop-in comic-panel rounded-none border-[3px] border-[#0D0D0D] bg-[#EDE8DC] px-6 py-4" style={{ boxShadow: '4px 4px 0 #000000' }}>
-      <h1 className="font-['Bangers'] text-3xl tracking-wide text-[#1a1a1a]">
+    <div className="animate-pop-in comic-panel rounded-none border-[3px] border-[#0D0D0D] bg-[#EDE8DC] px-6 py-5" style={{ boxShadow: '4px 4px 0 #000000' }}>
+      <h1 className="font-['Bangers'] text-3xl tracking-wide text-[#1a1a1a] md:text-4xl lg:text-5xl">
         {openMic.nombre}
       </h1>
-      <p className="mb-4 mt-1 text-xs text-[#6B5C4A]">Creado el {createdAt}</p>
+      <p className="mb-4 mt-1 text-sm text-[#6B5C4A] md:text-base">Creado el {createdAt}</p>
 
       <div className="flex flex-col">
         {info.local     && <InfoRow label="Local"       value={info.local} />}
@@ -151,8 +151,8 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
   };
 
   return (
-    <main className="paint-bg min-h-screen px-4 pb-8">
-      <div className="mx-auto flex max-w-lg flex-col gap-4 lg:max-w-3xl">
+    <main className="paint-bg min-h-screen px-4 pb-8 md:px-8">
+      <div className="mx-auto flex max-w-xl flex-col gap-4 md:max-w-2xl lg:max-w-4xl xl:max-w-5xl">
 
         {/* Header */}
         <div className="flex items-center justify-between pt-6">
@@ -188,14 +188,14 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
               <button
                 type="button"
                 onClick={() => setView('config')}
-                className="comic-shadow flex-1 cursor-pointer rounded-none border-[3px] border-[#0D0D0D] bg-[#EDE8DC] py-3 font-bold text-[#0D0D0D] transition-all duration-150 hover:bg-[#5E7260] hover:text-[#F5F5F0]"
+                className="comic-shadow flex-1 cursor-pointer rounded-none border-[3px] border-[#0D0D0D] bg-[#EDE8DC] py-3 text-base font-bold text-[#0D0D0D] transition-all duration-150 hover:bg-[#5E7260] hover:text-[#F5F5F0] md:py-4 md:text-lg"
               >
                 Configurar
               </button>
               <button
                 type="button"
                 onClick={onEnterLineup}
-                className="comic-shadow flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-none border-[3px] border-[#0D0D0D] bg-[#0D0D0D] py-3 font-bold text-[#F5F5F0] transition-all duration-150 hover:bg-[#3D5F6C]"
+                className="comic-shadow flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-none border-[3px] border-[#0D0D0D] bg-[#0D0D0D] py-3 text-base font-bold text-[#F5F5F0] transition-all duration-150 hover:bg-[#3D5F6C] md:py-4 md:text-lg"
               >
                 Ver Lineup
                 <ChevronRightIcon />

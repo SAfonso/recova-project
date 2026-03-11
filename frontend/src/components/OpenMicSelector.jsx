@@ -135,21 +135,21 @@ export function OpenMicSelector({ session, onSelect }) {
   const showCreateForm = creating || showEmptyForm;
 
   return (
-    <main className="paint-bg flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-md">
+    <main className="paint-bg flex min-h-screen items-center justify-center px-4 md:px-8">
+      <div className="w-full max-w-md md:max-w-lg lg:max-w-xl">
 
         <div className="mb-6 text-center">
-          <h1 className="font-['Bangers'] text-5xl tracking-wide text-[#fff8e7] drop-shadow-[3px_3px_0px_rgba(0,0,0,0.4)]">
+          <h1 className="font-['Bangers'] text-5xl tracking-wide text-[#fff8e7] drop-shadow-[3px_3px_0px_rgba(0,0,0,0.4)] md:text-6xl lg:text-7xl">
             AI LineUp Architect
           </h1>
-          <p className="mt-1 text-sm font-bold text-[#fff8e7]/70">{session.user.email}</p>
+          <p className="mt-1 text-sm font-bold text-[#fff8e7]/70 md:text-base">{session.user.email}</p>
         </div>
 
         {/* Card rugosa + botón Telegram en esquina superior derecha */}
         <div className="relative">
         <div className="animate-pop-in paper-drop paper-tape">
           <div className="paper-rough paper-note border-[3px] border-[#1a1a1a] bg-[#fffef5] p-6">
-            <h2 className="mb-4 font-['Bangers'] text-2xl tracking-wide text-[#1a1a1a]">Tus Open Mics</h2>
+            <h2 className="mb-4 font-['Bangers'] text-2xl tracking-wide text-[#1a1a1a] md:text-3xl">Tus Open Mics</h2>
 
             {error && (
               <p className="mb-4 rounded-md border-2 border-[#7f1d1d] bg-[#fee2e2] p-3 text-sm text-[#7f1d1d]">{error}</p>
@@ -162,7 +162,7 @@ export function OpenMicSelector({ session, onSelect }) {
                     <button
                       type="button"
                       onClick={() => onSelect(mic.id)}
-                      className="group flex w-full cursor-pointer items-center gap-3 rounded-none border-[3px] border-[#0D0D0D] bg-[#EDE8DC] px-4 py-3 text-left font-bold text-[#1a1a1a] transition-all duration-200 hover:bg-[#3D5F6C] hover:text-[#F5F5F0]"
+                      className="group flex w-full cursor-pointer items-center gap-3 rounded-none border-[3px] border-[#0D0D0D] bg-[#EDE8DC] px-4 py-3 text-left text-base font-bold text-[#1a1a1a] transition-all duration-200 hover:bg-[#3D5F6C] hover:text-[#F5F5F0] md:px-5 md:py-4 md:text-lg"
                     >
                       <OpenMicIcon iconId={mic.config?.info?.icono} className="h-4 w-4 shrink-0" />
                       <span className="flex-1 truncate">{mic.nombre}</span>

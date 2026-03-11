@@ -355,8 +355,8 @@ function App({ session, openMicId, onBack }) {
   };
 
   return (
-    <main className="paint-bg min-h-screen px-4 pb-8">
-      <div className="mx-auto flex max-w-lg flex-col gap-4 lg:max-w-5xl">
+    <main className="paint-bg min-h-screen px-4 pb-8 md:px-8">
+      <div className="mx-auto flex max-w-xl flex-col gap-4 md:max-w-3xl lg:max-w-5xl xl:max-w-6xl">
         <Header
           eventDate={eventDate}
           onEventDateChange={setEventDate}
