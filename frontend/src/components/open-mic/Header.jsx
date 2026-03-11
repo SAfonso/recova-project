@@ -34,18 +34,18 @@ export function Header({ eventDate, onEventDateChange, selectedCount, hostEmail,
       )}
 
       <div className="flex items-center gap-3">
-        <SparkIcon className="animate-spark h-5 w-5 text-[#F97316]" style={{ animationDelay: '0.3s' }} />
-        <h1 className="font-['Bangers'] text-4xl tracking-wider text-[#1a1a1a] drop-shadow-[2px_2px_0px_rgba(255,255,255,0.35)] sm:text-5xl">
+        <SparkIcon className="animate-spark h-5 w-5 text-[#D4A373]" style={{ animationDelay: '0.3s' }} />
+        <h1 className="font-['Bangers'] text-4xl tracking-wider text-[#0D0D0D] sm:text-5xl">
           AI LINEUP ARCHITECT
         </h1>
-        <SparkIcon className="animate-spark h-5 w-5 text-[#F97316]" style={{ animationDelay: '1.2s' }} />
+        <SparkIcon className="animate-spark h-5 w-5 text-[#D4A373]" style={{ animationDelay: '1.2s' }} />
       </div>
 
       <div className="relative inline-flex items-center gap-3">
         <div className="relative inline-block px-1">
-          <p className="font-['Bangers'] text-3xl tracking-wider text-[#fff8e7]">{formatDateForSheet(eventDate)}</p>
+          <p className="font-['Bangers'] text-3xl tracking-wider text-[#0D0D0D]">{formatDateForSheet(eventDate)}</p>
           <svg className="absolute -bottom-1 left-0 w-full" height="6" viewBox="0 0 200 6" fill="none" preserveAspectRatio="none" aria-hidden="true">
-            <path d="M0,3 Q20,0 40,4 T80,2 T120,5 T160,1 T200,3" stroke="#DC2626" strokeWidth="3" fill="none" strokeLinecap="round" />
+            <path d="M0,3 Q20,0 40,4 T80,2 T120,5 T160,1 T200,3" stroke="#4A6D7C" strokeWidth="3" fill="none" strokeLinecap="round" />
           </svg>
           <input
             type="date"
@@ -55,7 +55,7 @@ export function Header({ eventDate, onEventDateChange, selectedCount, hostEmail,
             aria-label="Cambiar fecha del evento"
           />
         </div>
-        <span className={`rounded-full border-2 border-[#1a1a1a] px-3 py-1 text-sm font-bold transition-colors duration-200 ${selectedCount === 5 ? 'bg-[#22C55E] text-[#fff8e7]' : 'bg-[#F5F0E1] text-[#1a1a1a]'}`}>
+        <span className={`rounded-none border-[3px] border-[#0D0D0D] px-3 py-1 text-sm font-bold transition-colors duration-200 ${selectedCount === 5 ? 'bg-[#7B8E7E] text-[#F5F5F0]' : 'bg-[#EDE8DC] text-[#0D0D0D]'}`}>
           {selectedCount}/5
         </span>
       </div>
@@ -63,7 +63,7 @@ export function Header({ eventDate, onEventDateChange, selectedCount, hostEmail,
       {hostEmail && (
         <div className="flex items-center gap-2 text-xs text-[#1a1a1a]/60">
           <span>{hostEmail}</span>
-          <button type="button" onClick={handleLogout} className="cursor-pointer font-bold underline underline-offset-2 hover:text-[#DC2626]">
+          <button type="button" onClick={handleLogout} className="cursor-pointer font-bold underline underline-offset-2 hover:text-[#4A6D7C]">
             Cerrar sesión
           </button>
         </div>

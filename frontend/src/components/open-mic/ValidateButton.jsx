@@ -5,13 +5,13 @@ const CheckIcon = () => (
 );
 
 export function ValidateButton({ disabled, saving, isValidated, onClick }) {
-  const bg = isValidated ? 'bg-[#15803D] hover:bg-[#15803D]' : 'bg-[#22C55E] hover:bg-[#16A34A]';
+  const bg = isValidated ? 'bg-[#4A6D7C] hover:bg-[#3A5A6A]' : 'bg-[#7B8E7E] hover:bg-[#68786A]';
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`comic-shadow mx-auto flex cursor-pointer items-center gap-3 rounded-xl border-[4px] border-[#1a1a1a] ${bg} px-8 py-3 text-xl font-bold text-[#fff8e7] transition-all duration-200 hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50`}
+      className={`comic-shadow mx-auto flex cursor-pointer items-center gap-3 rounded-none border-[3px] border-[#0D0D0D] ${bg} px-8 py-3 text-xl font-bold text-[#0D0D0D] transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-50`}
       aria-label="Validar lineup"
     >
       <CheckIcon />
