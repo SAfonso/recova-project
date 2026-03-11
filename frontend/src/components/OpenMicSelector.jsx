@@ -147,7 +147,7 @@ export function OpenMicSelector({ session, onSelect }) {
 
         {/* Card rugosa + botón Telegram en esquina superior derecha */}
         <div className="relative">
-        <div className="animate-pop-in paper-drop paper-tape">
+        <div className="animate-pop-in paper-drop">
           <div className="paper-rough paper-note border-[3px] border-[#1a1a1a] bg-[#fffef5] p-6">
             <h2 className="mb-4 font-['Bangers'] text-2xl tracking-wide text-[#1a1a1a] md:text-3xl">Tus Open Mics</h2>
 
