@@ -1,5 +1,5 @@
 const TABS = [
-  { value: 'lineup',     label: 'Line Up',    bg: 'bg-[#EDE8DC]', activeText: 'text-[#0D0D0D]' },
+  { value: 'lineup',     label: 'Line Up',    bg: 'bg-[#FEFDF8]', activeText: 'text-[#0D0D0D]' },
   { value: 'gold',       label: 'Gold',       bg: 'bg-[#C4905A]', activeText: 'text-[#0D0D0D]' },
   { value: 'priority',   label: 'Priority',   bg: 'bg-[#3D5F6C]', activeText: 'text-[#F5F5F0]' },
   { value: 'restricted', label: 'Restricted', bg: 'bg-[#0D0D0D]', activeText: 'text-[#F5F5F0]' },
@@ -33,20 +33,22 @@ export function NotebookSheet({
   return (
     <section className="relative mx-auto w-full max-w-lg lg:max-w-4xl">
 
-      {/* Pestañas — z-10 y -mb-[3px] conectan visualmente con el borde superior de la hoja */}
+      {/* Pestañas — z-10 y -mb-[3px] conectan visualmente con el borde superior de la hoja
+          Activa: border-b-0 + bg del color de categoría → se funde con la hoja
+          Inactiva: borde completo + bg oscuro → claramente separada                    */}
       <div className="relative z-10 flex flex-wrap items-end gap-1 -mb-[3px]">
-        {TABS.map((tab, index) => {
+        {TABS.map((tab) => {
           const isActive = activeTab === tab.value;
           return (
             <button
               key={tab.value}
               type="button"
               onClick={() => onTabChange(tab.value)}
-              className={`relative z-10 cursor-pointer rounded-none border-[3px] border-b-0 border-[#0D0D0D] px-3 py-1 text-sm font-bold transition-all duration-150 sm:px-4 sm:text-base ${
+              className={`relative z-10 cursor-pointer rounded-none border-[3px] border-[#0D0D0D] px-3 py-1 text-sm font-bold transition-all duration-150 sm:px-4 sm:text-base ${
                 isActive
-                  ? `${tab.bg} ${tab.activeText}`
-                  : 'bg-[#EDE8DC] text-[#0D0D0D]/50 hover:bg-[#E4DDD0] hover:text-[#0D0D0D]'
-              } ${index === 0 ? 'mr-auto' : ''}`}
+                  ? `border-b-0 ${tab.bg} ${tab.activeText}`
+                  : 'border-b-[3px] bg-[#D8D4CC] text-[#0D0D0D]/60 hover:bg-[#C8C3BC] hover:text-[#0D0D0D]'
+              }`}
             >
               {tab.label}
             </button>
@@ -55,7 +57,7 @@ export function NotebookSheet({
       </div>
 
       {/* Hoja rugosa con drop-shadow */}
-      <div className="paper-drop rotate-[0.9deg]">
+      <div className="paper-drop">
         <div className="scrapbook-panel pin-corner notebook-lines paper-rough paper-note relative px-4 pb-14 pt-5">
 
           {/* Franja encuadernación izquierda */}
