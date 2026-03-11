@@ -63,7 +63,7 @@ export function OnboardingScreen({ session, onComplete }) {
                   value={nombre}
                   onChange={(e) => setNombre(e.target.value)}
                   placeholder="Comedy Club Madrid"
-                  className="rounded-none border-[3px] border-[#0D0D0D] bg-[#EDE8DC] px-3 py-2 text-sm text-[#0D0D0D] outline-none placeholder:text-[#0D0D0D]/40 focus:ring-2 focus:ring-[#4A6D7C]"
+                  className="rounded-none border-[3px] border-[#0D0D0D] bg-[#EDE8DC] px-3 py-2 text-sm text-[#0D0D0D] outline-none placeholder:text-[#0D0D0D]/40 focus:ring-2 focus:ring-[#3D5F6C]"
                 />
               </div>
 
@@ -79,7 +79,7 @@ export function OnboardingScreen({ session, onComplete }) {
                 className={`comic-shadow cursor-pointer rounded-none border-[3px] border-[#0D0D0D] py-2.5 text-sm font-bold transition-all duration-150
                   ${loading || !nombre.trim()
                     ? 'cursor-not-allowed bg-[#D1D5DB] text-[#6B5C4A]'
-                    : 'bg-[#0D0D0D] text-[#F5F5F0] hover:bg-[#4A6D7C]'
+                    : 'bg-[#0D0D0D] text-[#F5F5F0] hover:bg-[#3D5F6C]'
                   }`}
               >
                 {loading ? 'Creando...' : 'Crear mi espacio'}

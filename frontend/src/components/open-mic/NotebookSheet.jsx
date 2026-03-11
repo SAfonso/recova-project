@@ -1,7 +1,7 @@
 const TABS = [
   { value: 'lineup',     label: 'Line Up',    bg: 'bg-[#EDE8DC]', activeText: 'text-[#0D0D0D]' },
-  { value: 'gold',       label: 'Gold',       bg: 'bg-[#D4A373]', activeText: 'text-[#0D0D0D]' },
-  { value: 'priority',   label: 'Priority',   bg: 'bg-[#4A6D7C]', activeText: 'text-[#F5F5F0]' },
+  { value: 'gold',       label: 'Gold',       bg: 'bg-[#C4905A]', activeText: 'text-[#0D0D0D]' },
+  { value: 'priority',   label: 'Priority',   bg: 'bg-[#3D5F6C]', activeText: 'text-[#F5F5F0]' },
   { value: 'restricted', label: 'Restricted', bg: 'bg-[#0D0D0D]', activeText: 'text-[#F5F5F0]' },
 ];
 
@@ -104,8 +104,8 @@ export function NotebookSheet({
                       <span className="truncate font-['Patrick_Hand'] text-xl font-bold">{candidate.nombre ?? candidate.instagram ?? 'Sin nombre'}</span>
                       <span
                         className={`ml-auto rounded-none border-[2px] border-[#0D0D0D] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
-                          draft.categoria === 'gold'       ? 'bg-[#D4A373] text-[#0D0D0D]'
-                          : draft.categoria === 'priority' ? 'bg-[#4A6D7C] text-[#F5F5F0]'
+                          draft.categoria === 'gold'       ? 'bg-[#C4905A] text-[#0D0D0D]'
+                          : draft.categoria === 'priority' ? 'bg-[#3D5F6C] text-[#F5F5F0]'
                           : draft.categoria === 'restricted' ? 'bg-[#0D0D0D] text-[#F5F5F0]'
                           : 'bg-[#EDE8DC] text-[#0D0D0D]'
                         }`}
@@ -123,7 +123,7 @@ export function NotebookSheet({
             <button
               type="button"
               onClick={onOpenExpanded}
-              className="comic-shadow flex cursor-pointer items-center gap-2 rounded-none border-[3px] border-[#0D0D0D] bg-[#4A6D7C] px-4 py-1.5 font-bold text-[#F5F5F0] transition-all duration-150 hover:bg-[#3A5A6A]"
+              className="comic-shadow flex cursor-pointer items-center gap-2 rounded-none border-[3px] border-[#0D0D0D] bg-[#3D5F6C] px-4 py-1.5 font-bold text-[#F5F5F0] transition-all duration-150 hover:bg-[#2D4A57]"
               aria-label="Abrir vista ampliada"
             >
               <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

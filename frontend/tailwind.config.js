@@ -4,21 +4,21 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Cartoon-Matte Brutalist palette
-        'matte-bg':      '#F5F5F0',
-        'matte-paper':   '#EDE8DC',
-        'matte-paper-alt':'#E4DDD0',
-        'matte-ink':     '#0D0D0D',
-        'matte-muted':   '#6A6358',
-        'matte-petrol':  '#4A6D7C',
-        'matte-petrol-dark': '#3A5A6A',
-        'matte-sage':    '#7B8E7E',
-        'matte-sage-dark': '#68786A',
-        'matte-ochre':   '#D4A373',
-        'matte-ochre-dark': '#B8864F',
+        // Cartoon-Matte Brutalist — colores oscurecidos para WCAG AAA
+        'matte-bg':           '#F5F0E8',
+        'matte-paper':        '#F0E8D5',
+        'matte-paper-alt':    '#E8DFCC',
+        'matte-ink':          '#0D0D0D',
+        'matte-muted':        '#5A5248',
+        'matte-petrol':       '#3D5F6C',
+        'matte-petrol-dark':  '#2D4A57',
+        'matte-sage':         '#5E7260',
+        'matte-sage-dark':    '#4A5C4C',
+        'matte-ochre':        '#C4905A',
+        'matte-ochre-dark':   '#A67440',
       },
       boxShadow: {
-        'hard':    '4px 4px 0 #000000',
+        'hard':    '5px 5px 0 #000000',
         'hard-md': '3px 3px 0 #000000',
         'hard-sm': '2px 2px 0 #000000',
         'hard-xs': '1px 1px 0 #000000',

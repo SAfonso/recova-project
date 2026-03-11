@@ -5,7 +5,7 @@ const CheckIcon = () => (
 );
 
 export function ValidateButton({ disabled, saving, isValidated, onClick }) {
-  const bg = isValidated ? 'bg-[#4A6D7C] hover:bg-[#3A5A6A]' : 'bg-[#7B8E7E] hover:bg-[#68786A]';
+  const bg = isValidated ? 'bg-[#3D5F6C] hover:bg-[#2D4A57]' : 'bg-[#5E7260] hover:bg-[#4A5C4C]';
   return (
     <button
       type="button"

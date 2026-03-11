@@ -10,7 +10,7 @@ export function CambiarButton({ onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className="comic-shadow mx-auto flex cursor-pointer items-center gap-3 rounded-none border-[3px] border-[#0D0D0D] bg-[#D4A373] px-8 py-3 text-xl font-bold text-[#0D0D0D] transition-all duration-150 hover:bg-[#B8864F]"
+      className="comic-shadow mx-auto flex cursor-pointer items-center gap-3 rounded-none border-[3px] border-[#0D0D0D] bg-[#C4905A] px-8 py-3 text-xl font-bold text-[#0D0D0D] transition-all duration-150 hover:bg-[#A67440]"
       aria-label="Cambiar lineup validado"
     >
       <PencilIcon />

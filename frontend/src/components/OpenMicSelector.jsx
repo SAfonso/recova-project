@@ -162,7 +162,7 @@ export function OpenMicSelector({ session, onSelect }) {
                     <button
                       type="button"
                       onClick={() => onSelect(mic.id)}
-                      className="group flex w-full cursor-pointer items-center gap-3 rounded-none border-[3px] border-[#0D0D0D] bg-[#EDE8DC] px-4 py-3 text-left font-bold text-[#1a1a1a] transition-all duration-200 hover:bg-[#4A6D7C] hover:text-[#F5F5F0]"
+                      className="group flex w-full cursor-pointer items-center gap-3 rounded-none border-[3px] border-[#0D0D0D] bg-[#EDE8DC] px-4 py-3 text-left font-bold text-[#1a1a1a] transition-all duration-200 hover:bg-[#3D5F6C] hover:text-[#F5F5F0]"
                     >
                       <OpenMicIcon iconId={mic.config?.info?.icono} className="h-4 w-4 shrink-0" />
                       <span className="flex-1 truncate">{mic.nombre}</span>
@@ -187,7 +187,7 @@ export function OpenMicSelector({ session, onSelect }) {
                   onChange={(e) => setNewName(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
                   placeholder="Ej: Recova Open Mic — Marzo 2026"
-                  className="rounded-md border-2 border-[#1a1a1a] bg-[#F5F0E1] px-3 py-2 text-sm text-[#1a1a1a] outline-none focus:ring-2 focus:ring-[#4A6D7C]"
+                  className="rounded-md border-2 border-[#1a1a1a] bg-[#F5F0E1] px-3 py-2 text-sm text-[#1a1a1a] outline-none focus:ring-2 focus:ring-[#3D5F6C]"
                 />
                 <div className="grid grid-cols-2 gap-2">
                   <div className="flex flex-col gap-1">
@@ -197,7 +197,7 @@ export function OpenMicSelector({ session, onSelect }) {
                     <select
                       value={newDia}
                       onChange={(e) => setNewDia(e.target.value)}
-                      className="rounded-md border-2 border-[#1a1a1a] bg-[#F5F0E1] px-2 py-2 text-sm text-[#1a1a1a] outline-none focus:ring-2 focus:ring-[#4A6D7C]"
+                      className="rounded-md border-2 border-[#1a1a1a] bg-[#F5F0E1] px-2 py-2 text-sm text-[#1a1a1a] outline-none focus:ring-2 focus:ring-[#3D5F6C]"
                     >
                       <option value="">— Día —</option>
                       {DIAS.map((d) => <option key={d} value={d}>{d}</option>)}
@@ -211,7 +211,7 @@ export function OpenMicSelector({ session, onSelect }) {
                       type="time"
                       value={newHora}
                       onChange={(e) => setNewHora(e.target.value)}
-                      className="rounded-md border-2 border-[#1a1a1a] bg-[#F5F0E1] px-2 py-2 text-sm text-[#1a1a1a] outline-none focus:ring-2 focus:ring-[#4A6D7C]"
+                      className="rounded-md border-2 border-[#1a1a1a] bg-[#F5F0E1] px-2 py-2 text-sm text-[#1a1a1a] outline-none focus:ring-2 focus:ring-[#3D5F6C]"
                     />
                   </div>
                 </div>
@@ -220,7 +220,7 @@ export function OpenMicSelector({ session, onSelect }) {
                     <button
                       type="button"
                       onClick={() => { setCreating(false); setNewName(''); setNewDia(''); setNewHora(''); setError(null); }}
-                      className="flex-1 cursor-pointer rounded-none border-[3px] border-[#0D0D0D] bg-[#7B8E7E] py-2 text-sm font-bold text-[#1a1a1a] transition-all duration-200 hover:bg-[#68786A]"
+                      className="flex-1 cursor-pointer rounded-none border-[3px] border-[#0D0D0D] bg-[#5E7260] py-2 text-sm font-bold text-[#1a1a1a] transition-all duration-200 hover:bg-[#4A5C4C]"
                     >
                       Cancelar
                     </button>
@@ -277,7 +277,7 @@ export function OpenMicSelector({ session, onSelect }) {
         </div>{/* fin relative wrapper */}
 
         <div className="mt-4 flex justify-center">
-          <button type="button" onClick={handleLogout} className="cursor-pointer text-xs font-bold text-[#0D0D0D]/50 underline hover:text-[#4A6D7C]">
+          <button type="button" onClick={handleLogout} className="cursor-pointer text-xs font-bold text-[#0D0D0D]/50 underline hover:text-[#3D5F6C]">
             Cerrar sesión
           </button>
         </div>
