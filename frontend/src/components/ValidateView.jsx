@@ -103,7 +103,7 @@ export function ValidateView() {
   if (state === 'error') {
     return (
       <main className="paint-bg flex min-h-screen items-center justify-center px-4">
-        <div className="paper-drop paper-tape w-full max-w-sm">
+        <div className="paper-drop w-full max-w-sm">
           <div className="paper-rough paper-note border-[3px] border-[#1a1a1a] bg-[#fffef5] p-6 text-center">
             <p className="text-base font-bold text-[#7f1d1d]">{errorMsg}</p>
           </div>
@@ -132,7 +132,7 @@ export function ValidateView() {
       <div className="mx-auto flex max-w-lg flex-col gap-5">
 
         {/* Header */}
-        <div className="paper-drop paper-tape">
+        <div className="paper-drop">
           <div className="paper-rough paper-note border-[3px] border-[#1a1a1a] bg-[#fffef5] px-5 py-4">
             <h1 className="font-['Bangers'] text-2xl tracking-wide text-[#1a1a1a]">
               Valida el Lineup

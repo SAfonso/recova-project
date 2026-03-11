@@ -203,7 +203,7 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
             </div>
 
             {/* Zona de peligro */}
-            <div className="animate-slide-up stagger-2 paper-drop paper-tape"><div className="paper-rough paper-note border-[3px] border-[#DC2626]/60 bg-[#fffef5] px-6 py-4">
+            <div className="animate-slide-up stagger-2 paper-drop"><div className="paper-rough paper-note border-[3px] border-[#DC2626]/60 bg-[#fffef5] px-6 py-4">
               <h3 className="mb-3 font-['Bangers'] text-lg tracking-wide text-[#7f1d1d]">Zona de peligro</h3>
               {showDeletePanel ? (
                 <>
@@ -250,7 +250,7 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
             </div></div>
           </>
         ) : (
-          <div className="animate-pop-in paper-drop paper-tape">
+          <div className="animate-pop-in paper-drop">
             <div className="paper-rough paper-note border-[3px] border-[#1a1a1a] bg-[#fffef5] px-6 py-4">
               {/* Subtabs Info / Scoring */}
               <div className="mb-4 flex gap-1 border-b-2 border-[#C8B89A] pb-0">

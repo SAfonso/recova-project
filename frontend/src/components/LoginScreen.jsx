@@ -79,7 +79,7 @@ export function LoginScreen() {
           </p>
         </div>
 
-        <div className="animate-pop-in paper-drop paper-tape">
+        <div className="animate-pop-in paper-drop">
           <div className="paper-rough paper-note border-[3px] border-[#1a1a1a] bg-[#fffef5] p-6 flex flex-col gap-4">
 
             {error && (

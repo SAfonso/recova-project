@@ -409,7 +409,7 @@ function App({ session, openMicId, onBack }) {
           />
         )}
 
-        <section className="paper-drop paper-tape mx-auto w-full max-w-3xl"><div className="paper-rough paper-note border-[3px] border-[#1a1a1a] bg-[#fffef5] p-4">
+        <section className="paper-drop mx-auto w-full max-w-3xl"><div className="paper-rough paper-note border-[3px] border-[#1a1a1a] bg-[#fffef5] p-4">
           <label htmlFor="recovery-notes" className="mb-2 block font-['Bangers'] text-lg tracking-wide text-[#1a1a1a]">
             Notas de recuperación
           </label>
@@ -456,7 +456,7 @@ function App({ session, openMicId, onBack }) {
 
         {showCambiarConfirm && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div className="paper-drop paper-tape animate-pop-in max-w-sm mx-4"><div className="paper-rough paper-note border-[4px] border-[#1a1a1a] bg-[#fffef5] p-6 text-center">
+            <div className="paper-drop animate-pop-in max-w-sm mx-4"><div className="paper-rough paper-note border-[4px] border-[#1a1a1a] bg-[#fffef5] p-6 text-center">
               <p className="mb-6 text-lg font-bold text-[#1a1a1a]">
                 ¿Seguro que quieres cambiar el lineup validado?
               </p>

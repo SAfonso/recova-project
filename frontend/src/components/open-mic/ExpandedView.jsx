@@ -38,7 +38,7 @@ export function ExpandedView({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1a1a1a]/60 p-4 backdrop-blur-sm">
-      <div className="paper-drop paper-tape h-[92vh] w-full max-w-md lg:max-w-3xl">
+      <div className="paper-drop h-[92vh] w-full max-w-md lg:max-w-3xl">
       <div className="notebook-lines paper-rough paper-note relative flex h-full w-full flex-col overflow-hidden border-[3px] border-[#1a1a1a] bg-[#fffef5]">
         {/* Franja encuadernación */}
         <div
