@@ -2,6 +2,20 @@
 
 ---
 
+## Sprint 13 — Smart Form Generation (v0.18.0) — 2026-03-11 ✅
+
+### Objetivo
+Mejorar los Google Forms generados automáticamente: añadir descripción contextual, calcular fechas según cadencia del open mic, aplicar color aleatorio y avisar al host cuando el form queda desactualizado.
+
+### Completado
+- `google_form_builder.py` — descripción contextual (`_build_description`), color aleatorio de paleta curada (`_random_form_color`), fechas como CHECKBOX calculadas por cadencia (`_build_date_options`): semanal, quincenal, mensual; omite pregunta si evento único; `FormCreationResult.bg_color`
+- `webhook_listener.py` — endpoint `create-form` lee `config.info` y lo pasa al builder; persiste `bg_color`, `last_date` e `info_changed=false`
+- `InfoConfigurator.jsx` — selector cadencia (radio pills) + campo `fecha_inicio`; popup ⚠️ al guardar con form existente; persiste `form.info_changed=true`
+- `FormWarningBadges.jsx` (nuevo) — badge ⚠️ info_changed + badge 🗓️ caducidad; integrado en sección Google Form de `ScoringConfigurator`
+- **Tests**: 9 backend + 10 frontend = 19 nuevos · Total acumulado: 351
+
+---
+
 ## Sprint 10 — Scoring Inteligente Custom (v0.15.0) — 2026-03-07 ✅
 
 ### Objetivo
