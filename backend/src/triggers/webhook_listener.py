@@ -173,28 +173,38 @@ def create_form() -> tuple:
     if existing.data and existing.data.get("config", {}).get("form"):
         return jsonify({"status": "error", "message": "Este open mic ya tiene un form creado"}), 409
 
+    info = (existing.data or {}).get("config", {}).get("info", {})
+
     try:
         builder = GoogleFormBuilder()
-        result = builder.create_form_for_open_mic(open_mic_id=open_mic_id, nombre=nombre)
+        result = builder.create_form_for_open_mic(open_mic_id=open_mic_id, nombre=nombre, info=info)
     except Exception as exc:
         return jsonify({"status": "error", "message": str(exc)}), 500
+
+    # Calcular last_date (última fecha de las opciones del form)
+    dates = builder._build_date_options(info)
+    last_date = dates[-1] if dates else None
 
     # Guardar en config del open mic
     current_config = (existing.data or {}).get("config") or {}
     current_config["form"] = {
-        "form_id": result.form_id,
-        "form_url": result.form_url,
-        "sheet_id": result.sheet_id,
-        "sheet_url": result.sheet_url,
+        "form_id":      result.form_id,
+        "form_url":     result.form_url,
+        "sheet_id":     result.sheet_id,
+        "sheet_url":    result.sheet_url,
+        "bg_color":     result.bg_color,
+        "info_changed": False,
+        **({"last_date": last_date} if last_date else {}),
     }
     sb.schema("silver").from_("open_mics").update({"config": current_config}).eq("id", open_mic_id).execute()
 
     return jsonify({
-        "status": "success",
+        "status":   "success",
         "form_url": result.form_url,
         "sheet_id": result.sheet_id,
         "sheet_url": result.sheet_url,
-        "form_id": result.form_id,
+        "form_id":  result.form_id,
+        "bg_color": result.bg_color,
     }), 200
 
 

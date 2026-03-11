@@ -20,14 +20,32 @@ Variables de entorno:
 
 from __future__ import annotations
 
+import calendar
+import datetime as dt
 import json
 import os
+import random
 from dataclasses import dataclass
 
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 
+
+# ---------------------------------------------------------------------------
+# Paleta de colores para el form (Sprint 13)
+# ---------------------------------------------------------------------------
+
+_FORM_BG_PALETTE = [
+    "#F28B82", "#FBBC04", "#FFF475", "#CCFF90",
+    "#A8DAB5", "#CBF0F8", "#AECBFA", "#D7AEFB",
+    "#FDCFE8", "#E6C9A8", "#E8EAED", "#FF8A65",
+]
+
+_DIA_SEMANA_MAP = {
+    "Lunes": 0, "Martes": 1, "Miércoles": 2, "Miercoles": 2,
+    "Jueves": 3, "Viernes": 4, "Sábado": 5, "Sabado": 5, "Domingo": 6,
+}
 
 SCOPES = [
     "https://www.googleapis.com/auth/forms.body",
@@ -69,6 +87,7 @@ function setup() {{
     .forForm("{form_id}")
     .onFormSubmit()
     .create();
+  FormApp.openById("{form_id}").setBackgroundColor("{bg_color}");
 }}
 """
 
@@ -157,6 +176,7 @@ class FormCreationResult:
     form_url: str
     sheet_id: str
     sheet_url: str
+    bg_color: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -209,19 +229,23 @@ class GoogleFormBuilder:
         self,
         open_mic_id: str,
         nombre: str,
+        info: dict | None = None,
     ) -> FormCreationResult:
         """
-        1. Crea el Google Form con los 8 campos estándar.
-        2. Activa la recogida de respuestas en Sheet.
-        3. Inyecta columna open_mic_id con ARRAYFORMULA en la Sheet.
-        4. Devuelve FormCreationResult con URLs y IDs.
+        1. Crea el Google Form con descripción contextual y color aleatorio.
+        2. Añade preguntas (fechas como checkbox si hay cadencia).
+        3. Activa la recogida de respuestas en Sheet.
+        4. Inyecta columna open_mic_id con ARRAYFORMULA en la Sheet.
+        5. Devuelve FormCreationResult con URLs, IDs y bg_color.
         """
-        form_id = self._create_form(nombre)
-        self._add_questions(form_id)
+        info = info or {}
+        bg_color = self._random_form_color()
+        form_id = self._create_form(nombre, info, bg_color)
+        self._add_questions(form_id, info)
         sheet_id = self._get_linked_sheet_id(form_id, nombre)
         self._inject_open_mic_id_column(sheet_id, open_mic_id)
         try:
-            self.deploy_submit_webhook(form_id=form_id, open_mic_id=open_mic_id)
+            self.deploy_submit_webhook(form_id=form_id, open_mic_id=open_mic_id, bg_color=bg_color)
         except Exception as e:
             print(f"[GoogleFormBuilder] Apps Script webhook no desplegado: {e}")
 
@@ -233,34 +257,168 @@ class GoogleFormBuilder:
             form_url=form_url,
             sheet_id=sheet_id,
             sheet_url=sheet_url,
+            bg_color=bg_color,
         )
 
     # ------------------------------------------------------------------
     # Pasos internos
     # ------------------------------------------------------------------
 
-    def _create_form(self, nombre: str) -> str:
-        """Crea el form vacío y devuelve su form_id."""
-        body = {"info": {"title": f"Solicitudes — {nombre}"}}
+    def _create_form(self, nombre: str, info: dict | None = None, bg_color: str = "") -> str:
+        """Crea el form con descripción contextual y devuelve su form_id."""
+        info = info or {}
+        body = {
+            "info": {
+                "title": f"Solicitudes — {nombre}",
+                "description": self._build_description(nombre, info),
+            }
+        }
         result = self._forms.forms().create(body=body).execute()
         return result["formId"]
 
-    def _add_questions(self, form_id: str) -> None:
-        """Añade los 8 campos via batchUpdate."""
+    def _add_questions(self, form_id: str, info: dict | None = None) -> None:
+        """Añade los campos via batchUpdate.
+
+        Si cadencia == 'unico' o no hay cadencia: omite la pregunta de fechas.
+        Si hay cadencia con fechas: usa CHECKBOX en lugar de texto libre.
+        """
+        info = info or {}
+        dates = self._build_date_options(info)
+        cadencia = info.get("cadencia", "")
+
         requests = []
-        for index, q in enumerate(_FORM_QUESTIONS):
-            item = self._build_item(q)
+        idx = 0
+        for q in _FORM_QUESTIONS:
+            # Pregunta de fechas: sustituir o eliminar según cadencia
+            if "fecha" in q["title"].lower() and q["kind"] == "textQuestion":
+                if cadencia == "unico":
+                    # Evento único: omitir la pregunta
+                    continue
+                elif cadencia and dates:
+                    # Con cadencia y fechas calculadas: convertir a CHECKBOX
+                    item = {
+                        "title": q["title"],
+                        "questionItem": {
+                            "question": {
+                                "required": q["required"],
+                                "choiceQuestion": {
+                                    "type": "CHECKBOX",
+                                    "options": [{"value": d} for d in dates],
+                                },
+                            }
+                        },
+                    }
+                else:
+                    # Sin cadencia (legacy) o cadencia con fechas vacías: mantener texto libre
+                    item = self._build_item(q)
+            else:
+                item = self._build_item(q)
+
             requests.append({
                 "createItem": {
                     "item": item,
-                    "location": {"index": index},
+                    "location": {"index": idx},
                 }
             })
+            idx += 1
 
         self._forms.forms().batchUpdate(
             formId=form_id,
             body={"requests": requests},
         ).execute()
+
+    # ------------------------------------------------------------------
+    # Sprint 13 — helpers de descripción, color y fechas
+    # ------------------------------------------------------------------
+
+    def _random_form_color(self) -> str:
+        """Elige un color aleatorio de la paleta curada."""
+        return random.choice(_FORM_BG_PALETTE)
+
+    @staticmethod
+    def _build_description(nombre: str, info: dict) -> str:
+        """Genera la descripción contextual del form a partir del info del open mic."""
+        parts = [f"Formulario de inscripción al Open mic de comedia {nombre}"]
+        if info.get("local"):
+            parts.append(f"en {info['local']}")
+        if info.get("direccion"):
+            parts.append(f"en la calle {info['direccion']}")
+        if info.get("dia_semana"):
+            cadencia_label = {
+                "semanal":   "semanalmente",
+                "quincenal": "cada dos semanas",
+                "mensual":   "mensualmente",
+                "unico":     "",
+            }.get(info.get("cadencia", ""), "")
+            dia_str = info["dia_semana"]
+            if cadencia_label:
+                dia_str += f" {cadencia_label}"
+            parts.append(f"los {dia_str}")
+        return " ".join(parts)
+
+    def _build_date_options(self, info: dict) -> list[str]:
+        """Calcula las fechas seleccionables según la cadencia del open mic.
+
+        Devuelve lista de strings "dd-MM-YY". Devuelve [] para evento único o sin cadencia.
+        """
+        cadencia = info.get("cadencia", "")
+        if not cadencia or cadencia == "unico":
+            return []
+
+        today = dt.date.today()
+
+        if cadencia == "semanal":
+            dia_nombre = info.get("dia_semana", "")
+            weekday_target = _DIA_SEMANA_MAP.get(dia_nombre)
+            if weekday_target is None:
+                return []
+            # Todos los [dia_semana] del mes actual >= hoy
+            year, month = today.year, today.month
+            last_day = calendar.monthrange(year, month)[1]
+            dates = []
+            for day in range(1, last_day + 1):
+                d = dt.date(year, month, day)
+                if d.weekday() == weekday_target and d >= today:
+                    dates.append(d.strftime("%d-%m-%y"))
+            return dates
+
+        fecha_inicio_str = info.get("fecha_inicio", "")
+        try:
+            start = dt.date.fromisoformat(fecha_inicio_str) if fecha_inicio_str else today
+        except ValueError:
+            start = today
+
+        if cadencia == "quincenal":
+            # Avanzar de 14 en 14 días desde start hasta tener 4 fechas >= hoy
+            dates: list[str] = []
+            current = start
+            # Alinear con today si start está en el pasado
+            while current < today:
+                current += dt.timedelta(days=14)
+            for _ in range(4):
+                dates.append(current.strftime("%d-%m-%y"))
+                current += dt.timedelta(days=14)
+            return dates
+
+        if cadencia == "mensual":
+            # Próximas 3 fechas, mismo día del mes, sumando 1 mes
+            dates = []
+            current = start
+            # Avanzar hasta tener una fecha >= hoy
+            while current < today:
+                year_c = current.year + (current.month // 12)
+                month_c = (current.month % 12) + 1
+                day_c = min(current.day, calendar.monthrange(year_c, month_c)[1])
+                current = dt.date(year_c, month_c, day_c)
+            for _ in range(3):
+                dates.append(current.strftime("%d-%m-%y"))
+                year_c = current.year + (current.month // 12)
+                month_c = (current.month % 12) + 1
+                day_c = min(current.day, calendar.monthrange(year_c, month_c)[1])
+                current = dt.date(year_c, month_c, day_c)
+            return dates
+
+        return []
 
     def _build_item(self, q: dict) -> dict:
         """Convierte la definición de pregunta al formato de la Forms API."""
@@ -325,7 +483,7 @@ class GoogleFormBuilder:
 
         return sheet_id
 
-    def deploy_submit_webhook(self, form_id: str, open_mic_id: str) -> str:
+    def deploy_submit_webhook(self, form_id: str, open_mic_id: str, bg_color: str = "") -> str:
         """
         Crea un Apps Script bound al form con un trigger installable onFormSubmit
         que hace POST al backend con los datos del formulario + open_mic_id.
@@ -358,6 +516,7 @@ class GoogleFormBuilder:
             backend_url=self._backend_url,
             form_id=form_id,
             api_key=os.environ.get("WEBHOOK_API_KEY", ""),
+            bg_color=bg_color or "#E8EAED",
         )
         self._script.projects().updateContent(
             scriptId=script_id,

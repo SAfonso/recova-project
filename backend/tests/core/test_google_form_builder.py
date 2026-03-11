@@ -15,7 +15,9 @@ Cubre:
 
 from __future__ import annotations
 
+import datetime as dt
 import os
+import unittest.mock as mock
 from unittest.mock import MagicMock, call, patch
 
 import pytest
@@ -110,9 +112,9 @@ class TestCreateForm:
 
         result = builder._create_form("Mi Open Mic")
 
-        builder._forms.forms().create.assert_called_with(
-            body={"info": {"title": "Solicitudes — Mi Open Mic"}}
-        )
+        create_body = builder._forms.forms().create.call_args.kwargs["body"]
+        assert create_body["info"]["title"] == "Solicitudes — Mi Open Mic"
+        assert "description" in create_body["info"]
         assert result == "form-123"
 
     def test_returns_form_id(self):
@@ -356,3 +358,124 @@ class TestCreateFormForOpenMic:
 
         assert result.form_id == "form-abc"
         assert result.sheet_id == "sheet-xyz"
+
+
+# ---------------------------------------------------------------------------
+# Sprint 13 — _build_description
+# ---------------------------------------------------------------------------
+
+class TestBuildDescription:
+    def test_build_description_completa(self):
+        from backend.src.core.google_form_builder import GoogleFormBuilder
+        info = {
+            "local": "Bar La Recova",
+            "direccion": "Gran Vía 28",
+            "dia_semana": "Miércoles",
+            "cadencia": "semanal",
+        }
+        desc = GoogleFormBuilder._build_description("Recova Open Mic", info)
+        assert "Recova Open Mic" in desc
+        assert "Bar La Recova" in desc
+        assert "Gran Vía 28" in desc
+        assert "semanalmente" in desc
+
+    def test_build_description_parcial(self):
+        from backend.src.core.google_form_builder import GoogleFormBuilder
+        desc = GoogleFormBuilder._build_description("Mi Open Mic", {})
+        assert "Mi Open Mic" in desc
+        # Sin contexto extra
+        assert "semanalmente" not in desc
+        assert "cada dos semanas" not in desc
+
+
+# ---------------------------------------------------------------------------
+# Sprint 13 — _random_form_color
+# ---------------------------------------------------------------------------
+
+class TestRandomFormColor:
+    def test_random_form_color(self):
+        from backend.src.core.google_form_builder import _FORM_BG_PALETTE
+        builder = _make_builder()
+        color = builder._random_form_color()
+        assert color in _FORM_BG_PALETTE
+        assert color.startswith("#")
+        assert len(color) == 7
+
+
+# ---------------------------------------------------------------------------
+# Sprint 13 — _build_date_options
+# ---------------------------------------------------------------------------
+
+class TestBuildDateOptions:
+    def test_build_date_options_unico(self):
+        builder = _make_builder()
+        assert builder._build_date_options({"cadencia": "unico"}) == []
+
+    def test_build_date_options_semanal(self):
+        builder = _make_builder()
+        info = {"cadencia": "semanal", "dia_semana": "Miércoles"}
+        result = builder._build_date_options(info)
+        today = dt.date.today()
+        assert len(result) > 0
+        for ds in result:
+            day, mon, yr = int(ds[:2]), int(ds[3:5]), 2000 + int(ds[6:])
+            d = dt.date(yr, mon, day)
+            assert d >= today
+            assert d.weekday() == 2  # Wednesday
+
+    def test_build_date_options_quincenal(self):
+        builder = _make_builder()
+        info = {"cadencia": "quincenal", "fecha_inicio": "2020-01-01"}
+        result = builder._build_date_options(info)
+        assert len(result) == 4
+        parsed = []
+        for ds in result:
+            day, mon, yr = int(ds[:2]), int(ds[3:5]), 2000 + int(ds[6:])
+            parsed.append(dt.date(yr, mon, day))
+        for i in range(1, len(parsed)):
+            assert (parsed[i] - parsed[i - 1]).days == 14
+
+    def test_build_date_options_mensual(self):
+        builder = _make_builder()
+        info = {"cadencia": "mensual", "fecha_inicio": "2020-01-15"}
+        result = builder._build_date_options(info)
+        assert len(result) == 3
+        today = dt.date.today()
+        for ds in result:
+            day, mon, yr = int(ds[:2]), int(ds[3:5]), 2000 + int(ds[6:])
+            d = dt.date(yr, mon, day)
+            assert d >= today
+
+
+# ---------------------------------------------------------------------------
+# Sprint 13 — _add_questions con info
+# ---------------------------------------------------------------------------
+
+class TestAddQuestionsWithInfo:
+    def test_add_questions_checkbox_semanal(self):
+        builder = _make_builder()
+        builder._forms.forms().batchUpdate().execute.return_value = {}
+        with mock.patch.object(
+            builder, "_build_date_options", return_value=["12-03-26", "19-03-26"]
+        ):
+            builder._add_questions("form-123", {"cadencia": "semanal", "dia_semana": "Miércoles"})
+
+        body = builder._forms.forms().batchUpdate.call_args.kwargs["body"]
+        date_items = [
+            r["createItem"]["item"]
+            for r in body["requests"]
+            if "fecha" in r["createItem"]["item"]["title"].lower()
+        ]
+        assert len(date_items) == 1
+        choice = date_items[0]["questionItem"]["question"]["choiceQuestion"]
+        assert choice["type"] == "CHECKBOX"
+        assert len(choice["options"]) == 2
+
+    def test_add_questions_omite_fecha_unico(self):
+        builder = _make_builder()
+        builder._forms.forms().batchUpdate().execute.return_value = {}
+        builder._add_questions("form-123", {"cadencia": "unico"})
+        body = builder._forms.forms().batchUpdate.call_args.kwargs["body"]
+        assert len(body["requests"]) == 7
+        titles = [r["createItem"]["item"]["title"] for r in body["requests"]]
+        assert not any("fecha" in t.lower() for t in titles)

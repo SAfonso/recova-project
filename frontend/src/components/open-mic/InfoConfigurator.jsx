@@ -4,6 +4,13 @@ import { OPEN_MIC_ICONS } from './openmic-icons';
 
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
+const CADENCIAS = [
+  { id: 'semanal',   label: 'Semanalmente' },
+  { id: 'quincenal', label: 'Quincenalmente' },
+  { id: 'mensual',   label: 'Mensualmente' },
+  { id: 'unico',     label: 'Evento único' },
+];
+
 const INPUT = 'w-full rounded-md border-2 border-[#1a1a1a] bg-[#F5F0E1] px-3 py-2 text-sm text-[#1a1a1a] outline-none focus:ring-2 focus:ring-[#DC2626]';
 
 const CheckIcon = () => (
@@ -31,19 +38,22 @@ export function InfoConfigurator({ openMicId, openMic, onSaved }) {
   const info = openMic.config?.info ?? {};
 
   const [form, setForm] = useState({
-    nombre:     openMic.nombre ?? '',
-    local:      info.local ?? '',
-    direccion:  info.direccion ?? '',
-    hosts:      info.hosts ?? [],
-    dia_semana: info.dia_semana ?? '',
-    hora:       info.hora ?? '',
-    instagram:  info.instagram ?? '',
-    icono:      info.icono ?? 'mic',
+    nombre:       openMic.nombre ?? '',
+    local:        info.local ?? '',
+    direccion:    info.direccion ?? '',
+    hosts:        info.hosts ?? [],
+    dia_semana:   info.dia_semana ?? '',
+    hora:         info.hora ?? '',
+    instagram:    info.instagram ?? '',
+    icono:        info.icono ?? 'mic',
+    cadencia:     info.cadencia ?? '',
+    fecha_inicio: info.fecha_inicio ?? '',
   });
-  const [hostInput,  setHostInput]  = useState('');
-  const [saving,     setSaving]     = useState(false);
-  const [saved,      setSaved]      = useState(false);
-  const [error,      setError]      = useState(null);
+  const [hostInput,      setHostInput]      = useState('');
+  const [saving,         setSaving]         = useState(false);
+  const [saved,          setSaved]          = useState(false);
+  const [error,          setError]          = useState(null);
+  const [showFormPopup,  setShowFormPopup]  = useState(false);
 
   const set = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
 
@@ -58,18 +68,30 @@ export function InfoConfigurator({ openMicId, openMic, onSaved }) {
     if (!form.nombre.trim()) return;
     setSaving(true);
     setError(null);
+
+    const hasExistingForm = !!openMic.config?.form?.form_id;
+
+    // Si hay form creado, marcar info_changed en config
+    const formConfig = hasExistingForm
+      ? { ...(openMic.config?.form ?? {}), info_changed: true }
+      : openMic.config?.form;
+
     const newConfig = {
       ...(openMic.config ?? {}),
       info: {
-        local:      form.local,
-        direccion:  form.direccion,
-        hosts:      form.hosts,
-        dia_semana: form.dia_semana,
-        hora:       form.hora,
-        instagram:  form.instagram,
-        icono:      form.icono,
+        local:        form.local,
+        direccion:    form.direccion,
+        hosts:        form.hosts,
+        dia_semana:   form.dia_semana,
+        hora:         form.hora,
+        instagram:    form.instagram,
+        icono:        form.icono,
+        cadencia:     form.cadencia,
+        fecha_inicio: form.fecha_inicio,
       },
+      ...(formConfig !== undefined ? { form: formConfig } : {}),
     };
+
     const { error: err } = await supabase
       .schema('silver')
       .from('open_mics')
@@ -77,6 +99,8 @@ export function InfoConfigurator({ openMicId, openMic, onSaved }) {
       .eq('id', openMicId);
     setSaving(false);
     if (err) { setError(err.message); return; }
+
+    if (hasExistingForm) setShowFormPopup(true);
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
     onSaved?.();
@@ -159,6 +183,39 @@ export function InfoConfigurator({ openMicId, openMic, onSaved }) {
         )}
       </Field>
 
+      {/* Frecuencia (cadencia) */}
+      <Field label="Frecuencia">
+        <div className="flex flex-wrap gap-2">
+          {CADENCIAS.map(({ id, label }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => set('cadencia', id)}
+              aria-pressed={form.cadencia === id}
+              className={`cursor-pointer rounded-full border-2 px-3 py-1 text-xs font-bold transition-all duration-150
+                ${form.cadencia === id
+                  ? 'border-[#1a1a1a] bg-[#1a1a1a] text-[#fff8e7]'
+                  : 'border-[#C8B89A] bg-[#F5F0E1] text-[#6B5C4A] hover:border-[#1a1a1a]'
+                }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </Field>
+
+      {/* Fecha de inicio */}
+      <Field label="Fecha de inicio">
+        <input
+          id="fecha-inicio"
+          type="date"
+          value={form.fecha_inicio}
+          onChange={(e) => set('fecha_inicio', e.target.value)}
+          aria-label="Fecha de inicio"
+          className={INPUT}
+        />
+      </Field>
+
       {/* Día y Hora */}
       <div className="grid grid-cols-2 gap-3">
         <Field label="Día de la semana">
@@ -238,6 +295,30 @@ export function InfoConfigurator({ openMicId, openMic, onSaved }) {
           {saving ? 'Guardando...' : 'Guardar información'}
         </button>
       </div>
+
+      {/* Modal: formulario desactualizado */}
+      {showFormPopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-sm rounded-xl border-[3px] border-[#1a1a1a] bg-[#fff8e7] p-6 shadow-[8px_8px_0px_rgba(0,0,0,0.3)]">
+            <p className="mb-1 font-['Bangers'] text-xl tracking-wide text-[#DC2626]">
+              ⚠️ El formulario puede haber quedado desactualizado
+            </p>
+            <p className="mb-5 text-sm text-[#1a1a1a]">
+              Has modificado información del open mic. El formulario de Google que tienes creado
+              puede contener fechas o descripción incorrectas.
+              <br /><br />
+              Te recomendamos borrarlo y volver a generarlo para que refleje los nuevos datos.
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowFormPopup(false)}
+              className="comic-shadow w-full cursor-pointer rounded-lg border-[3px] border-[#1a1a1a] bg-[#1a1a1a] py-2.5 text-sm font-bold text-[#fff8e7] transition-all duration-200 hover:bg-[#DC2626]"
+            >
+              Entendido
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

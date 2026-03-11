@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient';
 import { ScoringTypeSelector } from './ScoringTypeSelector';
 import { CustomScoringConfigurator } from './CustomScoringConfigurator';
 import { extractFormId } from '../utils/formUtils';
+import { FormWarningBadges } from './open-mic/FormWarningBadges';
 
 // ---------------------------------------------------------------------------
 // Valores por defecto — deben mantenerse sincronizados con
@@ -403,7 +404,7 @@ export function ScoringConfigurator({ openMicId, openMicName, onSaved }) {
           </div>
         </SectionCard>
       ) : (
-        <SectionCard title="Google Form">
+        <SectionCard title={<>Google Form<FormWarningBadges formConfig={config.form} /></>}>
           <div className="flex flex-col gap-3">
             {config.form?.form_url && (
               <div className="flex flex-col gap-2">
