@@ -1,46 +1,55 @@
-@import url('https://fonts.googleapis.com/css2?family=Bangers&family=Patrick+Hand&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bangers&family=Patrick+Hand&family=Space+Grotesk:wght@400;500;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* ══════════════════════════════════════════════════════
-   VARIABLES — Cartoon-Matte Brutalist
-   Contrast ratios: ink(#0D0D0D) sobre paper(#F0E8D5) = 12.6:1 ✓ WCAG AAA
+   VARIABLES — Cartoon-Brutalist Táctil
+   Paleta: Terracota, Verde bosque, Azul petróleo, Ocre mostaza
+   Bordes 3px negro · Sombra dura 5px negro puro · Sin gradientes
    ══════════════════════════════════════════════════════ */
 
 :root {
   color-scheme: light;
 
-  /* Paleta matte — colores planos, cero gradientes */
-  --c-bg:          #F5F0E8;   /* fondo general */
-  --c-paper:       #F0E8D5;   /* papel principal — más cálido y visible */
-  --c-paper-alt:   #E8DFCC;   /* papel secundario */
-  --c-ink:         #0D0D0D;   /* negro puro para texto y bordes */
-  --c-ink-soft:    #1E1A16;   /* negro suave para iconos */
-  --c-muted:       #5A5248;   /* texto secundario — contrast 7.2:1 ✓ AAA */
+  /* ── Fondos ──────────────────────────────────────────
+     bg: gris cálido medio — claramente distinto de las tarjetas
+     paper: casi blanco cálido — tarjetas visiblemente más claras
+  ─────────────────────────────────────────────────── */
+  --c-bg:          #EBE9E4;   /* fondo general — gris cálido/crema (spec) */
+  --c-paper:       #FEFDF8;   /* papel tarjeta — casi blanco, contrasta con fondo */
+  --c-paper-alt:   #F0EDE6;   /* papel secundario */
 
-  /* Acentos desaturados — todos pasan WCAG AA sobre fondo claro */
-  --c-petrol:      #3D5F6C;   /* azul petróleo oscuro — más legible */
-  --c-petrol-dark: #2D4A57;
-  --c-sage:        #5E7260;   /* verde salvia oscuro */
-  --c-sage-dark:   #4A5C4C;
-  --c-ochre:       #C4905A;   /* ocre más saturado */
-  --c-ochre-dark:  #A67440;
+  /* ── Tinta ── */
+  --c-ink:         #0D0D0D;   /* negro puro texto/bordes */
+  --c-ink-soft:    #1E1A16;
+  --c-muted:       #5A5248;   /* texto secundario */
 
-  /* Sombras — sólidas, sin opacidad, 100% negro */
+  /* ── Acentos Cartoon-Brutalist (todos mate/desaturados) ── */
+  --c-petrol:      #2C4A52;   /* azul petróleo mate — primario (spec) */
+  --c-petrol-dark: #1E3840;
+  --c-sage:        #5E7153;   /* verde bosque suave — éxito (spec) */
+  --c-sage-dark:   #4A5940;
+  --c-ochre:       #C9A66B;   /* ocre/mostaza — advertencia (spec) */
+  --c-ochre-dark:  #A8853A;
+  --c-danger:      #A34A42;   /* rojo terracota — peligro (spec) */
+  --c-danger-dark: #7D3530;
+
+  /* ── Sombras duras — 5px negro 100% opacidad (spec) ── */
   --c-shadow:      #000000;
   --shadow-hard:   5px 5px 0 var(--c-shadow);
   --shadow-med:    3px 3px 0 var(--c-shadow);
   --shadow-sm:     2px 2px 0 var(--c-shadow);
   --shadow-xs:     1px 1px 0 var(--c-shadow);
 
-  /* Bordes */
+  /* ── Bordes 3px sólido negro (spec) ── */
   --border-ink:    3px solid var(--c-ink);
   --border-ink2:   2px solid var(--c-ink);
 
-  /* Textura de papel: feTurbulence con grano direccional (fibras horizontales)
-     baseFrequency asimétrico: 0.35 horizontal (fibras largas) / 0.75 vertical */
+  /* ── Textura papel — grano SVG direccional warm ──
+     feTurbulence asimétrico: fibras horizontales
+     feColorMatrix: tono cálido marrón papel         */
   --paper-noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='p' color-interpolation-filters='linearRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.35%200.75' numOctaves='4' seed='12' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0.4%200%200%200%200.3%200.3%200%200%200%200.18%200.2%200%200%200%200.08%200%200%200%200%200.42'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23p)'/%3E%3C/svg%3E");
 }
 
@@ -48,7 +57,7 @@
   box-sizing: border-box;
 }
 
-/* Tipografía responsiva — escala proporcional en desktop */
+/* Tipografía responsiva — escala proporcional desktop */
 html                          { font-size: 15px; }
 @media (min-width: 768px)  { html { font-size: 16px; } }
 @media (min-width: 1024px) { html { font-size: 17px; } }
@@ -57,7 +66,7 @@ html                          { font-size: 15px; }
 body {
   margin: 0;
   min-height: 100vh;
-  font-family: 'Patrick Hand', 'Comic Sans MS', cursive;
+  font-family: 'Space Grotesk', 'Patrick Hand', 'Comic Sans MS', cursive;
   background-color: var(--c-bg);
   color: var(--c-ink);
 }
@@ -67,12 +76,9 @@ body {
 }
 
 /* ══════════════════════════════════════════════════════
-   LEGIBILIDAD DE TÍTULOS — WCAG AAA
-   Sombra dura en todos los elementos con fuente Bangers
-   y en h1/h2/h3 globales. Contraste garantizado.
+   TIPOGRAFÍA — Bangers para títulos, Space Grotesk para UI
    ══════════════════════════════════════════════════════ */
 
-/* Selecciona cualquier elemento que use Bangers via Tailwind arbitrary */
 [class*="Bangers"] {
   text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.18);
   -webkit-font-smoothing: antialiased;
@@ -84,7 +90,6 @@ h1, h2, h3 {
   letter-spacing: 0.02em;
 }
 
-/* Override específico: títulos Bangers sobre fondo claro */
 .paint-bg [class*="Bangers"],
 .paper-note [class*="Bangers"] {
   color: var(--c-ink);
@@ -92,15 +97,12 @@ h1, h2, h3 {
 }
 
 /* ══════════════════════════════════════════════════════
-   PAPEL ARRUGADO — bordes orgánicos tipo recorte a mano
-   Reemplaza el clip-path geométrico por border-radius
-   irregular, que respeta el drop-shadow del contenedor.
+   PAPEL — textura + bordes orgánicos
+   Sin clip-path (nunca), sin celo (removed).
+   El efecto "papel" viene del grano SVG + border-radius.
    ══════════════════════════════════════════════════════ */
 
-/*
-  .paper-drop: usa filter:drop-shadow() para que la sombra
-  siga el contorno irregular del paper-rough, no el bounding-box.
-*/
+/* filter:drop-shadow sigue el contorno del paper-rough hijo */
 .paper-drop {
   position: relative;
   filter:
@@ -108,10 +110,7 @@ h1, h2, h3 {
     drop-shadow(6px 6px 0px rgba(0,0,0,0.08));
 }
 
-/*
-  .paper-rough / .paper-rough-lg: esquinas muy ligeramente asimétricas.
-  El efecto de "papel" viene del grano SVG en .paper-note, no de los bordes.
-*/
+/* Esquinas ligeramente asimétricas — efecto papel recortado */
 .paper-rough {
   border-radius: 2px 4px 3px 3px / 3px 2px 4px 2px;
 }
@@ -120,11 +119,7 @@ h1, h2, h3 {
   border-radius: 3px 6px 4px 5px / 5px 3px 6px 3px;
 }
 
-/*
-  .paper-note: textura de papel real con grano SVG visible.
-  background-color sobre escribir el bg-[] de Tailwind JSX
-  (este bloque viene tras @tailwind utilities → prioridad).
-*/
+/* Cards: fondo casi blanco + grano de papel al ~3% */
 .paper-note {
   background-color: var(--c-paper);
   background-image: var(--paper-noise);
@@ -136,42 +131,23 @@ h1, h2, h3 {
   background-color: var(--c-paper-alt);
   background-image:
     var(--paper-noise),
-    repeating-linear-gradient(32deg, rgba(0, 0, 0, 0.06) 0 2px, transparent 2px 20px),
-    repeating-linear-gradient(-27deg, rgba(0, 0, 0, 0.04) 0 1px, transparent 1px 16px);
+    repeating-linear-gradient(32deg, rgba(0,0,0,0.06) 0 2px, transparent 2px 20px),
+    repeating-linear-gradient(-27deg, rgba(0,0,0,0.04) 0 1px, transparent 1px 16px);
   background-size: 350px 350px, 150px 150px, 120px 120px;
 }
 
+/* ── Scrapbook panel ───────────────────────────────────
+   SIN clip-path (cortaba sombras y botones)
+   SIN ::before/::after (eliminados — eran el "celo")
+   La sombra la gestiona el .paper-drop padre.
+─────────────────────────────────────────────────────── */
 .scrapbook-panel {
   position: relative;
   border: var(--border-ink);
-  box-shadow: var(--shadow-hard);
-  border-radius: 4px;
-  clip-path: polygon(0.8% 2.2%, 5.2% 0.6%, 13% 1.8%, 20.5% 0.5%, 27% 1.9%, 33.8% 0.7%, 43% 2.4%, 50% 0.9%, 58% 2.5%, 66.7% 0.8%, 74.5% 2.2%, 82% 0.6%, 89.5% 2.3%, 96.5% 0.9%, 99.3% 6%, 98.1% 15%, 99.4% 24%, 97.8% 33%, 99.3% 42%, 98% 51%, 99.2% 60%, 97.7% 69%, 99.1% 77.5%, 98.2% 87.5%, 99% 95.5%, 95.8% 98.9%, 87.5% 97.7%, 79.3% 99.2%, 71% 97.8%, 62.5% 99.3%, 54% 97.8%, 45.3% 99.2%, 37% 97.7%, 28.5% 99.1%, 20% 97.6%, 11% 99.1%, 3.5% 97.8%, 0.7% 94%, 2.2% 85%, 0.8% 75.5%, 2.3% 66.2%, 0.6% 57.5%, 2.1% 48.3%, 0.7% 39%, 2.2% 30.1%, 0.8% 21.1%, 2.4% 11.4%);
+  border-radius: 3px 6px 4px 5px / 5px 3px 6px 3px;
 }
 
-.scrapbook-panel::before,
-.scrapbook-panel::after {
-  content: '';
-  position: absolute;
-  width: 70px;
-  height: 18px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.45), rgba(255,255,255,0.18));
-  border: 2px solid rgba(40, 40, 40, 0.35);
-  pointer-events: none;
-}
-
-.scrapbook-panel::before {
-  top: -14px;
-  left: 18px;
-  transform: rotate(-9deg);
-}
-
-.scrapbook-panel::after {
-  top: -11px;
-  right: 20px;
-  transform: rotate(12deg);
-}
-
+/* Pin decorativo (bolita roja) — se mantiene */
 .pin-corner {
   position: relative;
 }
@@ -187,71 +163,101 @@ h1, h2, h3 {
   background: radial-gradient(circle at 35% 30%, #fff 0 20%, #991b1b 42%, #4a0d0d 100%);
   border: 2px solid #111;
   box-shadow: 1px 1px 0 #000;
+  z-index: 10;
+  pointer-events: none;
 }
 
-.tilt-soft:nth-of-type(odd) { transform: rotate(-1.2deg); }
-.tilt-soft:nth-of-type(even) { transform: rotate(1.4deg); }
+/* Inclinación aleatoria estilo scrapbook */
+.tilt-soft:nth-of-type(odd)  { transform: rotate(-1.2deg); }
+.tilt-soft:nth-of-type(even) { transform: rotate(1.4deg);  }
 
-/*
-  .notebook-lines: papel de cuaderno con grano + franjas.
-*/
+/* Papel de cuaderno con líneas horizontales y franja izquierda */
 .notebook-lines {
   background-color: var(--c-paper);
   background-image:
-    /* Grano de papel — capa superior, opacidad visible */
     var(--paper-noise),
-    /* Franja encuadernación izquierda — petróleo */
     linear-gradient(
       90deg,
-      rgba(61,95,108,0.10) 0px, rgba(61,95,108,0.06) 42px,
+      rgba(44,74,82,0.10) 0px, rgba(44,74,82,0.05) 42px,
       transparent 42px
     ),
-    /* Líneas horizontales — sage oscuro */
     repeating-linear-gradient(
       transparent,
       transparent 29px,
-      rgba(94,114,96,0.32) 29px,
-      rgba(94,114,96,0.32) 30px
+      rgba(94,113,83,0.28) 29px,
+      rgba(94,113,83,0.28) 30px
     );
   background-size: 400px 400px, 100% 100%, 100% 30px;
   background-repeat: repeat, no-repeat, repeat;
 }
 
 /* ══════════════════════════════════════════════════════
-   FONDO PRINCIPAL — plano mate con grano
-   Cero gradientes suaves. Solo color plano + noise.
+   FONDO PRINCIPAL — gris cálido mate con grano
+   Claramente más oscuro que las tarjetas (near-white)
    ══════════════════════════════════════════════════════ */
 
 .paint-bg {
   background-color: var(--c-bg);
   background-image:
-    /* Grano de papel visible */
     var(--paper-noise),
-    /* Puntos guía muy sutiles (rejilla tenue) */
-    radial-gradient(circle, rgba(61,95,108,0.06) 1px, transparent 1px);
+    radial-gradient(circle, rgba(44,74,82,0.05) 1px, transparent 1px);
   background-size: 400px 400px, 32px 32px;
   background-repeat: repeat, repeat;
 }
 
-/* Override texto blanco heredado del fondo rojo anterior */
-.paint-bg .text-\[#fff8e7\]    { color: var(--c-ink); }
+/* Override texto crema heredado de versiones anteriores */
+.paint-bg .text-\[#fff8e7\]     { color: var(--c-ink); }
 .paint-bg .text-\[#fff8e7\]\/70 { color: var(--c-muted); }
 
 /* ══════════════════════════════════════════════════════
-   OVERRIDES — colores crema JSX → papel matte
-   Sin !important para no bloquear los estados hover/active
+   OVERRIDES de colores JSX → variables del design system
+   (sin !important — se aplican por orden CSS tras utilities)
    ══════════════════════════════════════════════════════ */
 
+/* Crema/papel → near-white (tarjetas claramente distintas del fondo) */
 .bg-\[\#fff8e7\]  { background-color: var(--c-paper); }
 .bg-\[\#fffef5\]  { background-color: var(--c-paper); }
 .bg-\[\#F5F0E1\]  { background-color: var(--c-paper); }
 .bg-\[\#f5f0e1\]  { background-color: var(--c-paper); }
 .bg-\[\#EDE8DC\]  { background-color: var(--c-paper); }
 
+/* Rojo vivo #DC2626 → rojo terracota (spec danger) */
+.bg-\[\#DC2626\]              { background-color: var(--c-danger); }
+.hover\:bg-\[\#DC2626\]:hover { background-color: var(--c-danger); }
+.border-\[\#DC2626\]          { border-color: var(--c-danger); }
+.text-\[\#DC2626\]            { color: var(--c-danger); }
+.focus\:ring-\[\#DC2626\]:focus { --tw-ring-color: var(--c-danger); }
+
+/* Rojo oscuro #7f1d1d → danger-dark */
+.hover\:bg-\[\#7f1d1d\]:hover { background-color: var(--c-danger-dark); }
+.bg-\[\#7f1d1d\]              { background-color: var(--c-danger-dark); }
+
+/* Petróleo #3D5F6C → petróleo spec #2C4A52 */
+.bg-\[\#3D5F6C\]              { background-color: var(--c-petrol); }
+.hover\:bg-\[\#3D5F6C\]:hover { background-color: var(--c-petrol); }
+.border-\[\#3D5F6C\]          { border-color: var(--c-petrol); }
+.hover\:text-\[\#3D5F6C\]:hover { color: var(--c-petrol); }
+.focus\:ring-\[\#3D5F6C\]:focus { --tw-ring-color: var(--c-petrol); }
+
+/* Petróleo dark #2D4A57 → petróleo-dark spec */
+.bg-\[\#2D4A57\]              { background-color: var(--c-petrol-dark); }
+.hover\:bg-\[\#2D4A57\]:hover { background-color: var(--c-petrol-dark); }
+
+/* Sage #5E7260 → verde bosque spec #5E7153 */
+.bg-\[\#5E7260\]              { background-color: var(--c-sage); }
+.hover\:bg-\[\#5E7260\]:hover { background-color: var(--c-sage); }
+
+/* Sage dark #4A5C4C → sage-dark spec */
+.hover\:bg-\[\#4A5C4C\]:hover { background-color: var(--c-sage-dark); }
+.bg-\[\#4A5C4C\]              { background-color: var(--c-sage-dark); }
+
+/* Ocre #C4905A → ocre/mostaza spec #C9A66B */
+.bg-\[\#C4905A\]              { background-color: var(--c-ochre); }
+.text-\[\#C4905A\]            { color: var(--c-ochre); }
+
 /* ══════════════════════════════════════════════════════
-   COMIC SHADOW — sombra NEO-BRUTALISTA 5px sólida
-   Contraste 100%: box-shadow negro puro sin opacidad.
-   Efecto de presión física al hover/active.
+   COMIC SHADOW — botones estilo comic/dibujo animado
+   Sombra dura 5px · Efecto de presión física al click
    ══════════════════════════════════════════════════════ */
 
 .comic-shadow {
@@ -269,9 +275,8 @@ h1, h2, h3 {
   transform: translate(4px, 4px);
 }
 
-
 /* ══════════════════════════════════════════════════════
-   RESTRICCIÓN — overlay X en petróleo
+   RESTRICCIÓN — overlay X petróleo
    ══════════════════════════════════════════════════════ */
 
 .restricted-overlay { position: relative; }
@@ -285,14 +290,14 @@ h1, h2, h3 {
   justify-content: center;
   font-size: 4rem;
   font-weight: 900;
-  color: rgba(61, 95, 108, 0.15);
+  color: rgba(44, 74, 82, 0.15);
   font-family: 'Bangers', Impact, sans-serif;
   pointer-events: none;
   z-index: 1;
 }
 
 /* ══════════════════════════════════════════════════════
-   SCROLLBAR — matte sin border-radius
+   SCROLLBAR — estilo cartoon
    ══════════════════════════════════════════════════════ */
 
 .cartoon-scroll::-webkit-scrollbar                { width: 10px; }
@@ -356,7 +361,7 @@ h1, h2, h3 {
 .stagger-6 { animation-delay: 0.29s; }
 
 /* ══════════════════════════════════════════════════════
-   BOTÓN VOLVER — neo-brutalista
+   BOTÓN VOLVER — neo-brutalista con textura
    ══════════════════════════════════════════════════════ */
 
 .btn-back {
@@ -394,7 +399,7 @@ h1, h2, h3 {
 }
 
 /* ══════════════════════════════════════════════════════
-   COMIC PANEL — corner ticks decorativos
+   COMIC PANEL — corner ticks decorativos (brackets)
    ══════════════════════════════════════════════════════ */
 
 .comic-panel { position: relative; }
@@ -434,12 +439,10 @@ h1, h2, h3 {
 }
 
 /* ══════════════════════════════════════════════════════
-   UTILIDADES EXTRA
+   UTILIDADES
    ══════════════════════════════════════════════════════ */
 
 .shadow-hard    { box-shadow: var(--shadow-hard); }
 .shadow-hard-sm { box-shadow: var(--shadow-sm); }
 .border-ink     { border: var(--border-ink); }
-
-/* Relleno generoso para que el contenido respire dentro del papel */
-.paper-padded { padding: 1.5rem 1.75rem; }
+.paper-padded   { padding: 1.5rem 1.75rem; }

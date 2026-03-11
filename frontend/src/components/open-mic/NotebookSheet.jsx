@@ -33,8 +33,8 @@ export function NotebookSheet({
   return (
     <section className="relative mx-auto w-full max-w-lg lg:max-w-4xl">
 
-      {/* Pestañas */}
-      <div className="flex flex-wrap items-end gap-1">
+      {/* Pestañas — z-10 y -mb-[3px] conectan visualmente con el borde superior de la hoja */}
+      <div className="relative z-10 flex flex-wrap items-end gap-1 -mb-[3px]">
         {TABS.map((tab, index) => {
           const isActive = activeTab === tab.value;
           return (
@@ -56,7 +56,7 @@ export function NotebookSheet({
 
       {/* Hoja rugosa con drop-shadow */}
       <div className="paper-drop rotate-[0.9deg]">
-        <div className="scrapbook-panel pin-corner notebook-lines paper-rough paper-note relative overflow-hidden px-4 pb-14 pt-5">
+        <div className="scrapbook-panel pin-corner notebook-lines paper-rough paper-note relative px-4 pb-14 pt-5">
 
           {/* Franja encuadernación izquierda */}
           <div
