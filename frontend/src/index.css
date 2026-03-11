@@ -4,8 +4,39 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ══════════════════════════════════════════════════════
+   VARIABLES — Cartoon-Matte Brutalist
+   ══════════════════════════════════════════════════════ */
+
 :root {
   color-scheme: light;
+
+  /* Paleta matte */
+  --c-bg:        #F5F5F0;
+  --c-paper:     #EDE8DC;
+  --c-paper-alt: #E4DDD0;
+  --c-ink:       #0D0D0D;
+  --c-ink-soft:  #2E2A26;
+  --c-muted:     #6A6358;
+
+  /* Acentos desaturados */
+  --c-petrol:      #4A6D7C;
+  --c-petrol-dark: #3A5A6A;
+  --c-sage:        #7B8E7E;
+  --c-sage-dark:   #68786A;
+  --c-ochre:       #D4A373;
+  --c-ochre-dark:  #B8864F;
+
+  /* Sombras */
+  --c-shadow:    #000000;
+  --shadow-hard: 4px 4px 0 var(--c-shadow);
+  --shadow-med:  3px 3px 0 var(--c-shadow);
+  --shadow-sm:   2px 2px 0 var(--c-shadow);
+  --shadow-xs:   1px 1px 0 var(--c-shadow);
+
+  /* Bordes */
+  --border-ink:  3px solid var(--c-ink);
+  --border-ink2: 2px solid var(--c-ink);
 }
 
 * {
@@ -16,28 +47,26 @@ body {
   margin: 0;
   min-height: 100vh;
   font-family: 'Patrick Hand', 'Comic Sans MS', cursive;
+  background-color: var(--c-bg);
 }
 
 /* ══════════════════════════════════════════════════════
-   PAPEL ARRUGADO — estilo nota pegada con cinta
+   PAPEL ARRUGADO — nota pegada con cinta
    ══════════════════════════════════════════════════════ */
 
 /*
-  Wrapper:
-  - Sombra realista elevada (el papel flota sobre la superficie)
-  - position: relative para que la cinta ::before se posicione aquí
+  Sombra dura estilo brutalista (no difuminada):
+  drop-shadow encadenados sin blur = hard shadow.
 */
 .paper-drop {
   position: relative;
   filter:
-    drop-shadow(1px 2px 3px rgba(0,0,0,0.20))
-    drop-shadow(4px 8px 12px rgba(0,0,0,0.22))
-    drop-shadow(8px 14px 6px rgba(0,0,0,0.08));
+    drop-shadow(4px 4px 0px rgba(0, 0, 0, 0.85))
+    drop-shadow(5px 5px 0px rgba(0, 0, 0, 0.12));
 }
 
 /*
-  Cinta adhesiva (masking tape) en la parte superior.
-  Se aplica al wrapper (paper-drop) para que NO sea recortada por el clip-path.
+  Cinta adhesiva (masking tape) — tono ocre matte.
 */
 .paper-tape::before {
   content: '';
@@ -47,26 +76,24 @@ body {
   transform: translateX(-50%) rotate(-1.5deg);
   width: 64px;
   height: 24px;
-  /* Gradiente vertical para dar grosor y translucidez realista */
   background: linear-gradient(
     to bottom,
-    rgba(245, 232, 168, 0.60) 0%,
-    rgba(218, 204, 138, 0.50) 50%,
-    rgba(200, 185, 120, 0.42) 100%
+    rgba(212, 163, 115, 0.60) 0%,
+    rgba(180, 140, 90,  0.50) 50%,
+    rgba(155, 118, 70,  0.42) 100%
   );
-  border-left:  1px solid rgba(180, 165, 110, 0.30);
-  border-right: 1px solid rgba(180, 165, 110, 0.30);
+  border-left:  1px solid rgba(90, 65, 30, 0.28);
+  border-right: 1px solid rgba(90, 65, 30, 0.28);
   box-shadow:
-    inset 0 1px 3px rgba(255,255,255,0.45),
-    inset 0 -1px 2px rgba(0,0,0,0.06),
-    0 2px 6px rgba(0,0,0,0.16);
+    inset 0 1px 3px rgba(255, 255, 255, 0.30),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.10),
+    0 2px 0px rgba(0, 0, 0, 0.55);
   pointer-events: none;
   z-index: 20;
 }
 
 /*
-  Forma del papel — bordes ligeramente irregulares (recortado a mano).
-  Variación suave: 0–3% para simular papel rasgado/cortado, no agresivo.
+  Forma irregular tipo papel recortado a mano.
 */
 .paper-rough {
   clip-path: polygon(
@@ -99,119 +126,125 @@ body {
 }
 
 /*
-  Textura de papel arrugado.
-  Múltiples gradientes diagonales en distintas direcciones
-  simulan los pliegues/arrugas del papel físico.
+  Textura de papel matte:
+  - background-color anula el `bg-[#fffef5]` de los componentes JSX
+    (este bloque viene tras @tailwind utilities, por lo que tiene prioridad)
+  - Grano de ruido + pliegues diagonales muy suaves
 */
 .paper-note {
+  background-color: var(--c-paper);
   background-image:
-    /* Pliegue diagonal principal — arriba-izquierda a abajo-derecha */
+    /* Grano SVG (noise fractal) */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.80' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
+    /* Pliegue diagonal principal */
     linear-gradient(
       130deg,
-      transparent 20%, rgba(0,0,0,0.050) 24%,
-      rgba(255,255,255,0.060) 26%, transparent 31%
+      transparent 20%, rgba(0,0,0,0.030) 24%,
+      rgba(255,255,255,0.040) 26%, transparent 31%
     ),
     /* Arruga secundaria oblicua */
     linear-gradient(
       68deg,
-      transparent 36%, rgba(0,0,0,0.035) 39%,
-      rgba(255,255,255,0.040) 40.5%, transparent 44%
-    ),
-    /* Pliegue vertical-izquierda */
-    linear-gradient(
-      158deg,
-      transparent 48%, rgba(255,255,255,0.055) 51%,
-      rgba(0,0,0,0.030) 52.5%, transparent 56%
-    ),
-    /* Sombra esquina inferior-derecha (papel doblado) */
-    linear-gradient(
-      40deg,
-      transparent 60%, rgba(0,0,0,0.030) 63%,
-      transparent 67%
+      transparent 36%, rgba(0,0,0,0.022) 39%,
+      rgba(255,255,255,0.028) 40.5%, transparent 44%
     ),
     /* Luz rasante esquina superior */
     linear-gradient(
       108deg,
-      rgba(255,255,255,0.055) 0%, transparent 14%
+      rgba(255,255,255,0.045) 0%, transparent 14%
     ),
     /* Oscurecimiento leve esquina inferior */
     radial-gradient(
       ellipse 60% 40% at 80% 95%,
-      rgba(0,0,0,0.04) 0%, transparent 70%
+      rgba(0,0,0,0.030) 0%, transparent 70%
     );
+  background-size: 200px 200px, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat;
 }
 
 /*
-  Libreta: arrugas + franja de encuadernación + líneas azules.
-  Combina paper-note + notebook ruling en un solo background-image.
+  Libreta: grano + franja encuadernación petróleo + líneas sage verde.
 */
 .notebook-lines {
+  background-color: var(--c-paper);
   background-image:
+    /* Grano */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.80' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
     /* Pliegue diagonal */
     linear-gradient(
       130deg,
-      transparent 20%, rgba(0,0,0,0.04) 24%,
-      rgba(255,255,255,0.05) 26%, transparent 31%
+      transparent 20%, rgba(0,0,0,0.025) 24%,
+      rgba(255,255,255,0.035) 26%, transparent 31%
     ),
-    /* Arruga lateral */
-    linear-gradient(
-      72deg,
-      transparent 42%, rgba(0,0,0,0.028) 44%,
-      transparent 48%
-    ),
-    /* Franja de encuadernación izquierda */
+    /* Franja encuadernación izquierda — petróleo */
     linear-gradient(
       90deg,
-      rgba(0,0,0,0.042) 0px, rgba(0,0,0,0.042) 40px,
+      rgba(74,109,124,0.14) 0px, rgba(74,109,124,0.08) 40px,
       transparent 40px
     ),
-    /* Líneas horizontales azul pálido */
+    /* Líneas horizontales — sage verde */
     repeating-linear-gradient(
       transparent,
       transparent 29px,
-      rgba(100, 170, 220, 0.38) 29px,
-      rgba(100, 170, 220, 0.38) 30px
+      rgba(123,142,126,0.38) 29px,
+      rgba(123,142,126,0.38) 30px
     );
-  background-size:
-    100% 100%,
-    100% 100%,
-    100% 100%,
-    100% 30px;
-  background-repeat:
-    no-repeat,
-    no-repeat,
-    no-repeat,
-    repeat;
+  background-size: 200px 200px, 100% 100%, 100% 100%, 100% 30px;
+  background-repeat: repeat, no-repeat, no-repeat, repeat;
 }
 
 /* ══════════════════════════════════════════════════════
-   FONDO — focos amarillos sobre rojo oscuro
+   FONDO PRINCIPAL — Cartoon-Matte Brutalist
+   Sustituye el rojo oscuro por off-white matte con grano.
    ══════════════════════════════════════════════════════ */
 
 .paint-bg {
-  background:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12'%3E%3Ccircle cx='6' cy='6' r='1' fill='rgba(0,0,0,0.07)'/%3E%3C/svg%3E"),
-    radial-gradient(ellipse 62% 58% at  8% 12%, rgba(234,179,8,0.78) 0%, rgba(234,179,8,0.28) 42%, transparent 70%),
-    radial-gradient(ellipse 55% 65% at 93%  8%, rgba(245,158,11,0.72) 0%, rgba(245,158,11,0.22) 48%, transparent 72%),
-    radial-gradient(ellipse 70% 52% at 52% 96%, rgba(234,179,8,0.68) 0%, rgba(234,179,8,0.18) 50%, transparent 74%),
-    radial-gradient(ellipse 42% 55% at  3% 60%, rgba(249,115,22,0.55) 0%, rgba(249,115,22,0.14) 55%, transparent 76%),
-    radial-gradient(ellipse 38% 48% at 97% 72%, rgba(245,158,11,0.50) 0%, rgba(245,158,11,0.12) 55%, transparent 75%),
-    radial-gradient(ellipse 80% 70% at 50% 40%, rgba(200,30,30,0.28) 0%, transparent 68%),
-    #8b1212;
+  background-color: var(--c-bg);
+  background-image:
+    /* Grano de papel sutil */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.048'/%3E%3C/svg%3E"),
+    /* Puntos petróleo muy sutiles */
+    radial-gradient(circle, rgba(74,109,124,0.09) 1px, transparent 1px),
+    /* Viñeta perimetral suave */
+    radial-gradient(ellipse 90% 90% at 50% 50%, transparent 55%, rgba(0,0,0,0.05) 100%);
+  background-size: 300px 300px, 30px 30px, 100% 100%;
+  background-repeat: repeat, repeat, no-repeat;
+}
+
+/*
+  Texto blanco heredado del fondo rojo anterior → adaptado al nuevo fondo claro.
+  Seleccionamos por clase Tailwind escapada (viene tras @tailwind utilities).
+*/
+.paint-bg .text-\[#fff8e7\] {
+  color: var(--c-ink);
+}
+.paint-bg .text-\[#fff8e7\]\/70 {
+  color: var(--c-muted);
 }
 
 /* ══════════════════════════════════════════════════════
-   UTILIDADES COMICS
+   COMIC SHADOW — sombra dura brutalista
+   Simula presión física: hover reduce, active colapsa.
    ══════════════════════════════════════════════════════ */
 
 .comic-shadow {
-  box-shadow: 4px 4px 0 #1a1a1a;
+  box-shadow: var(--shadow-hard);
+  transition: box-shadow 0.10s ease, transform 0.10s ease;
+}
+
+.comic-shadow:hover {
+  box-shadow: var(--shadow-med);
+  transform: translate(1px, 1px);
 }
 
 .comic-shadow:active {
-  box-shadow: 2px 2px 0 #1a1a1a;
-  transform: translate(2px, 2px);
+  box-shadow: var(--shadow-xs);
+  transform: translate(3px, 3px);
 }
+
+/* ══════════════════════════════════════════════════════
+   RESTRICCIÓN — overlay X
+   ══════════════════════════════════════════════════════ */
 
 .restricted-overlay {
   position: relative;
@@ -226,22 +259,27 @@ body {
   justify-content: center;
   font-size: 4rem;
   font-weight: 700;
-  color: rgba(220, 38, 38, 0.25);
+  color: rgba(74, 109, 124, 0.18);
   font-family: 'Bangers', Impact, sans-serif;
   pointer-events: none;
   z-index: 1;
 }
 
-.cartoon-scroll::-webkit-scrollbar { width: 10px; }
-.cartoon-scroll::-webkit-scrollbar-track { background: #f5f0e1; border-radius: 5px; }
-.cartoon-scroll::-webkit-scrollbar-thumb { background: #c8b89a; border: 2px solid #f5f0e1; border-radius: 5px; }
+/* ══════════════════════════════════════════════════════
+   SCROLLBAR — matte con borde ink
+   ══════════════════════════════════════════════════════ */
+
+.cartoon-scroll::-webkit-scrollbar          { width: 10px; }
+.cartoon-scroll::-webkit-scrollbar-track    { background: var(--c-bg); border-radius: 0; border: 1.5px solid var(--c-ink); }
+.cartoon-scroll::-webkit-scrollbar-thumb    { background: var(--c-sage); border: 2px solid var(--c-ink); border-radius: 0; }
+.cartoon-scroll::-webkit-scrollbar-thumb:hover { background: var(--c-petrol); }
 
 /* ══════════════════════════════════════════════════════
    ACCESIBILIDAD
    ══════════════════════════════════════════════════════ */
 
 :focus-visible {
-  outline: 3px solid #DC2626;
+  outline: 3px solid var(--c-petrol);
   outline-offset: 2px;
 }
 
@@ -292,7 +330,7 @@ body {
 .stagger-6 { animation-delay: 0.29s; }
 
 /* ══════════════════════════════════════════════════════
-   BOTÓN VOLVER — visible sobre fondo rojo
+   BOTÓN VOLVER — estilo brutalista matte
    ══════════════════════════════════════════════════════ */
 
 .btn-back {
@@ -300,34 +338,111 @@ body {
   align-items: center;
   gap: 8px;
   padding: 10px 20px;
-  border-radius: 9999px;
-  border: 3px solid #fff8e7;
-  background: rgba(26, 26, 26, 0.25);
-  color: #fff8e7;
+  border-radius: 0;
+  border: var(--border-ink);
+  background: var(--c-paper);
+  color: var(--c-ink);
   font-family: 'Bangers', Impact, sans-serif;
   font-size: 1.1rem;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   cursor: pointer;
-  transition: background 0.2s, color 0.2s, transform 0.15s;
-  backdrop-filter: blur(4px);
+  box-shadow: var(--shadow-hard);
+  transition: box-shadow 0.10s ease, transform 0.10s ease, background 0.15s ease, color 0.15s ease;
 }
-.btn-back:hover  { background: #fff8e7; color: #DC2626; transform: scale(1.04); }
-.btn-back:active { transform: scale(0.97); }
+
+.btn-back:hover {
+  background: var(--c-petrol);
+  color: var(--c-bg);
+  box-shadow: var(--shadow-sm);
+  transform: translate(2px, 2px);
+}
+
+.btn-back:active {
+  box-shadow: var(--shadow-xs);
+  transform: translate(3px, 3px);
+}
 
 /* ══════════════════════════════════════════════════════
    COMIC PANEL — corner tick marks (decorativo)
    ══════════════════════════════════════════════════════ */
 
 .comic-panel { position: relative; }
-.comic-panel::before, .comic-panel::after {
+
+.comic-panel::before,
+.comic-panel::after {
   content: '';
   position: absolute;
   width: 14px;
   height: 14px;
-  border-color: #1a1a1a;
+  border-color: var(--c-ink);
   border-style: solid;
   pointer-events: none;
   z-index: 2;
 }
-.comic-panel::before { top: 6px; right: 6px; border-width: 2px 2px 0 0; }
-.comic-panel::after  { bottom: 6px; left: 6px; border-width: 0 0 2px 2px; }
+
+.comic-panel::before { top: 6px;    right: 6px; border-width: 2px 2px 0 0; }
+.comic-panel::after  { bottom: 6px; left: 6px;  border-width: 0 0 2px 2px; }
+
+/* ══════════════════════════════════════════════════════
+   OVERRIDES DE COLORES HEREDADOS (fondo cálido → matte)
+   bg-[#fff8e7] y bg-[#fffef5] eran "papel crema" del tema
+   rojo anterior → se remapean al nuevo papel matte.
+   Vienen tras @tailwind utilities, así que tienen prioridad.
+   ══════════════════════════════════════════════════════ */
+
+.bg-\[\#fff8e7\]  { background-color: var(--c-paper) !important; }
+.bg-\[\#fffef5\]  { background-color: var(--c-paper) !important; }
+.bg-\[\#F5F0E1\]  { background-color: var(--c-paper) !important; }
+.bg-\[\#f5f0e1\]  { background-color: var(--c-paper) !important; }
+
+/* Spinner / skeleton shimmer */
+.bg-\[\#C8B89A\]  { background-color: var(--c-sage) !important; }
+.bg-\[\#c8b89a\]  { background-color: var(--c-sage) !important; }
+.bg-\[\#D8C8AA\]  { background-color: var(--c-paper-alt) !important; }
+
+/* ══════════════════════════════════════════════════════
+   OVERRIDES SOMBRAS DIFUMINADAS → BRUTALISTAS
+   La clase shadow-[6px_6px_0px_rgba(0,0,0,0.3)] y similares
+   se reemplazan por la sombra dura del nuevo sistema.
+   ══════════════════════════════════════════════════════ */
+
+[class*="shadow-["] {
+  box-shadow: var(--shadow-hard) !important;
+}
+
+/* Excepción: drop-shadow en filter (no box-shadow) → lo gestionan .paper-drop */
+.paper-drop [class*="shadow-["] {
+  box-shadow: none !important;
+}
+
+/* ══════════════════════════════════════════════════════
+   OVERRIDES rounded → brutalismo requiere esquinas rectas
+   Opcional: activa esto si quieres eliminar bordes redondeados globalmente.
+   Por defecto lo dejamos comentado para no romper clip-path de paper-rough.
+   ══════════════════════════════════════════════════════ */
+
+/* [class*="rounded"] { border-radius: 0 !important; } */
+
+/* ══════════════════════════════════════════════════════
+   UTILIDADES EXTRA — Cartoon-Matte Brutalist
+   ══════════════════════════════════════════════════════ */
+
+/* Sombra dura genérica reutilizable */
+.shadow-hard { box-shadow: var(--shadow-hard); }
+.shadow-hard-sm { box-shadow: var(--shadow-sm); }
+
+/* Borde ink estándar */
+.border-ink { border: var(--border-ink); }
+
+/* Tira de papel para items de lista */
+.paper-strip {
+  background-color: var(--c-paper);
+  border: var(--border-ink2);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.10s ease, transform 0.10s ease;
+}
+
+.paper-strip:hover {
+  box-shadow: var(--shadow-xs);
+  transform: translate(1px, 1px);
+}

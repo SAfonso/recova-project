@@ -1,3 +1,23 @@
+## [0.18.1] - 2026-03-11
+
+### Changed — Cartoon-Matte Brutalist UI
+
+- **`frontend/src/index.css`** — rediseño completo del sistema de estilos global:
+  - `.paint-bg`: fondo rojo oscuro → off-white matte `#F5F5F0` con grano SVG fractal y puntos petróleo sutiles
+  - `.comic-shadow`: sombra dura brutalista `4px 4px 0 #000`; hover `3px 3px + translate(1,1)`; active `1px 1px + translate(3,3)` (efecto presión física)
+  - `.paper-note` / `.notebook-lines`: `background-color: #EDE8DC` matte; grano SVG fractal; líneas en sage verde `#7B8E7E`; encuadernación en petróleo `#4A6D7C`
+  - `.paper-drop`: sombra hard drop-shadow sin desenfoque
+  - `.paper-tape::before`: cinta ocre matte `#D4A373`
+  - `.btn-back`: rectangular brutalista, hover petróleo
+  - Scrollbar: thumb sage verde + borde ink, hover petróleo
+  - `:focus-visible`: ring petróleo `#4A6D7C`
+  - Overrides globales: `bg-[#fff8e7]` / `bg-[#fffef5]` → `var(--c-paper)`; `[class*="shadow-["]` → hard shadow
+  - Nuevas utilidades: `.paper-strip`, `.shadow-hard`, `.border-ink`
+  - Variables CSS: `--c-petrol`, `--c-sage`, `--c-ochre`, `--shadow-hard/med/sm/xs`, `--border-ink`
+- **`frontend/tailwind.config.js`** — tokens `matte-*` para toda la paleta; presets `boxShadow` hard; font families `bangers`/`hand`
+
+---
+
 ## [0.18.0] - 2026-03-11
 
 ### Added — Sprint 13: Smart Form Generation
