@@ -1,3 +1,23 @@
+## [0.18.0] - 2026-03-11
+
+### Added — Sprint 13: Smart Form Generation
+
+- **Spec SDD** — `specs/smart_form_generation_spec.md`
+- **`google_form_builder.py`** — descripción contextual al crear el form (`_build_description`); color aleatorio de paleta curada de 12 colores (`_random_form_color`, `_FORM_BG_PALETTE`); pregunta de fechas como CHECKBOX calculadas dinámicamente según cadencia (`_build_date_options`): semanal (todos los días del mes ≥ hoy), quincenal (4 fechas cada 14 días), mensual (3 fechas, mismo día del mes); omite pregunta de fechas si `cadencia == 'unico'`; `FormCreationResult.bg_color` nuevo campo; `deploy_submit_webhook` aplica `setBackgroundColor` via Apps Script
+- **`webhook_listener.py`** — endpoint `POST /api/open-mic/create-form` lee `config.info` del open mic y lo pasa al builder; persiste `bg_color`, `last_date` (última fecha calculada) e `info_changed=false` en `config.form`
+- **`InfoConfigurator.jsx`** — selector de cadencia (radio pills: Semanalmente/Quincenalmente/Mensualmente/Evento único); campo `fecha_inicio` (date input); popup modal ⚠️ al guardar si ya existe un form creado; persiste `form.info_changed=true` automáticamente
+- **`FormWarningBadges.jsx`** (nuevo) — badge ⚠️ cuando `info_changed=true`; badge 🗓️ cuando `last_date` ≤ 7 días o en el pasado; con tooltips descriptivos
+- **`ScoringConfigurator.jsx`** — `FormWarningBadges` integrado en el título de la sección Google Form
+
+### Tests
+
+- **9 tests** `backend/tests/core/test_google_form_builder.py` — `_build_description` (2), `_random_form_color` (1), `_build_date_options` (4), `_add_questions` con info (2) — todos verdes
+- **10 tests** `frontend/src/test/OpenMicDetail.test.jsx` — InfoConfigurator cadencia/fecha/popup (5) + FormWarningBadges badges (5) — todos verdes
+- **Fix** `ScoringTypeSelector.test.jsx` — actualizado para reflejar eliminación del `disabled` (v0.17.5)
+- **Total acumulado**: 321 backend + 30 frontend = 351 tests verdes
+
+---
+
 ## [0.17.9] - 2026-03-10
 
 ### Fixed — seguridad: autenticación en endpoint form-submission
