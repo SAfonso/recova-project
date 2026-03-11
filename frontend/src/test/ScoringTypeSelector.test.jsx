@@ -45,15 +45,14 @@ describe('ScoringTypeSelector', () => {
     expect(basicBtn).not.toHaveClass('bg-[#1a1a1a]');
   });
 
-  it('opción custom está disabled cuando hasFieldMapping=false', () => {
-    render(<ScoringTypeSelector {...defaultProps} hasFieldMapping={false} />);
+  it('opción custom muestra hint cuando hasFieldMapping=false y está activa', () => {
+    render(<ScoringTypeSelector {...defaultProps} hasFieldMapping={false} currentType="custom" />);
 
-    const customBtn = screen.getByText('Scoring personalizado').closest('button');
-    expect(customBtn).toBeDisabled();
+    expect(screen.getByText(/analiza tu formulario/i)).toBeInTheDocument();
   });
 
-  it('opción custom está habilitada cuando hasFieldMapping=true', () => {
-    render(<ScoringTypeSelector {...defaultProps} hasFieldMapping={true} />);
+  it('opción custom siempre está habilitada (sin disabled)', () => {
+    render(<ScoringTypeSelector {...defaultProps} hasFieldMapping={false} />);
 
     const customBtn = screen.getByText('Scoring personalizado').closest('button');
     expect(customBtn).not.toBeDisabled();
