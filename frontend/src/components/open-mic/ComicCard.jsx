@@ -31,10 +31,10 @@ const DROP_SHADOW = {
 };
 
 function categoryBadge(category) {
-  if (category === 'gold')       return <span className="rounded-none border-[2px] border-[#0D0D0D] bg-[#C4905A] px-2 py-0.5 text-[10px] font-bold uppercase text-[#0D0D0D]">GOLD</span>;
-  if (category === 'priority')   return <span className="rounded-none border-[2px] border-[#0D0D0D] bg-[#3D5F6C] px-2 py-0.5 text-[10px] font-bold uppercase text-[#F5F5F0]">PRIO</span>;
-  if (category === 'restricted') return <span className="rounded-none border-[2px] border-[#0D0D0D] bg-[#0D0D0D] px-2 py-0.5 text-[10px] font-bold uppercase text-[#F5F5F0]">REST</span>;
-  return <span className="rounded-none border-[2px] border-[#0D0D0D]/30 bg-[#EDE8DC] px-2 py-0.5 text-[10px] font-bold uppercase text-[#0D0D0D]/60">NEW</span>;
+  if (category === 'gold')       return <span className="rounded-none border-[2px] border-[#0D0D0D] bg-[#C4905A] px-2.5 py-0.5 text-xs font-bold uppercase text-[#0D0D0D]">GOLD</span>;
+  if (category === 'priority')   return <span className="rounded-none border-[2px] border-[#0D0D0D] bg-[#3D5F6C] px-2.5 py-0.5 text-xs font-bold uppercase text-[#F5F5F0]">PRIO</span>;
+  if (category === 'restricted') return <span className="rounded-none border-[2px] border-[#0D0D0D] bg-[#0D0D0D] px-2.5 py-0.5 text-xs font-bold uppercase text-[#F5F5F0]">REST</span>;
+  return <span className="rounded-none border-[2px] border-[#0D0D0D]/30 bg-[#EDE8DC] px-2.5 py-0.5 text-xs font-bold uppercase text-[#0D0D0D]/60">NEW</span>;
 }
 
 export function ComicCard({
@@ -59,10 +59,10 @@ export function ComicCard({
         <button
           type="button"
           onClick={onExpand}
-          className="flex w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-left"
+          className="flex w-full cursor-pointer items-center gap-3 px-4 py-3.5 text-left"
           aria-expanded={expanded}
         >
-          <span className="relative z-10 flex-1 truncate text-base font-bold text-[#1a1a1a]">
+          <span className="relative z-10 flex-1 truncate text-lg font-bold text-[#1a1a1a]">
             {candidate.nombre ?? candidate.instagram ?? 'Sin nombre'}
           </span>
           <span className="relative z-10">{categoryBadge(draft.categoria)}</span>
@@ -74,7 +74,7 @@ export function ComicCard({
               <div className="flex flex-col gap-2.5">
                 {/* Categoría */}
                 <div className="flex flex-col gap-1">
-                  <span className="text-[10px] text-[#6B5C4A]">Categoría <span className="text-[#9ca3af]">(clic activo = quitar)</span></span>
+                  <span className="text-xs text-[#6B5C4A]">Categoría <span className="text-[#9ca3af]">(clic activo = quitar)</span></span>
                   <div className="flex gap-1.5">
                     {CATEGORY_BUTTONS.map((btn) => {
                       const active = draft.categoria === btn.value;
@@ -83,7 +83,7 @@ export function ComicCard({
                           key={btn.value}
                           type="button"
                           onClick={(e) => { e.stopPropagation(); handleCategoryClick(btn.value); }}
-                          className={`h-7 min-w-16 cursor-pointer rounded-none border-[3px] border-[#0D0D0D] px-1 text-[10px] font-bold transition-all duration-150 ${btn.className} ${active ? 'ring-2 ring-[#1a1a1a] ring-offset-1' : 'opacity-70 hover:opacity-100'}`}
+                          className={`h-8 min-w-16 cursor-pointer rounded-none border-[3px] border-[#0D0D0D] px-2 text-xs font-bold transition-all duration-150 ${btn.className} ${active ? 'ring-2 ring-[#1a1a1a] ring-offset-1' : 'opacity-70 hover:opacity-100'}`}
                           aria-label={`Asignar categoría ${btn.label}`}
                         >
                           {btn.label}
@@ -95,7 +95,7 @@ export function ComicCard({
 
                 {/* Género */}
                 <div className="flex flex-col gap-1">
-                  <span className="text-[10px] text-[#6B5C4A]">Género</span>
+                  <span className="text-xs text-[#6B5C4A]">Género</span>
                   <div className="flex gap-1.5">
                     {GENDER_OPTIONS.map((opt) => {
                       const active = draft.genero === opt.value;
@@ -104,7 +104,7 @@ export function ComicCard({
                           key={opt.value}
                           type="button"
                           onClick={(e) => { e.stopPropagation(); onUpdateGenero(opt.value); }}
-                          className={`h-7 w-10 cursor-pointer rounded-none border-[3px] border-[#0D0D0D] text-[10px] font-bold transition-all duration-150
+                          className={`h-8 w-12 cursor-pointer rounded-none border-[3px] border-[#0D0D0D] text-xs font-bold transition-all duration-150
                             ${active
                               ? 'bg-[#1a1a1a] text-[#fff8e7] ring-2 ring-[#1a1a1a] ring-offset-1'
                               : 'bg-[#F5F0E1] text-[#1a1a1a] opacity-70 hover:opacity-100'
@@ -120,18 +120,18 @@ export function ComicCard({
               </div>
 
               <div className="min-w-0 flex-1">
-                <p className="truncate text-xs text-[#6B5C4A]">@{candidate.instagram ?? 'sin_instagram'}</p>
-                <p className="truncate text-xs text-[#6B5C4A]">{candidate.contacto ?? candidate.telefono ?? 'sin contacto'}</p>
-                <p className="text-[10px] text-[#6B5C4A]">Estado: {candidate.estado ?? 'sin_estado'}</p>
+                <p className="truncate text-sm text-[#6B5C4A]">@{candidate.instagram ?? 'sin_instagram'}</p>
+                <p className="truncate text-sm text-[#6B5C4A]">{candidate.contacto ?? candidate.telefono ?? 'sin contacto'}</p>
+                <p className="text-xs text-[#6B5C4A]">Estado: {candidate.estado ?? 'sin_estado'}</p>
                 {hasPendingEdit && (
-                  <span className="mt-1 inline-block rounded-full bg-[#f59e0b]/25 px-2 py-0.5 text-[10px] font-bold text-[#7c2d12]">
+                  <span className="mt-1 inline-block rounded-full bg-[#f59e0b]/25 px-2 py-0.5 text-xs font-bold text-[#7c2d12]">
                     Editado
                   </span>
                 )}
               </div>
 
               <div className="flex flex-col items-center gap-1">
-                <span className="text-[10px] text-[#6B5C4A]">LineUp</span>
+                <span className="text-xs text-[#6B5C4A]">LineUp</span>
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); if (!selected && !canSelect) return; onToggleSelected(); }}

@@ -63,7 +63,7 @@ export function ExpandedView({
         </div>
 
         <div className="relative z-10 flex items-center justify-between border-b-[3px] border-[#0D0D0D] bg-[#EDE8DC] px-4 py-3 pl-14">
-          <h2 className="font-['Bangers'] text-xl tracking-wide text-[#0D0D0D]">Edicion completa</h2>
+          <h2 className="font-['Bangers'] text-2xl tracking-wide text-[#0D0D0D] md:text-3xl">Edicion completa</h2>
           <span
             className={`rounded-none border-[3px] border-[#0D0D0D] px-3 py-0.5 text-sm font-bold ${
               selectedCount === 5 ? 'bg-[#5E7260] text-[#F5F5F0]' : 'bg-[#3D5F6C] text-[#F5F5F0]'

@@ -101,9 +101,9 @@ export function NotebookSheet({
                   return (
                     <li key={candidate.row_key} className={`animate-slide-up ${stagger} flex items-center gap-2 border-b-[2px] border-[#0D0D0D]/10 py-[7px] text-[#0D0D0D] last:border-0`}>
                       <span className="w-5 shrink-0 text-right text-xs font-bold text-[#0D0D0D]/40">{index + 1}</span>
-                      <span className="truncate font-['Patrick_Hand'] text-xl font-bold">{candidate.nombre ?? candidate.instagram ?? 'Sin nombre'}</span>
+                      <span className="truncate font-['Patrick_Hand'] text-xl font-bold md:text-2xl">{candidate.nombre ?? candidate.instagram ?? 'Sin nombre'}</span>
                       <span
-                        className={`ml-auto rounded-none border-[2px] border-[#0D0D0D] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
+                        className={`ml-auto rounded-none border-[2px] border-[#0D0D0D] px-2 py-0.5 text-xs font-bold uppercase tracking-wide ${
                           draft.categoria === 'gold'       ? 'bg-[#C4905A] text-[#0D0D0D]'
                           : draft.categoria === 'priority' ? 'bg-[#3D5F6C] text-[#F5F5F0]'
                           : draft.categoria === 'restricted' ? 'bg-[#0D0D0D] text-[#F5F5F0]'
