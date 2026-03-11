@@ -66,7 +66,7 @@ export function ExpandedView({
           <h2 className="font-['Bangers'] text-xl tracking-wide text-[#0D0D0D]">Edicion completa</h2>
           <span
             className={`rounded-none border-[3px] border-[#0D0D0D] px-3 py-0.5 text-sm font-bold ${
-              selectedCount === 5 ? 'bg-[#7B8E7E] text-[#F5F5F0]' : 'bg-[#4A6D7C] text-[#F5F5F0]'
+              selectedCount === 5 ? 'bg-[#5E7260] text-[#F5F5F0]' : 'bg-[#3D5F6C] text-[#F5F5F0]'
             }`}
           >
             {selectedCount}/5
@@ -97,7 +97,7 @@ export function ExpandedView({
           <button
             type="button"
             onClick={onClose}
-            className="comic-shadow flex h-14 w-14 cursor-pointer items-center justify-center rounded-none border-[3px] border-[#0D0D0D] bg-[#4A6D7C] text-[#F5F5F0] transition-all duration-150 hover:bg-[#3A5A6A]"
+            className="comic-shadow flex h-14 w-14 cursor-pointer items-center justify-center rounded-none border-[3px] border-[#0D0D0D] bg-[#3D5F6C] text-[#F5F5F0] transition-all duration-150 hover:bg-[#2D4A57]"
             aria-label="Cerrar vista de edicion"
           >
             <XIcon />

@@ -119,7 +119,7 @@ export function LoginScreen() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="tu@email.com"
                   required
-                  className="rounded-none border-[3px] border-[#0D0D0D] bg-[#EDE8DC] px-3 py-2 text-sm text-[#0D0D0D] placeholder-[#0D0D0D]/30 outline-none focus:border-[#4A6D7C] transition-colors"
+                  className="rounded-none border-[3px] border-[#0D0D0D] bg-[#EDE8DC] px-3 py-2 text-sm text-[#0D0D0D] placeholder-[#0D0D0D]/30 outline-none focus:border-[#3D5F6C] transition-colors"
                 />
                 <button
                   type="submit"
@@ -127,7 +127,7 @@ export function LoginScreen() {
                   className={`comic-shadow cursor-pointer rounded-none border-[3px] border-[#0D0D0D] py-2.5 px-4 text-sm font-bold transition-all duration-200
                     ${loading || !email.trim()
                       ? 'cursor-not-allowed bg-[#D1D5DB] text-[#6B5C4A]'
-                      : 'bg-[#4A6D7C] text-[#F5F5F0] hover:bg-[#3A5A6A]'
+                      : 'bg-[#3D5F6C] text-[#F5F5F0] hover:bg-[#2D4A57]'
                     }`}
                 >
                   {loading ? 'Enviando...' : '✉️ Enviar código de acceso'}
@@ -150,7 +150,7 @@ export function LoginScreen() {
                   maxLength={6}
                   autoFocus
                   required
-                  className="rounded-none border-[3px] border-[#0D0D0D] bg-[#EDE8DC] px-3 py-2 text-2xl font-bold text-center tracking-[0.4em] text-[#0D0D0D] placeholder-[#0D0D0D]/20 outline-none focus:border-[#4A6D7C] transition-colors"
+                  className="rounded-none border-[3px] border-[#0D0D0D] bg-[#EDE8DC] px-3 py-2 text-2xl font-bold text-center tracking-[0.4em] text-[#0D0D0D] placeholder-[#0D0D0D]/20 outline-none focus:border-[#3D5F6C] transition-colors"
                 />
                 <button
                   type="submit"
@@ -158,7 +158,7 @@ export function LoginScreen() {
                   className={`comic-shadow cursor-pointer rounded-none border-[3px] border-[#0D0D0D] py-2.5 px-4 text-sm font-bold transition-all duration-200
                     ${loading || code.length < 6
                       ? 'cursor-not-allowed bg-[#D1D5DB] text-[#6B5C4A]'
-                      : 'bg-[#4A6D7C] text-[#F5F5F0] hover:bg-[#3A5A6A]'
+                      : 'bg-[#3D5F6C] text-[#F5F5F0] hover:bg-[#2D4A57]'
                     }`}
                 >
                   {loading ? 'Verificando...' : '🔓 Entrar'}

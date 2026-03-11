@@ -5,8 +5,8 @@ const CheckIcon = () => (
 );
 
 const CATEGORY_BUTTONS = [
-  { value: 'gold',       label: 'Gold',       className: 'bg-[#D4A373] text-[#0D0D0D]' },
-  { value: 'priority',   label: 'Priority',   className: 'bg-[#4A6D7C] text-[#F5F5F0]' },
+  { value: 'gold',       label: 'Gold',       className: 'bg-[#C4905A] text-[#0D0D0D]' },
+  { value: 'priority',   label: 'Priority',   className: 'bg-[#3D5F6C] text-[#F5F5F0]' },
   { value: 'restricted', label: 'Restricted', className: 'bg-[#0D0D0D] text-[#F5F5F0]' },
 ];
 
@@ -17,8 +17,8 @@ const GENDER_OPTIONS = [
 ];
 
 const CARD_BORDER = {
-  gold:       'border-[#D4A373] bg-[#EDE8DC]',
-  priority:   'border-[#4A6D7C] bg-[#EDE8DC]',
+  gold:       'border-[#C4905A] bg-[#EDE8DC]',
+  priority:   'border-[#3D5F6C] bg-[#EDE8DC]',
   restricted: 'restricted-overlay border-[#0D0D0D] bg-[#E8DDD8]',
   default:    'border-[#0D0D0D] bg-[#EDE8DC]',
 };
@@ -31,8 +31,8 @@ const DROP_SHADOW = {
 };
 
 function categoryBadge(category) {
-  if (category === 'gold')       return <span className="rounded-none border-[2px] border-[#0D0D0D] bg-[#D4A373] px-2 py-0.5 text-[10px] font-bold uppercase text-[#0D0D0D]">GOLD</span>;
-  if (category === 'priority')   return <span className="rounded-none border-[2px] border-[#0D0D0D] bg-[#4A6D7C] px-2 py-0.5 text-[10px] font-bold uppercase text-[#F5F5F0]">PRIO</span>;
+  if (category === 'gold')       return <span className="rounded-none border-[2px] border-[#0D0D0D] bg-[#C4905A] px-2 py-0.5 text-[10px] font-bold uppercase text-[#0D0D0D]">GOLD</span>;
+  if (category === 'priority')   return <span className="rounded-none border-[2px] border-[#0D0D0D] bg-[#3D5F6C] px-2 py-0.5 text-[10px] font-bold uppercase text-[#F5F5F0]">PRIO</span>;
   if (category === 'restricted') return <span className="rounded-none border-[2px] border-[#0D0D0D] bg-[#0D0D0D] px-2 py-0.5 text-[10px] font-bold uppercase text-[#F5F5F0]">REST</span>;
   return <span className="rounded-none border-[2px] border-[#0D0D0D]/30 bg-[#EDE8DC] px-2 py-0.5 text-[10px] font-bold uppercase text-[#0D0D0D]/60">NEW</span>;
 }
@@ -136,7 +136,7 @@ export function ComicCard({
                   type="button"
                   onClick={(e) => { e.stopPropagation(); if (!selected && !canSelect) return; onToggleSelected(); }}
                   disabled={!selected && !canSelect}
-                  className={`flex h-8 w-8 cursor-pointer items-center justify-center rounded-none border-[3px] border-[#0D0D0D] transition-all duration-150 ${selected ? 'bg-[#7B8E7E] text-[#F5F5F0]' : 'bg-[#EDE8DC] text-transparent'} ${!selected && !canSelect ? 'cursor-not-allowed opacity-40' : ''}`}
+                  className={`flex h-8 w-8 cursor-pointer items-center justify-center rounded-none border-[3px] border-[#0D0D0D] transition-all duration-150 ${selected ? 'bg-[#5E7260] text-[#F5F5F0]' : 'bg-[#EDE8DC] text-transparent'} ${!selected && !canSelect ? 'cursor-not-allowed opacity-40' : ''}`}
                   aria-label={selected ? 'Quitar del LineUp' : 'Añadir al LineUp'}
                 >
                   <CheckIcon />

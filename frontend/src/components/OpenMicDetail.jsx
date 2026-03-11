@@ -188,14 +188,14 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
               <button
                 type="button"
                 onClick={() => setView('config')}
-                className="comic-shadow flex-1 cursor-pointer rounded-none border-[3px] border-[#0D0D0D] bg-[#EDE8DC] py-3 font-bold text-[#0D0D0D] transition-all duration-150 hover:bg-[#7B8E7E] hover:text-[#F5F5F0]"
+                className="comic-shadow flex-1 cursor-pointer rounded-none border-[3px] border-[#0D0D0D] bg-[#EDE8DC] py-3 font-bold text-[#0D0D0D] transition-all duration-150 hover:bg-[#5E7260] hover:text-[#F5F5F0]"
               >
                 Configurar
               </button>
               <button
                 type="button"
                 onClick={onEnterLineup}
-                className="comic-shadow flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-none border-[3px] border-[#0D0D0D] bg-[#0D0D0D] py-3 font-bold text-[#F5F5F0] transition-all duration-150 hover:bg-[#4A6D7C]"
+                className="comic-shadow flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-none border-[3px] border-[#0D0D0D] bg-[#0D0D0D] py-3 font-bold text-[#F5F5F0] transition-all duration-150 hover:bg-[#3D5F6C]"
               >
                 Ver Lineup
                 <ChevronRightIcon />
@@ -224,7 +224,7 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
                     <button
                       type="button"
                       onClick={() => { setShowDeletePanel(false); setDeleteConfirm(''); setDeleteError(''); }}
-                      className="flex-1 cursor-pointer rounded-none border-[3px] border-[#0D0D0D] bg-[#EDE8DC] py-2 text-sm font-bold text-[#0D0D0D] transition-all duration-150 hover:bg-[#7B8E7E] hover:text-[#F5F5F0]"
+                      className="flex-1 cursor-pointer rounded-none border-[3px] border-[#0D0D0D] bg-[#EDE8DC] py-2 text-sm font-bold text-[#0D0D0D] transition-all duration-150 hover:bg-[#5E7260] hover:text-[#F5F5F0]"
                     >
                       Cancelar
                     </button>
