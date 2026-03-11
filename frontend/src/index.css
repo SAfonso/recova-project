@@ -62,6 +62,10 @@ body {
   color: var(--c-ink);
 }
 
+#root {
+  min-height: 100vh;
+}
+
 /* ══════════════════════════════════════════════════════
    LEGIBILIDAD DE TÍTULOS — WCAG AAA
    Sombra dura en todos los elementos con fuente Bangers
@@ -127,6 +131,66 @@ h1, h2, h3 {
   background-size: 400px 400px;
   background-repeat: repeat;
 }
+
+.paper-crumpled {
+  background-color: var(--c-paper-alt);
+  background-image:
+    var(--paper-noise),
+    repeating-linear-gradient(32deg, rgba(0, 0, 0, 0.06) 0 2px, transparent 2px 20px),
+    repeating-linear-gradient(-27deg, rgba(0, 0, 0, 0.04) 0 1px, transparent 1px 16px);
+  background-size: 350px 350px, 150px 150px, 120px 120px;
+}
+
+.scrapbook-panel {
+  position: relative;
+  border: var(--border-ink);
+  box-shadow: var(--shadow-hard);
+  border-radius: 4px;
+  clip-path: polygon(0.8% 2.2%, 5.2% 0.6%, 13% 1.8%, 20.5% 0.5%, 27% 1.9%, 33.8% 0.7%, 43% 2.4%, 50% 0.9%, 58% 2.5%, 66.7% 0.8%, 74.5% 2.2%, 82% 0.6%, 89.5% 2.3%, 96.5% 0.9%, 99.3% 6%, 98.1% 15%, 99.4% 24%, 97.8% 33%, 99.3% 42%, 98% 51%, 99.2% 60%, 97.7% 69%, 99.1% 77.5%, 98.2% 87.5%, 99% 95.5%, 95.8% 98.9%, 87.5% 97.7%, 79.3% 99.2%, 71% 97.8%, 62.5% 99.3%, 54% 97.8%, 45.3% 99.2%, 37% 97.7%, 28.5% 99.1%, 20% 97.6%, 11% 99.1%, 3.5% 97.8%, 0.7% 94%, 2.2% 85%, 0.8% 75.5%, 2.3% 66.2%, 0.6% 57.5%, 2.1% 48.3%, 0.7% 39%, 2.2% 30.1%, 0.8% 21.1%, 2.4% 11.4%);
+}
+
+.scrapbook-panel::before,
+.scrapbook-panel::after {
+  content: '';
+  position: absolute;
+  width: 70px;
+  height: 18px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.45), rgba(255,255,255,0.18));
+  border: 2px solid rgba(40, 40, 40, 0.35);
+  pointer-events: none;
+}
+
+.scrapbook-panel::before {
+  top: -14px;
+  left: 18px;
+  transform: rotate(-9deg);
+}
+
+.scrapbook-panel::after {
+  top: -11px;
+  right: 20px;
+  transform: rotate(12deg);
+}
+
+.pin-corner {
+  position: relative;
+}
+
+.pin-corner::before {
+  content: '';
+  position: absolute;
+  right: 14px;
+  top: 12px;
+  width: 13px;
+  height: 13px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 35% 30%, #fff 0 20%, #991b1b 42%, #4a0d0d 100%);
+  border: 2px solid #111;
+  box-shadow: 1px 1px 0 #000;
+}
+
+.tilt-soft:nth-of-type(odd) { transform: rotate(-1.2deg); }
+.tilt-soft:nth-of-type(even) { transform: rotate(1.4deg); }
 
 /*
   .notebook-lines: papel de cuaderno con grano + franjas.
