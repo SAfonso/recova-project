@@ -155,7 +155,7 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
       <div className="mx-auto flex max-w-xl flex-col gap-4 md:max-w-2xl lg:max-w-4xl xl:max-w-5xl">
 
         {/* Header */}
-        <div className="flex items-center justify-between pt-6">
+        <div className="flex rotate-[0.7deg] items-center justify-between pt-6">
           <button type="button" onClick={view === 'config' ? () => setView('info') : onBack} className="btn-back">
             <BackIcon />
             {view === 'config' ? 'Volver' : 'Atrás'}
@@ -164,7 +164,7 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
         </div>
 
         {loading ? (
-          <div className="animate-pop-in rounded-none border-[3px] border-[#0D0D0D] bg-[#EDE8DC] p-8">
+          <div className="animate-pop-in scrapbook-panel paper-note rounded-none bg-[#EDE8DC] p-8">
             <div className="flex flex-col gap-3">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="flex items-center justify-between border-b border-[#C8B89A] py-2">
@@ -203,7 +203,7 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
             </div>
 
             {/* Zona de peligro */}
-            <div className="animate-slide-up stagger-2 paper-drop"><div className="paper-rough paper-note border-[3px] border-[#DC2626]/60 bg-[#fffef5] px-6 py-4">
+            <div className="animate-slide-up stagger-2 rotate-[1.2deg] paper-drop"><div className="scrapbook-panel paper-crumpled paper-rough border-[3px] border-[#DC2626]/60 px-6 py-4">
               <h3 className="mb-3 font-['Bangers'] text-lg tracking-wide text-[#7f1d1d]">Zona de peligro</h3>
               {showDeletePanel ? (
                 <>
@@ -215,7 +215,7 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
                     value={deleteConfirm}
                     onChange={(e) => { setDeleteConfirm(e.target.value); setDeleteError(''); }}
                     placeholder={openMic.nombre}
-                    className="mb-3 w-full rounded-md border-2 border-[#DC2626] bg-[#F5F0E1] px-3 py-2 text-sm font-bold text-[#1a1a1a] outline-none focus:ring-2 focus:ring-[#DC2626]"
+                    className="paper-strip mb-3 w-full rounded-md border-2 border-[#DC2626] bg-[#F5F0E1] px-3 py-2 text-sm font-bold text-[#1a1a1a] outline-none focus:ring-2 focus:ring-[#DC2626]"
                   />
                   {deleteError && (
                     <p className="mb-2 text-xs text-[#DC2626]">{deleteError}</p>
@@ -250,8 +250,8 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
             </div></div>
           </>
         ) : (
-          <div className="animate-pop-in paper-drop">
-            <div className="paper-rough paper-note border-[3px] border-[#1a1a1a] bg-[#fffef5] px-6 py-4">
+          <div className="animate-pop-in -rotate-[1deg] paper-drop">
+            <div className="scrapbook-panel pin-corner paper-rough paper-note px-6 py-4">
               {/* Subtabs Info / Scoring */}
               <div className="mb-4 flex gap-1 border-b-2 border-[#C8B89A] pb-0">
                 {[{ id: 'info', label: 'Info' }, { id: 'scoring', label: 'Scoring' }, { id: 'dev', label: 'Dev' }].map((tab) => (

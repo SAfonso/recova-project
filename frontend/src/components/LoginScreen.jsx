@@ -66,7 +66,7 @@ export function LoginScreen() {
     <main className="paint-bg flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-sm">
 
-        <div className="mb-8 text-center">
+        <div className="mb-8 -rotate-1 text-center">
           <div className="inline-flex items-center gap-2">
             <SparkIcon className="animate-spark h-6 w-6 text-[#F97316]" />
             <h1 className="font-['Bangers'] text-5xl tracking-wider text-[#1a1a1a] drop-shadow-[3px_3px_0px_rgba(255,255,255,0.4)]">
@@ -79,11 +79,11 @@ export function LoginScreen() {
           </p>
         </div>
 
-        <div className="animate-pop-in paper-drop">
-          <div className="paper-rough paper-note border-[3px] border-[#1a1a1a] bg-[#fffef5] p-6 flex flex-col gap-4">
+        <div className="animate-pop-in -rotate-[1.2deg] paper-drop">
+          <div className="scrapbook-panel pin-corner paper-rough paper-note p-6 flex flex-col gap-4">
 
             {error && (
-              <p className="rounded-md border-2 border-[#7f1d1d] bg-[#fee2e2] px-3 py-2 text-xs text-[#7f1d1d]">
+              <p className="paper-strip rounded-md border-2 border-[#7f1d1d] bg-[#fee2e2] px-3 py-2 text-xs text-[#7f1d1d]">
                 {error}
               </p>
             )}
@@ -119,7 +119,7 @@ export function LoginScreen() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="tu@email.com"
                   required
-                  className="rounded-none border-[3px] border-[#0D0D0D] bg-[#EDE8DC] px-3 py-2 text-sm text-[#0D0D0D] placeholder-[#0D0D0D]/30 outline-none focus:border-[#3D5F6C] transition-colors"
+                  className="paper-strip rounded-none border-[3px] border-[#0D0D0D] bg-[#EDE8DC] px-3 py-2 text-sm text-[#0D0D0D] placeholder-[#0D0D0D]/30 outline-none focus:border-[#3D5F6C] transition-colors"
                 />
                 <button
                   type="submit"
@@ -150,7 +150,7 @@ export function LoginScreen() {
                   maxLength={6}
                   autoFocus
                   required
-                  className="rounded-none border-[3px] border-[#0D0D0D] bg-[#EDE8DC] px-3 py-2 text-2xl font-bold text-center tracking-[0.4em] text-[#0D0D0D] placeholder-[#0D0D0D]/20 outline-none focus:border-[#3D5F6C] transition-colors"
+                  className="paper-strip rounded-none border-[3px] border-[#0D0D0D] bg-[#EDE8DC] px-3 py-2 text-2xl font-bold text-center tracking-[0.4em] text-[#0D0D0D] placeholder-[#0D0D0D]/20 outline-none focus:border-[#3D5F6C] transition-colors"
                 />
                 <button
                   type="submit"

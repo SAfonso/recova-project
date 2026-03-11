@@ -55,8 +55,8 @@ export function NotebookSheet({
       </div>
 
       {/* Hoja rugosa con drop-shadow */}
-      <div className="paper-drop">
-        <div className="notebook-lines paper-rough paper-note relative overflow-hidden border-[3px] border-[#1a1a1a] bg-[#fffef5] px-4 pb-14 pt-5">
+      <div className="paper-drop rotate-[0.9deg]">
+        <div className="scrapbook-panel pin-corner notebook-lines paper-rough paper-note relative overflow-hidden px-4 pb-14 pt-5">
 
           {/* Franja encuadernación izquierda */}
           <div
@@ -99,7 +99,7 @@ export function NotebookSheet({
                   const draft = getDraft(candidate);
                   const stagger = index < 6 ? `stagger-${index + 1}` : 'stagger-6';
                   return (
-                    <li key={candidate.row_key} className={`animate-slide-up ${stagger} flex items-center gap-2 border-b-[2px] border-[#0D0D0D]/10 py-[7px] text-[#0D0D0D] last:border-0`}>
+                    <li key={candidate.row_key} className={`animate-slide-up tilt-soft ${stagger} paper-strip mb-2 flex items-center gap-2 px-2 py-[7px] text-[#0D0D0D] last:border-0`}>
                       <span className="w-5 shrink-0 text-right text-xs font-bold text-[#0D0D0D]/40">{index + 1}</span>
                       <span className="truncate font-['Patrick_Hand'] text-xl font-bold md:text-2xl">{candidate.nombre ?? candidate.instagram ?? 'Sin nombre'}</span>
                       <span

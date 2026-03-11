@@ -132,8 +132,8 @@ export function ValidateView() {
       <div className="mx-auto flex max-w-lg flex-col gap-5">
 
         {/* Header */}
-        <div className="paper-drop">
-          <div className="paper-rough paper-note border-[3px] border-[#1a1a1a] bg-[#fffef5] px-5 py-4">
+        <div className="paper-drop rotate-[1deg]">
+          <div className="scrapbook-panel pin-corner paper-rough paper-note px-5 py-4">
             <h1 className="font-['Bangers'] text-2xl tracking-wide text-[#1a1a1a]">
               Valida el Lineup
             </h1>
@@ -153,7 +153,7 @@ export function ValidateView() {
         )}
 
         {/* Lista de candidatos */}
-        <section className="notebook-lines relative mx-auto w-full overflow-hidden rounded-lg border-[3px] border-[#1a1a1a] bg-[#fff8e7] px-6 py-4">
+        <section className="scrapbook-panel notebook-lines relative mx-auto w-full overflow-hidden rounded-lg bg-[#fff8e7] px-6 py-4">
           <div className="flex flex-col gap-2">
             {data.candidates.map((c, i) => {
               const selected = selectedIds.includes(c.solicitud_id);
@@ -162,7 +162,7 @@ export function ValidateView() {
                   key={c.solicitud_id}
                   type="button"
                   onClick={() => toggle(c.solicitud_id)}
-                  className={`flex w-full items-center gap-3 rounded-md border-2 px-3 py-2.5 text-left transition-all duration-150
+                  className={`paper-strip tilt-soft flex w-full items-center gap-3 rounded-md border-2 px-3 py-2.5 text-left transition-all duration-150
                     ${selected
                       ? 'border-[#1a1a1a] bg-[#1a1a1a] text-[#fff8e7]'
                       : 'border-[#C8B89A] bg-[#F5F0E1] text-[#1a1a1a] hover:border-[#1a1a1a]'

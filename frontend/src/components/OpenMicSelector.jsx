@@ -138,7 +138,7 @@ export function OpenMicSelector({ session, onSelect }) {
     <main className="paint-bg flex min-h-screen items-center justify-center px-4 md:px-8">
       <div className="w-full max-w-md md:max-w-lg lg:max-w-xl">
 
-        <div className="mb-6 text-center">
+        <div className="mb-6 rotate-[0.8deg] text-center">
           <h1 className="font-['Bangers'] text-5xl tracking-wide text-[#fff8e7] drop-shadow-[3px_3px_0px_rgba(0,0,0,0.4)] md:text-6xl lg:text-7xl">
             AI LineUp Architect
           </h1>
@@ -147,8 +147,8 @@ export function OpenMicSelector({ session, onSelect }) {
 
         {/* Card rugosa + botón Telegram en esquina superior derecha */}
         <div className="relative">
-        <div className="animate-pop-in paper-drop">
-          <div className="paper-rough paper-note border-[3px] border-[#1a1a1a] bg-[#fffef5] p-6">
+        <div className="animate-pop-in -rotate-[1deg] paper-drop">
+          <div className="scrapbook-panel pin-corner paper-rough paper-note p-6">
             <h2 className="mb-4 font-['Bangers'] text-2xl tracking-wide text-[#1a1a1a] md:text-3xl">Tus Open Mics</h2>
 
             {error && (
@@ -158,11 +158,11 @@ export function OpenMicSelector({ session, onSelect }) {
             {openMics.length > 0 && (
               <ul className="mb-4 flex flex-col gap-2">
                 {openMics.map((mic, index) => (
-                  <li key={mic.id} className={`animate-slide-up ${STAGGER_CLASSES[index] ?? 'stagger-6'}`}>
+                  <li key={mic.id} className={`animate-slide-up ${STAGGER_CLASSES[index] ?? 'stagger-6'} tilt-soft`}>
                     <button
                       type="button"
                       onClick={() => onSelect(mic.id)}
-                      className="group flex w-full cursor-pointer items-center gap-3 rounded-none border-[3px] border-[#0D0D0D] bg-[#EDE8DC] px-4 py-3 text-left text-base font-bold text-[#1a1a1a] transition-all duration-200 hover:bg-[#3D5F6C] hover:text-[#F5F5F0] md:px-5 md:py-4 md:text-lg"
+                      className="paper-strip group flex w-full cursor-pointer items-center gap-3 rounded-none border-[3px] border-[#0D0D0D] bg-[#EDE8DC] px-4 py-3 text-left text-base font-bold text-[#1a1a1a] transition-all duration-200 hover:bg-[#3D5F6C] hover:text-[#F5F5F0] md:px-5 md:py-4 md:text-lg"
                     >
                       <OpenMicIcon iconId={mic.config?.info?.icono} className="h-4 w-4 shrink-0" />
                       <span className="flex-1 truncate">{mic.nombre}</span>
@@ -187,7 +187,7 @@ export function OpenMicSelector({ session, onSelect }) {
                   onChange={(e) => setNewName(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
                   placeholder="Ej: Recova Open Mic — Marzo 2026"
-                  className="rounded-md border-2 border-[#1a1a1a] bg-[#F5F0E1] px-3 py-2 text-sm text-[#1a1a1a] outline-none focus:ring-2 focus:ring-[#3D5F6C]"
+                  className="paper-strip rounded-md border-2 border-[#1a1a1a] bg-[#F5F0E1] px-3 py-2 text-sm text-[#1a1a1a] outline-none focus:ring-2 focus:ring-[#3D5F6C]"
                 />
                 <div className="grid grid-cols-2 gap-2">
                   <div className="flex flex-col gap-1">
@@ -197,7 +197,7 @@ export function OpenMicSelector({ session, onSelect }) {
                     <select
                       value={newDia}
                       onChange={(e) => setNewDia(e.target.value)}
-                      className="rounded-md border-2 border-[#1a1a1a] bg-[#F5F0E1] px-2 py-2 text-sm text-[#1a1a1a] outline-none focus:ring-2 focus:ring-[#3D5F6C]"
+                      className="paper-strip rounded-md border-2 border-[#1a1a1a] bg-[#F5F0E1] px-2 py-2 text-sm text-[#1a1a1a] outline-none focus:ring-2 focus:ring-[#3D5F6C]"
                     >
                       <option value="">— Día —</option>
                       {DIAS.map((d) => <option key={d} value={d}>{d}</option>)}
@@ -211,7 +211,7 @@ export function OpenMicSelector({ session, onSelect }) {
                       type="time"
                       value={newHora}
                       onChange={(e) => setNewHora(e.target.value)}
-                      className="rounded-md border-2 border-[#1a1a1a] bg-[#F5F0E1] px-2 py-2 text-sm text-[#1a1a1a] outline-none focus:ring-2 focus:ring-[#3D5F6C]"
+                      className="paper-strip rounded-md border-2 border-[#1a1a1a] bg-[#F5F0E1] px-2 py-2 text-sm text-[#1a1a1a] outline-none focus:ring-2 focus:ring-[#3D5F6C]"
                     />
                   </div>
                 </div>
@@ -290,7 +290,7 @@ export function OpenMicSelector({ session, onSelect }) {
           onClick={() => setShowTgModal(false)}
         >
           <div
-            className="paper-drop paper-note w-full max-w-xs border-[3px] border-[#1a1a1a] bg-[#fffef5] p-6 text-center"
+            className="paper-drop rotate-[1.3deg] scrapbook-panel pin-corner paper-crumpled w-full max-w-xs p-6 text-center"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="mb-1 font-['Bangers'] text-2xl tracking-wide text-[#1a1a1a]">
@@ -307,7 +307,7 @@ export function OpenMicSelector({ session, onSelect }) {
                 <select
                   value={tgProveedorId}
                   onChange={(e) => { setTgProveedorId(e.target.value); setTgData(null); setTgError(null); }}
-                  className="rounded-md border-2 border-[#1a1a1a] bg-[#F5F0E1] px-2 py-1.5 text-sm text-[#1a1a1a] outline-none"
+                  className="paper-strip rounded-md border-2 border-[#1a1a1a] bg-[#F5F0E1] px-2 py-1.5 text-sm text-[#1a1a1a] outline-none"
                 >
                   {hostMemberships.map((m) => {
                     const mic = openMics.find((o) => o.proveedor_id === m.proveedor_id);
