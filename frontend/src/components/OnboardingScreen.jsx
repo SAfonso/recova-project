@@ -29,7 +29,7 @@ export function OnboardingScreen({ session, onComplete }) {
     <main className="paint-bg flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-sm">
 
-        <div className="mb-8 text-center">
+        <div className="mb-8 rotate-1 text-center">
           <div className="inline-flex items-center gap-2">
             <SparkIcon className="animate-spark h-6 w-6 text-[#F97316]" />
             <h1 className="font-['Bangers'] text-5xl tracking-wider text-[#1a1a1a] drop-shadow-[3px_3px_0px_rgba(255,255,255,0.4)]">
@@ -42,8 +42,8 @@ export function OnboardingScreen({ session, onComplete }) {
           </p>
         </div>
 
-        <div className="animate-pop-in paper-drop">
-          <div className="paper-rough paper-note border-[3px] border-[#1a1a1a] bg-[#fffef5] p-6">
+        <div className="animate-pop-in rotate-[-1.1deg] paper-drop">
+          <div className="scrapbook-panel pin-corner paper-rough paper-note p-6">
             <form onSubmit={handleCreate} className="flex flex-col gap-4">
 
               <p className="text-sm text-[#6B5C4A] leading-snug">
@@ -63,7 +63,7 @@ export function OnboardingScreen({ session, onComplete }) {
                   value={nombre}
                   onChange={(e) => setNombre(e.target.value)}
                   placeholder="Comedy Club Madrid"
-                  className="rounded-none border-[3px] border-[#0D0D0D] bg-[#EDE8DC] px-3 py-2 text-sm text-[#0D0D0D] outline-none placeholder:text-[#0D0D0D]/40 focus:ring-2 focus:ring-[#3D5F6C]"
+                  className="paper-strip rounded-none border-[3px] border-[#0D0D0D] bg-[#EDE8DC] px-3 py-2 text-sm text-[#0D0D0D] outline-none placeholder:text-[#0D0D0D]/40 focus:ring-2 focus:ring-[#3D5F6C]"
                 />
               </div>
 
