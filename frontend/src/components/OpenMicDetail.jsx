@@ -69,7 +69,7 @@ function InfoCard({ openMic }) {
   });
 
   return (
-    <div className="animate-pop-in comic-panel rounded-lg border-[3px] border-[#1a1a1a] bg-[#fff8e7] px-6 py-4 shadow-[6px_6px_0px_rgba(0,0,0,0.3)]">
+    <div className="animate-pop-in comic-panel rounded-none border-[3px] border-[#0D0D0D] bg-[#EDE8DC] px-6 py-4" style={{ boxShadow: '4px 4px 0 #000000' }}>
       <h1 className="font-['Bangers'] text-3xl tracking-wide text-[#1a1a1a]">
         {openMic.nombre}
       </h1>
@@ -160,11 +160,11 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
             <BackIcon />
             {view === 'config' ? 'Volver' : 'Atrás'}
           </button>
-          <p className="text-xs font-bold text-[#fff8e7]/60">{session.user.email}</p>
+          <p className="text-xs font-bold text-[#0D0D0D]/50">{session.user.email}</p>
         </div>
 
         {loading ? (
-          <div className="animate-pop-in rounded-lg border-[3px] border-[#1a1a1a] bg-[#fff8e7] p-8">
+          <div className="animate-pop-in rounded-none border-[3px] border-[#0D0D0D] bg-[#EDE8DC] p-8">
             <div className="flex flex-col gap-3">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="flex items-center justify-between border-b border-[#C8B89A] py-2">
@@ -188,14 +188,14 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
               <button
                 type="button"
                 onClick={() => setView('config')}
-                className="flex-1 cursor-pointer rounded-lg border-[3px] border-[#1a1a1a] bg-[#fff8e7] py-3 font-bold text-[#1a1a1a] transition-all duration-200 hover:bg-[#C8B89A] hover:shadow-[3px_3px_0px_rgba(0,0,0,0.25)]"
+                className="comic-shadow flex-1 cursor-pointer rounded-none border-[3px] border-[#0D0D0D] bg-[#EDE8DC] py-3 font-bold text-[#0D0D0D] transition-all duration-150 hover:bg-[#7B8E7E] hover:text-[#F5F5F0]"
               >
                 Configurar
               </button>
               <button
                 type="button"
                 onClick={onEnterLineup}
-                className="comic-shadow flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border-[3px] border-[#1a1a1a] bg-[#1a1a1a] py-3 font-bold text-[#fff8e7] transition-all duration-200 hover:bg-[#DC2626] hover:scale-[1.02] active:scale-[0.98]"
+                className="comic-shadow flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-none border-[3px] border-[#0D0D0D] bg-[#0D0D0D] py-3 font-bold text-[#F5F5F0] transition-all duration-150 hover:bg-[#4A6D7C]"
               >
                 Ver Lineup
                 <ChevronRightIcon />
@@ -224,7 +224,7 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
                     <button
                       type="button"
                       onClick={() => { setShowDeletePanel(false); setDeleteConfirm(''); setDeleteError(''); }}
-                      className="flex-1 cursor-pointer rounded-lg border-[3px] border-[#1a1a1a] bg-[#fff8e7] py-2 text-sm font-bold text-[#1a1a1a] transition-all duration-200 hover:bg-[#C8B89A]"
+                      className="flex-1 cursor-pointer rounded-none border-[3px] border-[#0D0D0D] bg-[#EDE8DC] py-2 text-sm font-bold text-[#0D0D0D] transition-all duration-150 hover:bg-[#7B8E7E] hover:text-[#F5F5F0]"
                     >
                       Cancelar
                     </button>
@@ -232,7 +232,7 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
                       type="button"
                       onClick={handleDelete}
                       disabled={deleteConfirm !== openMic.nombre || deleting}
-                      className="flex-1 cursor-pointer rounded-lg border-[3px] border-[#DC2626] bg-[#DC2626] py-2 text-sm font-bold text-white transition-all duration-200 hover:bg-[#7f1d1d] disabled:cursor-not-allowed disabled:opacity-40"
+                      className="flex-1 cursor-pointer rounded-none border-[3px] border-[#DC2626] bg-[#DC2626] py-2 text-sm font-bold text-white transition-all duration-150 hover:bg-[#7f1d1d] disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       {deleting ? 'Borrando...' : 'Borrar definitivamente'}
                     </button>
@@ -242,7 +242,7 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
                 <button
                   type="button"
                   onClick={() => setShowDeletePanel(true)}
-                  className="w-full cursor-pointer rounded-lg border-[3px] border-[#DC2626] bg-[#DC2626] py-2.5 text-sm font-bold text-white transition-all duration-200 hover:bg-[#7f1d1d]"
+                  className="w-full cursor-pointer rounded-none border-[3px] border-[#DC2626] bg-[#DC2626] py-2.5 text-sm font-bold text-white transition-all duration-150 hover:bg-[#7f1d1d]"
                 >
                   Borrar open mic
                 </button>
@@ -259,10 +259,10 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
                     key={tab.id}
                     type="button"
                     onClick={() => setConfigTab(tab.id)}
-                    className={`cursor-pointer rounded-t-md border-2 border-b-0 border-[#1a1a1a] px-5 py-1.5 text-sm font-bold transition-all duration-150
+                    className={`cursor-pointer rounded-none border-[3px] border-b-0 border-[#0D0D0D] px-5 py-1.5 text-sm font-bold transition-all duration-150
                       ${configTab === tab.id
-                        ? 'relative z-10 -mb-[2px] bg-[#1a1a1a] text-[#fff8e7]'
-                        : 'bg-[#F5F0E1] text-[#6B5C4A] hover:bg-[#E8DFC8]'
+                        ? 'relative z-10 -mb-[2px] bg-[#0D0D0D] text-[#F5F5F0]'
+                        : 'bg-[#EDE8DC] text-[#0D0D0D]/60 hover:bg-[#E4DDD0] hover:text-[#0D0D0D]'
                       }`}
                   >
                     {tab.label}

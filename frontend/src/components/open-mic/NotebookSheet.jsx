@@ -1,8 +1,8 @@
 const TABS = [
-  { value: 'lineup',     label: 'Line Up',    bg: 'bg-[#fff8e7]', activeText: 'text-[#1a1a1a]' },
-  { value: 'gold',       label: 'Gold',       bg: 'bg-[#D4A017]', activeText: 'text-[#1a1a1a]' },
-  { value: 'priority',   label: 'Priority',   bg: 'bg-[#A0A0A0]', activeText: 'text-[#fff8e7]' },
-  { value: 'restricted', label: 'Restricted', bg: 'bg-[#DC2626]', activeText: 'text-[#fff8e7]' },
+  { value: 'lineup',     label: 'Line Up',    bg: 'bg-[#EDE8DC]', activeText: 'text-[#0D0D0D]' },
+  { value: 'gold',       label: 'Gold',       bg: 'bg-[#D4A373]', activeText: 'text-[#0D0D0D]' },
+  { value: 'priority',   label: 'Priority',   bg: 'bg-[#4A6D7C]', activeText: 'text-[#F5F5F0]' },
+  { value: 'restricted', label: 'Restricted', bg: 'bg-[#0D0D0D]', activeText: 'text-[#F5F5F0]' },
 ];
 
 function getFilteredCandidates({ activeTab, candidates, selectedCandidates, getDraft }) {
@@ -42,10 +42,10 @@ export function NotebookSheet({
               key={tab.value}
               type="button"
               onClick={() => onTabChange(tab.value)}
-              className={`relative z-10 cursor-pointer rounded-t-lg border-[3px] border-b-0 border-[#1a1a1a] px-3 py-1 text-sm font-bold transition-all duration-150 sm:px-4 sm:text-base ${
+              className={`relative z-10 cursor-pointer rounded-none border-[3px] border-b-0 border-[#0D0D0D] px-3 py-1 text-sm font-bold transition-all duration-150 sm:px-4 sm:text-base ${
                 isActive
                   ? `${tab.bg} ${tab.activeText}`
-                  : 'bg-[#C8B89A] text-[#1a1a1a]/60 hover:bg-[#D8C8AA]'
+                  : 'bg-[#EDE8DC] text-[#0D0D0D]/50 hover:bg-[#E4DDD0] hover:text-[#0D0D0D]'
               } ${index === 0 ? 'mr-auto' : ''}`}
             >
               {tab.label}
@@ -99,17 +99,18 @@ export function NotebookSheet({
                   const draft = getDraft(candidate);
                   const stagger = index < 6 ? `stagger-${index + 1}` : 'stagger-6';
                   return (
-                    <li key={candidate.row_key} className={`animate-slide-up ${stagger} flex items-center gap-2 py-[6px] text-[#1a1a1a]`}>
-                      <span className="w-5 shrink-0 text-right text-xs text-[#9ca3af]">{index + 1}.</span>
-                      <span className="truncate font-['Patrick_Hand'] text-xl">{candidate.nombre ?? candidate.instagram ?? 'Sin nombre'}</span>
+                    <li key={candidate.row_key} className={`animate-slide-up ${stagger} flex items-center gap-2 border-b-[2px] border-[#0D0D0D]/10 py-[7px] text-[#0D0D0D] last:border-0`}>
+                      <span className="w-5 shrink-0 text-right text-xs font-bold text-[#0D0D0D]/40">{index + 1}</span>
+                      <span className="truncate font-['Patrick_Hand'] text-xl font-bold">{candidate.nombre ?? candidate.instagram ?? 'Sin nombre'}</span>
                       <span
-                        className={`ml-auto h-2.5 w-2.5 shrink-0 rounded-full border border-[#1a1a1a]/20 ${
-                          draft.categoria === 'gold' ? 'bg-[#D4A017]'
-                          : draft.categoria === 'priority' ? 'bg-[#A0A0A0]'
-                          : 'bg-[#DC2626]'
+                        className={`ml-auto rounded-none border-[2px] border-[#0D0D0D] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
+                          draft.categoria === 'gold'       ? 'bg-[#D4A373] text-[#0D0D0D]'
+                          : draft.categoria === 'priority' ? 'bg-[#4A6D7C] text-[#F5F5F0]'
+                          : draft.categoria === 'restricted' ? 'bg-[#0D0D0D] text-[#F5F5F0]'
+                          : 'bg-[#EDE8DC] text-[#0D0D0D]'
                         }`}
                         aria-label={`Categoria ${draft.categoria}`}
-                      />
+                      >{draft.categoria ?? 'new'}</span>
                     </li>
                   );
                 })}
@@ -122,7 +123,7 @@ export function NotebookSheet({
             <button
               type="button"
               onClick={onOpenExpanded}
-              className="comic-shadow flex cursor-pointer items-center gap-2 rounded-md border-2 border-[#1a1a1a] bg-[#C8B89A] px-4 py-1.5 font-bold text-[#1a1a1a] transition-all duration-150 hover:bg-[#B8A88A]"
+              className="comic-shadow flex cursor-pointer items-center gap-2 rounded-none border-[3px] border-[#0D0D0D] bg-[#4A6D7C] px-4 py-1.5 font-bold text-[#F5F5F0] transition-all duration-150 hover:bg-[#3A5A6A]"
               aria-label="Abrir vista ampliada"
             >
               <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

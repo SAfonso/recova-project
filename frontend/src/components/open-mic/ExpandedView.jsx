@@ -5,9 +5,9 @@ function BindingHole() {
     <div
       className="h-4 w-4 rounded-full"
       style={{
-        background: 'radial-gradient(circle at 38% 35%, rgba(255,255,255,0.5) 0%, rgba(220,38,38,0.85) 55%, rgba(150,20,20,0.95) 100%)',
-        boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.45), 0 1px 2px rgba(0,0,0,0.2)',
-        border: '1.5px solid rgba(0,0,0,0.25)',
+        background: 'radial-gradient(circle at 38% 35%, rgba(255,255,255,0.4) 0%, rgba(74,109,124,0.85) 55%, rgba(40,80,95,0.95) 100%)',
+        boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.35), 0 1px 0px rgba(0,0,0,0.5)',
+        border: '1.5px solid rgba(0,0,0,0.3)',
       }}
       aria-hidden="true"
     />
@@ -44,15 +44,15 @@ export function ExpandedView({
         <div
           className="absolute bottom-0 left-0 top-0 w-10"
           style={{
-            background: 'linear-gradient(90deg, rgba(200,184,154,0.22) 0%, rgba(200,184,154,0.08) 80%, transparent 100%)',
-            borderRight: '1px solid rgba(200,184,154,0.4)',
+            background: 'linear-gradient(90deg, rgba(74,109,124,0.12) 0%, rgba(74,109,124,0.05) 80%, transparent 100%)',
+            borderRight: '1px solid rgba(74,109,124,0.25)',
           }}
           aria-hidden="true"
         />
-        {/* Línea margen roja */}
+        {/* Línea margen petróleo */}
         <div
           className="absolute bottom-0 left-10 top-0 w-px"
-          style={{ background: 'rgba(220,38,38,0.35)' }}
+          style={{ background: 'rgba(74,109,124,0.4)' }}
           aria-hidden="true"
         />
 
@@ -62,11 +62,11 @@ export function ExpandedView({
           ))}
         </div>
 
-        <div className="relative z-10 flex items-center justify-between border-b-[2px] border-[#C8B89A]/60 bg-[#f5f0e1] px-4 py-3 pl-14">
-          <h2 className="font-['Bangers'] text-xl tracking-wide text-[#1a1a1a]">Edicion completa</h2>
+        <div className="relative z-10 flex items-center justify-between border-b-[3px] border-[#0D0D0D] bg-[#EDE8DC] px-4 py-3 pl-14">
+          <h2 className="font-['Bangers'] text-xl tracking-wide text-[#0D0D0D]">Edicion completa</h2>
           <span
-            className={`rounded-full border-2 border-[#1a1a1a] px-3 py-0.5 text-sm font-bold ${
-              selectedCount === 5 ? 'bg-[#22C55E] text-[#fff8e7]' : 'bg-[#DC2626] text-[#fff8e7]'
+            className={`rounded-none border-[3px] border-[#0D0D0D] px-3 py-0.5 text-sm font-bold ${
+              selectedCount === 5 ? 'bg-[#7B8E7E] text-[#F5F5F0]' : 'bg-[#4A6D7C] text-[#F5F5F0]'
             }`}
           >
             {selectedCount}/5
@@ -97,7 +97,7 @@ export function ExpandedView({
           <button
             type="button"
             onClick={onClose}
-            className="comic-shadow flex h-14 w-14 cursor-pointer items-center justify-center rounded-full border-[3px] border-[#1a1a1a] bg-[#7F1D1D] text-[#fff8e7] transition-all duration-200 hover:bg-[#991B1B]"
+            className="comic-shadow flex h-14 w-14 cursor-pointer items-center justify-center rounded-none border-[3px] border-[#0D0D0D] bg-[#4A6D7C] text-[#F5F5F0] transition-all duration-150 hover:bg-[#3A5A6A]"
             aria-label="Cerrar vista de edicion"
           >
             <XIcon />

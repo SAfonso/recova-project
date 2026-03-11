@@ -11,7 +11,7 @@ const CADENCIAS = [
   { id: 'unico',     label: 'Evento único' },
 ];
 
-const INPUT = 'w-full rounded-md border-2 border-[#1a1a1a] bg-[#F5F0E1] px-3 py-2 text-sm text-[#1a1a1a] outline-none focus:ring-2 focus:ring-[#DC2626]';
+const INPUT = 'w-full rounded-none border-[3px] border-[#0D0D0D] bg-[#EDE8DC] px-3 py-2 text-sm text-[#0D0D0D] outline-none focus:ring-2 focus:ring-[#4A6D7C]';
 
 const CheckIcon = () => (
   <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

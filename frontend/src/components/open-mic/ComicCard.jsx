@@ -5,9 +5,9 @@ const CheckIcon = () => (
 );
 
 const CATEGORY_BUTTONS = [
-  { value: 'gold',       label: 'Gold',       className: 'bg-[#FACC15] text-[#1a1a1a]' },
-  { value: 'priority',   label: 'Priority',   className: 'bg-[#3B82F6] text-[#fff8e7]' },
-  { value: 'restricted', label: 'Restricted', className: 'bg-[#1a1a1a] text-[#fff8e7]' },
+  { value: 'gold',       label: 'Gold',       className: 'bg-[#D4A373] text-[#0D0D0D]' },
+  { value: 'priority',   label: 'Priority',   className: 'bg-[#4A6D7C] text-[#F5F5F0]' },
+  { value: 'restricted', label: 'Restricted', className: 'bg-[#0D0D0D] text-[#F5F5F0]' },
 ];
 
 const GENDER_OPTIONS = [
@@ -17,24 +17,24 @@ const GENDER_OPTIONS = [
 ];
 
 const CARD_BORDER = {
-  gold:       'border-[#D4A017] bg-[#fffef5]',
-  priority:   'border-[#A0A0A0] bg-[#fffef5]',
-  restricted: 'restricted-overlay border-[#DC2626] bg-[#fee2e2]',
-  default:    'border-[#1a1a1a] bg-[#fffef5]',
+  gold:       'border-[#D4A373] bg-[#EDE8DC]',
+  priority:   'border-[#4A6D7C] bg-[#EDE8DC]',
+  restricted: 'restricted-overlay border-[#0D0D0D] bg-[#E8DDD8]',
+  default:    'border-[#0D0D0D] bg-[#EDE8DC]',
 };
 
 const DROP_SHADOW = {
-  gold:       'drop-shadow(0 0 6px rgba(212,160,23,0.5))',
-  priority:   'drop-shadow(0 0 5px rgba(160,160,160,0.5))',
-  restricted: 'drop-shadow(0 0 6px rgba(220,38,38,0.4))',
-  default:    'drop-shadow(3px 3px 0px rgba(0,0,0,0.35))',
+  gold:       'drop-shadow(4px 4px 0px #000000)',
+  priority:   'drop-shadow(4px 4px 0px #000000)',
+  restricted: 'drop-shadow(4px 4px 0px #000000)',
+  default:    'drop-shadow(4px 4px 0px #000000)',
 };
 
 function categoryBadge(category) {
-  if (category === 'gold')       return <span className="rounded-full bg-[#D4A017] px-2 py-0.5 text-[10px] font-bold text-[#1a1a1a]">GOLD</span>;
-  if (category === 'priority')   return <span className="rounded-full bg-[#A0A0A0] px-2 py-0.5 text-[10px] font-bold text-[#fff8e7]">PRIO</span>;
-  if (category === 'restricted') return <span className="rounded-full bg-[#DC2626] px-2 py-0.5 text-[10px] font-bold text-[#fff8e7]">REST</span>;
-  return null;
+  if (category === 'gold')       return <span className="rounded-none border-[2px] border-[#0D0D0D] bg-[#D4A373] px-2 py-0.5 text-[10px] font-bold uppercase text-[#0D0D0D]">GOLD</span>;
+  if (category === 'priority')   return <span className="rounded-none border-[2px] border-[#0D0D0D] bg-[#4A6D7C] px-2 py-0.5 text-[10px] font-bold uppercase text-[#F5F5F0]">PRIO</span>;
+  if (category === 'restricted') return <span className="rounded-none border-[2px] border-[#0D0D0D] bg-[#0D0D0D] px-2 py-0.5 text-[10px] font-bold uppercase text-[#F5F5F0]">REST</span>;
+  return <span className="rounded-none border-[2px] border-[#0D0D0D]/30 bg-[#EDE8DC] px-2 py-0.5 text-[10px] font-bold uppercase text-[#0D0D0D]/60">NEW</span>;
 }
 
 export function ComicCard({
@@ -83,7 +83,7 @@ export function ComicCard({
                           key={btn.value}
                           type="button"
                           onClick={(e) => { e.stopPropagation(); handleCategoryClick(btn.value); }}
-                          className={`h-7 min-w-16 cursor-pointer rounded-md border-2 border-[#1a1a1a] px-1 text-[10px] font-bold transition-all duration-150 ${btn.className} ${active ? 'ring-2 ring-[#1a1a1a] ring-offset-1' : 'opacity-70 hover:opacity-100'}`}
+                          className={`h-7 min-w-16 cursor-pointer rounded-none border-[3px] border-[#0D0D0D] px-1 text-[10px] font-bold transition-all duration-150 ${btn.className} ${active ? 'ring-2 ring-[#1a1a1a] ring-offset-1' : 'opacity-70 hover:opacity-100'}`}
                           aria-label={`Asignar categoría ${btn.label}`}
                         >
                           {btn.label}
@@ -104,7 +104,7 @@ export function ComicCard({
                           key={opt.value}
                           type="button"
                           onClick={(e) => { e.stopPropagation(); onUpdateGenero(opt.value); }}
-                          className={`h-7 w-10 cursor-pointer rounded-md border-2 border-[#1a1a1a] text-[10px] font-bold transition-all duration-150
+                          className={`h-7 w-10 cursor-pointer rounded-none border-[3px] border-[#0D0D0D] text-[10px] font-bold transition-all duration-150
                             ${active
                               ? 'bg-[#1a1a1a] text-[#fff8e7] ring-2 ring-[#1a1a1a] ring-offset-1'
                               : 'bg-[#F5F0E1] text-[#1a1a1a] opacity-70 hover:opacity-100'
@@ -136,7 +136,7 @@ export function ComicCard({
                   type="button"
                   onClick={(e) => { e.stopPropagation(); if (!selected && !canSelect) return; onToggleSelected(); }}
                   disabled={!selected && !canSelect}
-                  className={`flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border-[3px] border-[#1a1a1a] transition-all duration-150 ${selected ? 'bg-[#22C55E] text-[#fff8e7]' : 'bg-[#fff8e7] text-transparent'} ${!selected && !canSelect ? 'cursor-not-allowed opacity-40' : 'hover:scale-110'}`}
+                  className={`flex h-8 w-8 cursor-pointer items-center justify-center rounded-none border-[3px] border-[#0D0D0D] transition-all duration-150 ${selected ? 'bg-[#7B8E7E] text-[#F5F5F0]' : 'bg-[#EDE8DC] text-transparent'} ${!selected && !canSelect ? 'cursor-not-allowed opacity-40' : ''}`}
                   aria-label={selected ? 'Quitar del LineUp' : 'Añadir al LineUp'}
                 >
                   <CheckIcon />
