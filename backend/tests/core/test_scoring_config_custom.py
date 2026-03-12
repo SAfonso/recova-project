@@ -134,3 +134,34 @@ def test_scoring_config_empty_custom_rules_by_default():
 
     assert config.custom_scoring_rules == []
     assert config.apply_custom_rules({"cualquier": "campo"}) == 0
+
+
+# ---------------------------------------------------------------------------
+# apply_custom_rules — campo 'backup' reservado (v0.19.0)
+# ---------------------------------------------------------------------------
+
+def test_apply_custom_rules_ignores_backup_field():
+    """Regla con field='backup' no suma puntos aunque el metadata coincida."""
+    config = ScoringConfig.from_dict(OM_ID, {
+        "scoring_type": "custom",
+        "custom_scoring_rules": [
+            {"field": "backup", "condition": "equals", "value": "Sí", "points": 20, "enabled": True},
+        ],
+    })
+    metadata = {"backup": "Sí"}
+
+    assert config.apply_custom_rules(metadata) == 0
+
+
+def test_apply_custom_rules_ignores_backup_but_applies_other_rules():
+    """Regla backup ignorada; otras reglas activas sí puntúan."""
+    config = ScoringConfig.from_dict(OM_ID, {
+        "scoring_type": "custom",
+        "custom_scoring_rules": [
+            {"field": "backup", "condition": "equals", "value": "Sí", "points": 20, "enabled": True},
+            {"field": "¿Haces humor negro?", "condition": "equals", "value": "Sí", "points": 10, "enabled": True},
+        ],
+    })
+    metadata = {"backup": "Sí", "¿Haces humor negro?": "Sí"}
+
+    assert config.apply_custom_rules(metadata) == 10

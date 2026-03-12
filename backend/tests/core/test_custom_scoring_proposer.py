@@ -136,3 +136,31 @@ def test_propose_skips_fields_gemini_omits():
     # Gemini devolvió 1 regla aunque había 2 campos — es válido
     assert len(result) == 1
     assert result[0]["field"] == "¿Haces humor negro?"
+
+
+# ---------------------------------------------------------------------------
+# Exclusión del campo 'backup' (v0.19.0)
+# ---------------------------------------------------------------------------
+
+def test_propose_filters_out_backup_field():
+    """'backup' se filtra antes de enviar a Gemini; Gemini recibe solo los demás campos."""
+    _setup_gemini_mock(PROPOSED_RULES)
+    _mock_genai.Client.return_value.models.generate_content.reset_mock()
+
+    proposer = _make_proposer()
+    proposer.propose(["backup"] + UNMAPPED_FIELDS)
+
+    call_args = _mock_genai.Client.return_value.models.generate_content.call_args
+    prompt_sent = call_args[1]["contents"] if call_args[1] else call_args[0][1]
+    assert "backup" not in prompt_sent
+
+
+def test_propose_only_backup_returns_empty_without_calling_gemini():
+    """Si el único campo es 'backup', devuelve [] sin llamar a Gemini."""
+    _mock_genai.Client.return_value.models.generate_content.reset_mock()
+
+    proposer = _make_proposer()
+    result = proposer.propose(["backup"])
+
+    assert result == []
+    _mock_genai.Client.return_value.models.generate_content.assert_not_called()

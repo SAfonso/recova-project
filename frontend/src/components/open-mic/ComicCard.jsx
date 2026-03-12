@@ -40,9 +40,11 @@ function categoryBadge(category) {
 export function ComicCard({
   candidate, draft, selected, expanded, canSelect,
   onExpand, onToggleSelected, onUpdateCategory, onUpdateGenero, hasPendingEdit,
+  lastMinuteMode, isLastMinute,
 }) {
   const borderClass = CARD_BORDER[draft.categoria] ?? CARD_BORDER.default;
   const shadow = DROP_SHADOW[draft.categoria] ?? DROP_SHADOW.default;
+  const showLastMinute = lastMinuteMode && isLastMinute;
 
   const handleCategoryClick = (value) => {
     // Si ya está activo, volver a standard (quitar categoría especial)
@@ -54,7 +56,10 @@ export function ComicCard({
   };
 
   return (
-    <div style={{ filter: shadow }}>
+    <div
+      style={{ filter: shadow }}
+      className={showLastMinute ? 'last-minute-glow' : ''}
+    >
       <article className={`paper-rough paper-note relative overflow-hidden border-[3px] transition-all duration-200 ${borderClass}`}>
         <button
           type="button"
@@ -62,8 +67,15 @@ export function ComicCard({
           className="flex w-full cursor-pointer items-center gap-3 px-4 py-3.5 text-left"
           aria-expanded={expanded}
         >
-          <span className="relative z-10 flex-1 truncate text-lg font-bold text-[#1a1a1a]">
-            {candidate.nombre ?? candidate.instagram ?? 'Sin nombre'}
+          <span className="relative z-10 flex min-w-0 flex-1 items-center gap-2 truncate">
+            <span className="truncate text-lg font-bold text-[#1a1a1a]">
+              {candidate.nombre ?? candidate.instagram ?? 'Sin nombre'}
+            </span>
+            {showLastMinute && (
+              <span className="shrink-0 rounded-none border-[2px] border-[#0D0D0D] bg-[#EAB308] px-2 py-0.5 font-['Bangers'] text-xs tracking-wide text-[#0D0D0D]">
+                Puede hoy
+              </span>
+            )}
           </span>
           <span className="relative z-10">{categoryBadge(draft.categoria)}</span>
         </button>

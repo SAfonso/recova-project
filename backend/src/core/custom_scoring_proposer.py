@@ -70,11 +70,14 @@ class CustomScoringProposer:
         Raises:
             ValueError: si Gemini devuelve JSON inválido.
         """
-        if not unmapped_fields:
+        # 'backup' es un campo canónico reservado para el flag de último momento,
+        # no debe usarse como regla de scoring.
+        filtered_fields = [f for f in unmapped_fields if f != "backup"]
+        if not filtered_fields:
             return []
 
         fields_list = "\n".join(
-            f"{i + 1}. {f}" for i, f in enumerate(unmapped_fields)
+            f"{i + 1}. {f}" for i, f in enumerate(filtered_fields)
         )
         prompt = _PROMPT_TEMPLATE.format(fields_list=fields_list)
 

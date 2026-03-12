@@ -80,6 +80,7 @@ class CandidateScore:
     fecha_evento: date
     penalizado_por_recencia: bool
     bono_bala_unica: bool
+    puede_hoy: bool = False
     solicitud_id: str = ""
 
 
@@ -333,15 +334,17 @@ def persist_pending_score(conn, candidate: CandidateScore) -> None:
                 open_mic_id,
                 estado,
                 score_aplicado,
-                marca_temporal
+                marca_temporal,
+                puede_hoy
             )
-            VALUES (%s, %s, %s, %s, 'scorado', %s, %s)
+            VALUES (%s, %s, %s, %s, 'scorado', %s, %s, %s)
             ON CONFLICT (id) DO UPDATE
             SET comico_id     = EXCLUDED.comico_id,
                 fecha_evento  = EXCLUDED.fecha_evento,
                 open_mic_id   = EXCLUDED.open_mic_id,
                 score_aplicado = EXCLUDED.score_aplicado,
-                marca_temporal = EXCLUDED.marca_temporal
+                marca_temporal = EXCLUDED.marca_temporal,
+                puede_hoy      = EXCLUDED.puede_hoy
             WHERE gold.solicitudes.estado IN ('pendiente', 'scorado')
             """,
             (
@@ -351,6 +354,7 @@ def persist_pending_score(conn, candidate: CandidateScore) -> None:
                 candidate.open_mic_id,
                 float(candidate.score_final),
                 candidate.marca_temporal,
+                candidate.puede_hoy,
             ),
         )
         cursor.execute(
@@ -424,6 +428,7 @@ def build_ranking(
 
             score += config.apply_custom_rules(request.metadata)
 
+            backup_val = str(request.metadata.get('backup', '')).strip().lower()
             scored.append(
                 CandidateScore(
                     nombre=request.nombre,
@@ -438,6 +443,7 @@ def build_ranking(
                     fecha_evento=parse_primary_date(request.fechas_disponibles),
                     penalizado_por_recencia=penalty,
                     bono_bala_unica=single_date,
+                    puede_hoy=backup_val in ('sí', 'si', 'yes', 'true', '1'),
                     solicitud_id=request.solicitud_id,
                 )
             )

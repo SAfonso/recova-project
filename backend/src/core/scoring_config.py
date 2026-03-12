@@ -223,7 +223,13 @@ class ScoringConfig:
         """Suma puntos de reglas custom habilitadas que coinciden con metadata.
 
         Solo aplica si scoring_type == 'custom'. Si no, devuelve 0.
+        El campo 'backup' está reservado para el flag de último momento
+        y se ignora aunque exista una regla que lo referencie.
         """
         if self.scoring_type != "custom":
             return 0
-        return sum(r.points for r in self.custom_scoring_rules if r.matches(metadata))
+        return sum(
+            r.points
+            for r in self.custom_scoring_rules
+            if r.field != "backup" and r.matches(metadata)
+        )

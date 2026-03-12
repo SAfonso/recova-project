@@ -283,3 +283,79 @@ def test_persist_pending_score_writes_open_mic_id_and_marks_silver_scorado():
     assert "status" in silver_update_query.lower() and "'scorado'" in silver_update_query.lower()
     assert "score_final" not in silver_update_query.lower()
     assert silver_update_params == (candidate.solicitud_id,)
+
+
+# ---------------------------------------------------------------------------
+# CandidateScore.puede_hoy — flag de último momento (v0.19.0)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("backup_val", ["Sí", "sí", "si", "Si", "yes", "YES", "true", "1"])
+def test_build_ranking_sets_puede_hoy_true_for_truthy_backup(backup_val, monkeypatch):
+    """Variantes afirmativas del campo backup → puede_hoy=True en el candidato."""
+    requests = [
+        _make_request(comico_id="id-a", instagram="a", genero="f",
+                      metadata={"backup": backup_val}),
+    ]
+
+    monkeypatch.setattr(engine, "upsert_comico", _fake_upsert)
+    monkeypatch.setattr(engine, "has_recent_acceptance_penalty", _fake_no_penalty)
+
+    ranking, _ = engine.build_ranking(conn=None, requests=requests, config=_default_config())
+
+    assert len(ranking) == 1
+    assert ranking[0].puede_hoy is True
+
+
+def test_build_ranking_sets_puede_hoy_false_when_backup_no(monkeypatch):
+    """Respuesta 'No' → puede_hoy=False."""
+    requests = [
+        _make_request(comico_id="id-a", instagram="a", genero="f",
+                      metadata={"backup": "No"}),
+    ]
+
+    monkeypatch.setattr(engine, "upsert_comico", _fake_upsert)
+    monkeypatch.setattr(engine, "has_recent_acceptance_penalty", _fake_no_penalty)
+
+    ranking, _ = engine.build_ranking(conn=None, requests=requests, config=_default_config())
+
+    assert ranking[0].puede_hoy is False
+
+
+def test_build_ranking_sets_puede_hoy_false_when_backup_absent(monkeypatch):
+    """Sin campo backup en metadata → puede_hoy=False."""
+    requests = [
+        _make_request(comico_id="id-a", instagram="a", genero="f", metadata={}),
+    ]
+
+    monkeypatch.setattr(engine, "upsert_comico", _fake_upsert)
+    monkeypatch.setattr(engine, "has_recent_acceptance_penalty", _fake_no_penalty)
+
+    ranking, _ = engine.build_ranking(conn=None, requests=requests, config=_default_config())
+
+    assert ranking[0].puede_hoy is False
+
+
+def test_persist_pending_score_includes_puede_hoy_in_sql():
+    """INSERT en gold.solicitudes incluye puede_hoy en la query y en los params."""
+    cursor = RecordingCursor()
+    conn = RecordingConnection(cursor)
+    candidate = _make_candidate(puede_hoy=True)
+
+    engine.persist_pending_score(conn, candidate)
+
+    insert_query, insert_params = cursor.executed[0]
+    assert "puede_hoy" in insert_query.lower()
+    assert True in insert_params
+
+
+def test_persist_pending_score_puede_hoy_false_persisted():
+    """puede_hoy=False también persiste correctamente."""
+    cursor = RecordingCursor()
+    conn = RecordingConnection(cursor)
+    candidate = _make_candidate(puede_hoy=False)
+
+    engine.persist_pending_score(conn, candidate)
+
+    insert_query, insert_params = cursor.executed[0]
+    assert "puede_hoy" in insert_query.lower()
+    assert False in insert_params

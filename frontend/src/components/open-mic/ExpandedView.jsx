@@ -32,6 +32,7 @@ export function ExpandedView({
   onUpdateGenero,
   getDraft,
   hasPendingEdit,
+  isLastMinuteMode,
 }) {
   const selectedCount = selectedIds.length;
   const canSelect = selectedCount < 5;
@@ -88,6 +89,8 @@ export function ExpandedView({
                 onUpdateCategory={(value) => onUpdateCategory(candidate.row_key, value)}
                 onUpdateGenero={(value) => onUpdateGenero(candidate.row_key, value)}
                 hasPendingEdit={hasPendingEdit(candidate)}
+                lastMinuteMode={isLastMinuteMode && !selectedIds.includes(candidate.row_key)}
+                isLastMinute={!!candidate.puede_hoy}
               />
             ))}
           </div>
