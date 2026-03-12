@@ -2,6 +2,10 @@
 
 Motor: PosterComposer (Pillow + FreeType).
 Expone POST /tools/render_lineup y GET /healthz.
+
+NOTA: Este servidor está desactivado temporalmente desde el frontend y n8n.
+Pendiente de resolver: spacing Y incorrecto en render + cacheo de font_name.
+El código se conserva íntegro para reactivar sin partir de cero.
 """
 
 from __future__ import annotations

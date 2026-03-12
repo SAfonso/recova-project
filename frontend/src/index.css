@@ -17,7 +17,7 @@
      bg: gris cálido medio — claramente distinto de las tarjetas
      paper: casi blanco cálido — tarjetas visiblemente más claras
   ─────────────────────────────────────────────────── */
-  --c-bg:          #D4CFC8;   /* fondo general — gris cálido medio, contrasta con tarjetas */
+  --c-bg:          #EDEAE4;   /* fondo general — muy claro, gris cálido suave */
   --c-paper:       #FEFDF8;   /* papel tarjeta — casi blanco, claramente más claro que el fondo */
   --c-paper-alt:   #F0EDE6;   /* papel secundario */
 
@@ -314,7 +314,7 @@ h1, h2, h3 {
   justify-content: center;
   font-size: 4rem;
   font-weight: 900;
-  color: rgba(44, 74, 82, 0.15);
+  color: rgba(163, 74, 66, 0.18);
   font-family: 'Bangers', Impact, sans-serif;
   pointer-events: none;
   z-index: 1;

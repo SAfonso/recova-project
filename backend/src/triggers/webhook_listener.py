@@ -1093,6 +1093,10 @@ def dev_trigger_scoring():
     return jsonify({"status": "ok", "result": result}), 200
 
 
+# RENDER POSTER — endpoint conservado pero no expuesto desde el frontend.
+# Desactivado temporalmente hasta resolver: spacing Y incorrecto + cacheo font_name.
+# El pipeline (GeminiDetector → render_on_anchors → mcp_server :5050) está completo.
+# Para reactivar: descomentar sección poster en ScoringConfigurator.jsx y el flujo n8n.
 @app.route("/api/render-poster", methods=["POST"])
 def render_poster() -> tuple:
     """Renderiza el cartel del lineup usando el pipeline Gemini+render_on_anchors."""
