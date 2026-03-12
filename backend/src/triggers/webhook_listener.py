@@ -30,7 +30,7 @@ from backend.src.core.custom_scoring_proposer import CustomScoringProposer
 from backend.src.scoring_engine import execute_scoring
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, allow_headers=["Content-Type", "Authorization", "X-API-KEY", "Accept"])
 
 from pathlib import Path
 _ROOT_ENV = Path(__file__).resolve().parents[3] / ".env"
