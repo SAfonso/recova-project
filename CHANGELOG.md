@@ -1,3 +1,14 @@
+## [0.18.2] - 2026-03-12
+
+### Changed — UI polish: Cartoon-Brutalist refinements
+
+- **`NotebookSheet.jsx`** — pestañas del lineup con clase `paper-note` (mismo tono rugoso que la hoja); color activo vía `style={{ backgroundColor }}` para preservar la textura grain encima del color; hover sutil `#2C4A52/10` en nombres de artistas
+- **`OpenMicDetail.jsx`** — pestañas Info/Scoring/Dev también con `paper-note` para coherencia visual con el rest de la interfaz
+- **`OpenMicSelector.jsx`** — hover por open mic con color determinístico (array de 6 colores del sistema: petróleo, sage, ochre, terracota, deep-petrol, warm-brown); rotativo por índice, siempre igual para cada posición
+- **`ComicCard.jsx`** — tarjeta restricted con fondo rojizo `#FDF0F0` y borde terracota `#A34A42` (antes gris neutro)
+
+---
+
 ## [0.18.1] - 2026-03-11
 
 ### Changed — Cartoon-Matte Brutalist UI

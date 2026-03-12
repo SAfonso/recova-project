@@ -1,6 +1,6 @@
 # AI LineUp Architect
 
-**Versión:** `0.18.1` · **Estado:** Desarrollo activo · **Metodología:** SDD + TDD
+**Versión:** `0.18.2` · **Estado:** Desarrollo activo · **Metodología:** SDD + TDD
 
 SaaS multi-tenant para gestión de open mics de comedia. Automatiza la recogida de solicitudes (Google Forms), el scoring con IA y la generación del cartel en PNG.
 
