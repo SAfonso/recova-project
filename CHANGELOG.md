@@ -1,3 +1,17 @@
+## [0.20.0] - 2026-03-12
+
+### Added — Sprint 15: Onboarding Tutorial + Security Hardening
+
+- **`specs/onboarding_tutorial_spec.md`** — SDD: tutorial paso a paso para hosts nuevos (React Joyride, 10 steps, solo una vez vía localStorage)
+- **Security** — Migraciones SQL para corregir todos los warnings del Supabase Security Advisor:
+  - `gold.lineup_candidates`, `gold.v_lineup_host`, `silver.v_lineup_candidatos`, `silver.v_ultimas_ediciones` → `WITH (security_invoker = on)` (respetan RLS del usuario llamante)
+  - `public.set_updated_at` → `SET search_path = ''`
+  - `public.confirm_lineup` → `SET search_path = silver, public`
+- **Server hardening** — iptables: bloqueo externo de `:5000` (Flask) y `:5050` (renderer); solo accesibles desde redes Docker (`10.0.0.0/8`) y loopback; reglas persistidas con `iptables-persistent`
+- **Server updates** — Docker CE 29.3.0, containerd.io 2.2.2, docker-compose-plugin 5.1.0, cloud-init 25.3, kernel 6.8.0-101
+
+---
+
 ## [0.19.1] - 2026-03-12
 
 ### Added — Sprint 14: Prioridad fecha única "Solo puede hoy"
