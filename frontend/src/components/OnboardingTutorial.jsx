@@ -121,7 +121,6 @@ const STEPS = [
   },
 ];
 
-// Hint shown when the tour is paused waiting for navigation
 const PAUSE_HINTS = {
   2: 'Abre un open mic para continuar el tour →',
   3: 'Abre un open mic para continuar el tour →',
@@ -140,25 +139,11 @@ export function OnboardingTutorial() {
     () => localStorage.getItem(STORAGE_KEY) === 'true',
   );
 
-  // Start: poll until the first target appears in the DOM
+  // Single effect: whenever run=false and !done, poll until the current
+  // step's target appears in the DOM, then resume. Works for both
+  // initial start (stepIndex=0) and mid-tour navigation pauses.
   useEffect(() => {
-    if (done) return;
-    const poll = setInterval(() => {
-      if (document.querySelector('[data-tutorial="open-mic-selector"]')) {
-        clearInterval(poll);
-        clearTimeout(maxWait);
-        setRun(true);
-      }
-    }, 150);
-    const maxWait = setTimeout(() => { clearInterval(poll); setRun(true); }, 8000);
-    return () => { clearInterval(poll); clearTimeout(maxWait); };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Paused: poll until current step's target appears, then resume
-  useEffect(() => {
-    if (run || done) return;
-    if (stepIndex === 0) return;
-
+    if (done || run) return;
     const target = STEPS[stepIndex]?.target;
     if (!target) return;
 
@@ -174,7 +159,7 @@ export function OnboardingTutorial() {
 
   function handleCallback({ status, type, index, action }) {
     if (type === EVENTS.TARGET_NOT_FOUND) {
-      setRun(false); // pause — the effect above will resume when target appears
+      setRun(false); // pause — effect above re-polls until target appears
       return;
     }
     if (type === EVENTS.STEP_AFTER) {
@@ -206,7 +191,6 @@ export function OnboardingTutorial() {
         locale={LOCALE_ES}
         callback={handleCallback}
       />
-      {/* Badge visible when tour is paused waiting for navigation */}
       {!run && stepIndex > 0 && PAUSE_HINTS[stepIndex] && (
         <div className="fixed bottom-6 left-6 z-[9999] flex items-center gap-2 rounded border-2 border-[#1a1a1a] bg-[#fff8e7] px-3 py-2 text-xs font-bold shadow-[3px_3px_0_#000]">
           <span>📍</span>

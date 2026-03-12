@@ -67,13 +67,13 @@ describe('OnboardingTutorial', () => {
 
   it('activa el tutorial cuando el target aparece en el DOM', async () => {
     render(<OnboardingTutorial />);
-    await act(async () => { vi.advanceTimersByTime(200); });
+    await act(async () => { vi.advanceTimersByTime(400); });
     expect(capturedRun).toBe(true);
   });
 
   it('setea localStorage al recibir status=finished', async () => {
     render(<OnboardingTutorial />);
-    await act(async () => { vi.advanceTimersByTime(200); });
+    await act(async () => { vi.advanceTimersByTime(400); });
     expect(capturedCallback).not.toBeNull();
     act(() => { capturedCallback({ status: 'finished', type: 'tour:end', index: 9, action: 'next' }); });
     expect(localStorage.getItem(STORAGE_KEY)).toBe('true');
@@ -81,7 +81,7 @@ describe('OnboardingTutorial', () => {
 
   it('setea localStorage al recibir status=skipped', async () => {
     render(<OnboardingTutorial />);
-    await act(async () => { vi.advanceTimersByTime(200); });
+    await act(async () => { vi.advanceTimersByTime(400); });
     expect(capturedCallback).not.toBeNull();
     act(() => { capturedCallback({ status: 'skipped', type: 'tour:end', index: 0, action: 'skip' }); });
     expect(localStorage.getItem(STORAGE_KEY)).toBe('true');
