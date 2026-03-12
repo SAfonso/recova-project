@@ -14,10 +14,14 @@
   color-scheme: light;
 
   /* ── Fondos ──────────────────────────────────────────
-     bg: gris cálido medio — claramente distinto de las tarjetas
+     bg: rojo show mate — vibe escenario comedia
      paper: casi blanco cálido — tarjetas visiblemente más claras
   ─────────────────────────────────────────────────── */
-  --c-bg:          #EDEAE4;   /* fondo general — muy claro, gris cálido suave */
+  --c-bg:          #8C2020;   /* fondo general — rojo show mate */
+  --c-bg-grad:
+    radial-gradient(ellipse 75% 55% at 18% 8%,  rgba(210, 140, 30, 0.30) 0%, transparent 55%),
+    radial-gradient(ellipse 55% 65% at 88% 92%, rgba(35,  0,   0,  0.45) 0%, transparent 52%),
+    radial-gradient(ellipse 90% 80% at 50% 50%, rgba(100, 15,  15, 0.20) 0%, transparent 65%);
   --c-paper:       #FEFDF8;   /* papel tarjeta — casi blanco, claramente más claro que el fondo */
   --c-paper-alt:   #F0EDE6;   /* papel secundario */
 
@@ -68,6 +72,8 @@ body {
   min-height: 100vh;
   font-family: 'Space Grotesk', 'Patrick Hand', 'Comic Sans MS', cursive;
   background-color: var(--c-bg);
+  background-image: var(--c-bg-grad);
+  background-attachment: fixed;
   color: var(--c-ink);
 }
 
