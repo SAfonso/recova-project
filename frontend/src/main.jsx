@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import { BgIcons } from './components/BgIcons';
 import { LoginScreen } from './components/LoginScreen';
 import { OnboardingScreen } from './components/OnboardingScreen';
 import { OpenMicDetail } from './components/OpenMicDetail';
@@ -67,11 +68,11 @@ function Root() {
   };
   const handleBack = () => { setOpenMicId(null); setView('selector'); };
 
-  if (appState === 'no-session')  return <LoginScreen />;
-  if (appState === 'onboarding')  return <OnboardingScreen session={session} onComplete={() => setAppState('ready')} />;
-  if (view === 'selector') return <OpenMicSelector session={session} onSelect={handleSelect} />;
-  if (view === 'detail')   return <OpenMicDetail session={session} openMicId={openMicId} initialView={initialView} onBack={handleBack} onEnterLineup={() => setView('lineup')} />;
-  return <App session={session} openMicId={openMicId} onBack={() => setView('detail')} />;
+  if (appState === 'no-session')  return <><BgIcons /><LoginScreen /></>;
+  if (appState === 'onboarding')  return <><BgIcons /><OnboardingScreen session={session} onComplete={() => setAppState('ready')} /></>;
+  if (view === 'selector') return <><BgIcons /><OpenMicSelector session={session} onSelect={handleSelect} /></>;
+  if (view === 'detail')   return <><BgIcons /><OpenMicDetail session={session} openMicId={openMicId} initialView={initialView} onBack={handleBack} onEnterLineup={() => setView('lineup')} /></>;
+  return <><BgIcons /><App session={session} openMicId={openMicId} onBack={() => setView('detail')} /></>;
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(

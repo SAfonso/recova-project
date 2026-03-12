@@ -42,10 +42,32 @@ export function Header({ eventDate, onEventDateChange, selectedCount, hostEmail,
       </div>
 
       <div className="relative inline-flex items-center gap-3">
-        <div className="relative inline-block px-1">
+        <div className="relative inline-block px-2 pb-3">
           <p className="font-['Oswald'] text-4xl font-bold italic tracking-wider text-[#0D0D0D] sm:text-5xl">{formatDateForSheet(eventDate)}</p>
-          <div className="absolute -bottom-1 left-0 right-0 h-[3px] bg-[#2C4A52]" aria-hidden="true" />
-          <div className="absolute -bottom-2.5 left-1 right-0 h-px bg-[#2C4A52]/30" aria-hidden="true" />
+          {/* Chalk underline — tiza sobre pizarra */}
+          <svg
+            className="absolute left-0 w-full overflow-visible"
+            style={{ bottom: '2px' }}
+            height="10"
+            viewBox="0 0 100 10"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            {/* Difuminado chalk dust */}
+            <path d="M0,6 C8,4 16,8 24,5.5 C32,3 40,7.5 48,5 C56,3 64,7 72,5 C80,3.5 88,7 96,5 L100,5.5"
+              stroke="rgba(255,255,255,0.22)" strokeWidth="8" fill="none" strokeLinecap="round"
+              style={{ filter:'blur(2px)' }}
+            />
+            {/* Trazo principal — grueso e irregular */}
+            <path d="M0,6 C8,4 16,8 24,5.5 C32,3 40,7.5 48,5 C56,3 64,7 72,5 C80,3.5 88,7 96,5 L100,5.5"
+              stroke="rgba(255,255,255,0.88)" strokeWidth="4.5" fill="none" strokeLinecap="round"
+              style={{ filter:'blur(0.5px)' }}
+            />
+            {/* Hilo de luz — borde brillante del trazo */}
+            <path d="M0,5 C8,3.5 16,6.5 24,4.5 C32,2.5 40,6 48,4 C56,2.5 64,5.5 72,4 C80,3 88,5.5 96,4 L100,4.5"
+              stroke="rgba(255,255,255,0.45)" strokeWidth="1.5" fill="none" strokeLinecap="round"
+            />
+          </svg>
           <input
             type="date"
             value={eventDate}

@@ -147,23 +147,6 @@ export function OpenMicSelector({ session, onSelect }) {
   return (
     <main className="paint-bg relative flex min-h-screen items-center justify-center overflow-hidden px-4 md:px-8">
 
-      {/* Decoración fondo: estrella outline grande izquierda + micro pequeño derecha */}
-      <div className="pointer-events-none absolute inset-0 select-none overflow-hidden" aria-hidden="true">
-        <svg className="absolute left-[2%] top-[18%] w-32 -rotate-[10deg] text-[#2C4A52] opacity-[0.10]"
-          viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="0.8">
-          <path d="M12 2l2.09 6.26L20 10l-5.91 1.74L12 18l-2.09-6.26L4 10l5.91-1.74z" />
-        </svg>
-        <svg className="absolute right-[3%] bottom-[20%] w-20 rotate-[15deg] text-[#A34A42] opacity-[0.08]"
-          viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-          <path d="M19 10v2a7 7 0 0 1-14 0v-2H3v2a9 9 0 0 0 8 8.94V22H8v2h8v-2h-3v-1.06A9 9 0 0 0 21 12v-2h-2z"/>
-        </svg>
-        <svg className="absolute left-[15%] bottom-[10%] w-10 -rotate-[5deg] text-[#C9A66B] opacity-[0.09]"
-          viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
-          <path d="M12 2l2.09 6.26L20 10l-5.91 1.74L12 18l-2.09-6.26L4 10l5.91-1.74z" />
-        </svg>
-      </div>
-
       <div className="w-full max-w-md md:max-w-lg lg:max-w-xl">
 
         <div className="mb-6 rotate-[0.8deg] text-center">
