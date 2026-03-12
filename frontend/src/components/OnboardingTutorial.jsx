@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Joyride, { EVENTS, ACTIONS, STATUS } from 'react-joyride';
 
 const STORAGE_KEY = 'recova_tutorial_done';
@@ -124,9 +124,8 @@ const STEPS = [
 export function OnboardingTutorial() {
   const [run, setRun] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
-  const pollRef = useRef(null);
 
-  // Start: poll until the first target appears
+  // Start: poll until the first target appears in the DOM
   useEffect(() => {
     if (localStorage.getItem(STORAGE_KEY) === 'true') return;
     const poll = setInterval(() => {
@@ -140,30 +139,10 @@ export function OnboardingTutorial() {
     return () => { clearInterval(poll); clearTimeout(maxWait); };
   }, []);
 
-  // When paused (run=false, stepIndex>0): wait for the current step's target to appear
-  useEffect(() => {
-    if (run) return;
-    if (localStorage.getItem(STORAGE_KEY) === 'true') return;
-    if (stepIndex === 0) return;
-
-    const target = STEPS[stepIndex]?.target;
-    if (!target) return;
-
-    clearInterval(pollRef.current);
-    pollRef.current = setInterval(() => {
-      if (document.querySelector(target)) {
-        clearInterval(pollRef.current);
-        setRun(true);
-      }
-    }, 300);
-
-    return () => clearInterval(pollRef.current);
-  }, [run, stepIndex]);
-
   function handleCallback({ status, type, index, action }) {
-    // Target not found → pause and wait for it
+    // Target not found → skip to next step (so tour always completes)
     if (type === EVENTS.TARGET_NOT_FOUND) {
-      setRun(false);
+      setStepIndex(index + 1);
       return;
     }
     // Advance step index after each step
