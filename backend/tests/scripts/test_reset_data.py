@@ -93,15 +93,15 @@ class TestResetData:
         assert executed.count("Identifier('solicitudes')") >= 2
         assert "Identifier('bronze')" in executed
 
-    def test_no_truncate_auth_tables_by_default(self):
-        """Sin --include-auth, no se tocan telegram_users ni validation_tokens."""
+    def test_telegram_tables_included_by_default(self):
+        """Sin --include-auth, telegram_users y telegram_registration_codes se truncan (son core)."""
         conn, cur = _run_main(["--yes"])
         executed = " ".join(str(c.args[0]) for c in cur.execute.call_args_list)
-        assert "telegram_users" not in executed
+        assert "telegram_users" in executed
         assert "validation_tokens" not in executed
 
-    def test_include_auth_truncates_auth_tables(self):
-        """Con --include-auth, se truncan también las tablas de auth."""
+    def test_include_auth_truncates_validation_tokens(self):
+        """Con --include-auth, se truncan también validation_tokens."""
         conn, cur = _run_main(["--yes", "--include-auth"])
         executed = " ".join(str(c.args[0]) for c in cur.execute.call_args_list)
         assert "telegram_users" in executed

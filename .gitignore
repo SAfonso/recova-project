@@ -53,6 +53,11 @@ Thumbs.db
 backend/src/test.py
 backend/src/getVeri.py
 
+# --- Scripts locales de seed/reset de datos ---
+backend/scripts/seed_full.py
+backend/scripts/seed_conditional.py
+backend/scripts/reset_data.py
+
 # --- Herramientas locales de desarrollo ---
 .agents/
 .claude/
