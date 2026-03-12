@@ -52,10 +52,6 @@ FULL_CONFIG = {
         "last_n_editions": 3,
         "penalty_points": 30,
     },
-    "single_date_boost": {
-        "enabled": True,
-        "boost_points": 15,
-    },
     "gender_parity": {
         "enabled": True,
         "target_female_nb_pct": 50,
@@ -75,10 +71,9 @@ def test_from_dict_parses_recency_fields() -> None:
     assert cfg.recency_penalty_points == 30
 
 
-def test_from_dict_parses_single_date_boost() -> None:
-    cfg = ScoringConfig.from_dict("om-001", FULL_CONFIG)
-    assert cfg.single_date_boost_enabled is True
-    assert cfg.single_date_boost_points == 15
+def test_from_dict_parses_single_date_priority() -> None:
+    cfg = ScoringConfig.from_dict("om-001", {**FULL_CONFIG, "single_date_priority": {"enabled": False}})
+    assert cfg.single_date_priority_enabled is False
 
 
 def test_from_dict_parses_gender_parity() -> None:
@@ -103,7 +98,6 @@ def test_empty_config_uses_defaults() -> None:
     assert cfg.recency_penalty_enabled == _DEFAULTS["recency_penalty"]["enabled"]
     assert cfg.recency_last_n_editions == _DEFAULTS["recency_penalty"]["last_n_editions"]
     assert cfg.recency_penalty_points  == _DEFAULTS["recency_penalty"]["penalty_points"]
-    assert cfg.single_date_boost_points == _DEFAULTS["single_date_boost"]["boost_points"]
 
 
 def test_empty_config_has_all_default_categories() -> None:
@@ -163,40 +157,42 @@ def test_is_restricted_unknown_category_falls_back_to_standard() -> None:
 
 def test_compute_score_base_no_modifiers() -> None:
     cfg = ScoringConfig.default("om-007")
-    score = cfg.compute_score("standard", has_recency_penalty=False, is_single_date=False)
+    score = cfg.compute_score("standard", has_recency_penalty=False)
     assert score == 50  # base_score por defecto de 'standard'
 
 
 def test_compute_score_gold_no_modifiers() -> None:
     cfg = ScoringConfig.default("om-007")
-    score = cfg.compute_score("gold", has_recency_penalty=False, is_single_date=False)
+    score = cfg.compute_score("gold", has_recency_penalty=False)
     assert score == 90
 
 
 def test_compute_score_applies_recency_penalty() -> None:
     cfg = ScoringConfig.default("om-007")
-    score_with    = cfg.compute_score("standard", has_recency_penalty=True,  is_single_date=False)
-    score_without = cfg.compute_score("standard", has_recency_penalty=False, is_single_date=False)
+    score_with    = cfg.compute_score("standard", has_recency_penalty=True)
+    score_without = cfg.compute_score("standard", has_recency_penalty=False)
     assert score_with == score_without - cfg.recency_penalty_points
 
 
-def test_compute_score_applies_single_date_boost() -> None:
+def test_compute_score_applies_single_date_priority() -> None:
+    """is_single_date=True con priority habilitado → +40 pts internos."""
     cfg = ScoringConfig.default("om-007")
     score_with    = cfg.compute_score("standard", has_recency_penalty=False, is_single_date=True)
     score_without = cfg.compute_score("standard", has_recency_penalty=False, is_single_date=False)
-    assert score_with == score_without + cfg.single_date_boost_points
+    assert score_with == score_without + 40
 
 
-def test_compute_score_applies_both_modifiers() -> None:
-    cfg = ScoringConfig.default("om-007")
-    score = cfg.compute_score("priority", has_recency_penalty=True, is_single_date=True)
-    expected = 70 - cfg.recency_penalty_points + cfg.single_date_boost_points
-    assert score == expected
+def test_compute_score_single_date_disabled_has_no_effect() -> None:
+    """Si single_date_priority_enabled=False, is_single_date no suma puntos."""
+    cfg = ScoringConfig.from_dict("om-007", {"single_date_priority": {"enabled": False}})
+    score_with    = cfg.compute_score("standard", has_recency_penalty=False, is_single_date=True)
+    score_without = cfg.compute_score("standard", has_recency_penalty=False, is_single_date=False)
+    assert score_with == score_without
 
 
 def test_compute_score_returns_none_for_restricted() -> None:
     cfg = ScoringConfig.default("om-007")
-    assert cfg.compute_score("restricted", has_recency_penalty=False, is_single_date=False) is None
+    assert cfg.compute_score("restricted", has_recency_penalty=False) is None
 
 
 def test_compute_score_penalty_disabled_has_no_effect() -> None:
@@ -204,18 +200,8 @@ def test_compute_score_penalty_disabled_has_no_effect() -> None:
         **FULL_CONFIG,
         "recency_penalty": {"enabled": False, "last_n_editions": 2, "penalty_points": 30},
     })
-    score_with    = cfg.compute_score("standard", has_recency_penalty=True,  is_single_date=False)
-    score_without = cfg.compute_score("standard", has_recency_penalty=False, is_single_date=False)
-    assert score_with == score_without
-
-
-def test_compute_score_boost_disabled_has_no_effect() -> None:
-    cfg = ScoringConfig.from_dict("om-009", {
-        **FULL_CONFIG,
-        "single_date_boost": {"enabled": False, "boost_points": 15},
-    })
-    score_with    = cfg.compute_score("standard", has_recency_penalty=False, is_single_date=True)
-    score_without = cfg.compute_score("standard", has_recency_penalty=False, is_single_date=False)
+    score_with    = cfg.compute_score("standard", has_recency_penalty=True)
+    score_without = cfg.compute_score("standard", has_recency_penalty=False)
     assert score_with == score_without
 
 
@@ -244,4 +230,4 @@ def test_extra_category_score_is_computed() -> None:
             "vip": {"base_score": 100, "enabled": True},
         },
     })
-    assert cfg.compute_score("vip", False, False) == 100
+    assert cfg.compute_score("vip", False) == 100

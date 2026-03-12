@@ -79,7 +79,8 @@ class CandidateScore:
     marca_temporal: datetime | None
     fecha_evento: date
     penalizado_por_recencia: bool
-    bono_bala_unica: bool
+    puede_hoy: bool = False
+    is_single_date: bool = False
     solicitud_id: str = ""
 
 
@@ -300,6 +301,12 @@ def has_recent_acceptance_penalty(
 # Helpers de fecha
 # ---------------------------------------------------------------------------
 
+def has_single_date(fechas_disponibles: str) -> bool:
+    """True si el cómico marcó exactamente UNA fecha disponible."""
+    tokens = [t.strip() for t in (fechas_disponibles or "").split(",") if t.strip()]
+    return len(tokens) == 1
+
+
 def parse_primary_date(fechas_disponibles: str) -> date:
     tokens = [t.strip() for t in (fechas_disponibles or "").split(",") if t.strip()]
     for token in tokens:
@@ -310,10 +317,6 @@ def parse_primary_date(fechas_disponibles: str) -> date:
                 continue
     return datetime.now(timezone.utc).date()
 
-
-def has_single_date(fechas_disponibles: str) -> bool:
-    tokens = [t.strip() for t in (fechas_disponibles or "").split(",") if t.strip()]
-    return len(tokens) == 1
 
 
 # ---------------------------------------------------------------------------
@@ -333,15 +336,19 @@ def persist_pending_score(conn, candidate: CandidateScore) -> None:
                 open_mic_id,
                 estado,
                 score_aplicado,
-                marca_temporal
+                marca_temporal,
+                puede_hoy,
+                is_single_date
             )
-            VALUES (%s, %s, %s, %s, 'scorado', %s, %s)
+            VALUES (%s, %s, %s, %s, 'scorado', %s, %s, %s, %s)
             ON CONFLICT (id) DO UPDATE
-            SET comico_id     = EXCLUDED.comico_id,
-                fecha_evento  = EXCLUDED.fecha_evento,
-                open_mic_id   = EXCLUDED.open_mic_id,
+            SET comico_id      = EXCLUDED.comico_id,
+                fecha_evento   = EXCLUDED.fecha_evento,
+                open_mic_id    = EXCLUDED.open_mic_id,
                 score_aplicado = EXCLUDED.score_aplicado,
-                marca_temporal = EXCLUDED.marca_temporal
+                marca_temporal = EXCLUDED.marca_temporal,
+                puede_hoy      = EXCLUDED.puede_hoy,
+                is_single_date = EXCLUDED.is_single_date
             WHERE gold.solicitudes.estado IN ('pendiente', 'scorado')
             """,
             (
@@ -351,6 +358,8 @@ def persist_pending_score(conn, candidate: CandidateScore) -> None:
                 candidate.open_mic_id,
                 float(candidate.score_final),
                 candidate.marca_temporal,
+                candidate.puede_hoy,
+                candidate.is_single_date,
             ),
         )
         cursor.execute(
@@ -413,9 +422,9 @@ def build_ranking(
                 LOGGER.info("Descartado por restricción: %s", request.instagram)
                 continue
 
-            penalty     = has_recent_acceptance_penalty(conn, comico_id, config.open_mic_id, config)
-            single_date = has_single_date(request.fechas_disponibles)
-            score       = config.compute_score(categoria_gold, penalty, single_date)
+            penalty        = has_recent_acceptance_penalty(conn, comico_id, config.open_mic_id, config)
+            single_date    = has_single_date(request.fechas_disponibles)
+            score          = config.compute_score(categoria_gold, penalty, is_single_date=single_date)
 
             if score is None:
                 # compute_score devuelve None si la categoría es restringida
@@ -424,6 +433,7 @@ def build_ranking(
 
             score += config.apply_custom_rules(request.metadata)
 
+            backup_val = str(request.metadata.get('backup', '')).strip().lower()
             scored.append(
                 CandidateScore(
                     nombre=request.nombre,
@@ -437,7 +447,8 @@ def build_ranking(
                     marca_temporal=request.marca_temporal,
                     fecha_evento=parse_primary_date(request.fechas_disponibles),
                     penalizado_por_recencia=penalty,
-                    bono_bala_unica=single_date,
+                    puede_hoy=backup_val in ('sí', 'si', 'yes', 'true', '1'),
+                    is_single_date=single_date,
                     solicitud_id=request.solicitud_id,
                 )
             )
@@ -515,7 +526,7 @@ def execute_scoring(open_mic_id: str) -> dict[str, Any]:
                 "categoria":       c.categoria,
                 "score_final":     c.score_final,
                 "penalizado":      c.penalizado_por_recencia,
-                "bono_bala_unica": c.bono_bala_unica,
+                "is_single_date":  c.is_single_date,
                 "marca_temporal":  c.marca_temporal.isoformat() if c.marca_temporal else None,
             }
             for c in ranking[:top_n]

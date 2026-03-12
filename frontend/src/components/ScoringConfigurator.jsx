@@ -22,9 +22,8 @@ const DEFAULTS = {
     last_n_editions:  2,
     penalty_points:   20,
   },
-  single_date_boost: {
-    enabled:      true,
-    boost_points: 10,
+  single_date_priority: {
+    enabled: true,
   },
   gender_parity: {
     enabled:              false,
@@ -52,9 +51,9 @@ function mergeWithDefaults(raw) {
     ...DEFAULTS,
     ...raw,
     categories: { ...DEFAULTS.categories, ...(raw?.categories ?? {}) },
-    recency_penalty:   { ...DEFAULTS.recency_penalty,   ...(raw?.recency_penalty   ?? {}) },
-    single_date_boost: { ...DEFAULTS.single_date_boost, ...(raw?.single_date_boost ?? {}) },
-    gender_parity:     { ...DEFAULTS.gender_parity,     ...(raw?.gender_parity     ?? {}) },
+    recency_penalty:      { ...DEFAULTS.recency_penalty,      ...(raw?.recency_penalty      ?? {}) },
+    single_date_priority: { ...DEFAULTS.single_date_priority, ...(raw?.single_date_priority ?? {}) },
+    gender_parity:        { ...DEFAULTS.gender_parity,        ...(raw?.gender_parity        ?? {}) },
     poster:            { ...DEFAULTS.poster,            ...(raw?.poster            ?? {}) },
   };
 }
@@ -77,10 +76,6 @@ function validate(config) {
   }
   if (!Number.isInteger(rp.penalty_points) || rp.penalty_points < 1 || rp.penalty_points > 100) {
     errors['recency_penalty.penalty_points'] = 'Debe ser un entero entre 1 y 100';
-  }
-  const sb = config.single_date_boost;
-  if (!Number.isInteger(sb.boost_points) || sb.boost_points < 1 || sb.boost_points > 50) {
-    errors['single_date_boost.boost_points'] = 'Debe ser un entero entre 1 y 50';
   }
   const gp = config.gender_parity;
   if (!Number.isInteger(gp.target_female_nb_pct) || gp.target_female_nb_pct < 0 || gp.target_female_nb_pct > 100) {
@@ -542,32 +537,22 @@ export function ScoringConfigurator({ openMicId, openMicName, onSaved }) {
         </div>
       </SectionCard>}
 
-      {/* ── 4. Bono bala única (solo básico) ─────────────────────── */}
-      {isBasic && <SectionCard title="Bono por disponibilidad única">
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-3">
-            <Toggle
-              checked={config.single_date_boost.enabled}
-              onChange={(v) => update(['single_date_boost', 'enabled'], v)}
-            />
-            <span className="text-sm text-[#1a1a1a]">
-              Bonificar cómicos disponibles solo para una fecha
-            </span>
-          </div>
-
-          <div className={`flex items-center gap-3 pl-2 ${!config.single_date_boost.enabled ? 'opacity-50' : ''}`}>
-            <label className="w-44 text-xs text-[#6B5C4A]">Puntos de bono</label>
-            <NumberInput
-              value={config.single_date_boost.boost_points}
-              min={1}
-              max={50}
-              disabled={!config.single_date_boost.enabled}
-              error={!!fieldErrors['single_date_boost.boost_points']}
-              onChange={(v) => update(['single_date_boost', 'boost_points'], v)}
-            />
-          </div>
-          <FieldError errors={fieldErrors} field="single_date_boost.boost_points" />
+      {/* ── 4. Prioridad fecha única (solo básico) ───────────────── */}
+      {isBasic && <SectionCard title="Prioridad fecha única">
+        <div className="flex items-center gap-3">
+          <Toggle
+            checked={config.single_date_priority?.enabled ?? true}
+            onChange={(v) => update(['single_date_priority', 'enabled'], v)}
+          />
+          <span className="text-sm text-[#1a1a1a]">
+            Si un cómico solo puede ese día, darle prioridad interna en el scoring
+          </span>
         </div>
+        <p className="mt-2 text-xs text-[#6B5C4A]">
+          Cuando está activo, los cómicos con una sola fecha disponible reciben un bono
+          interno de +40 pts al hacer el scoring — suficiente para competir con categorías
+          superiores. En la edición del lineup aparece el badge "Solo puede hoy".
+        </p>
       </SectionCard>}
 
       {/* ── 5. Paridad de género ─────────────────────────────────── */}

@@ -384,6 +384,12 @@ h1, h2, h3 {
 .animate-stamp-in { animation: stamp-in  0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 .animate-spark    { animation: spark-pulse 1.8s ease-in-out infinite; }
 
+@keyframes last-minute-pulse {
+  0%, 100% { box-shadow: 0 0 8px 2px rgba(234,179,8,0.5), 0 0 18px 5px rgba(196,144,90,0.3); }
+  50%       { box-shadow: 0 0 14px 5px rgba(234,179,8,0.75), 0 0 28px 10px rgba(196,144,90,0.5); }
+}
+.last-minute-glow { animation: last-minute-pulse 2s ease-in-out infinite; }
+
 .stagger-1 { animation-delay: 0.04s; }
 .stagger-2 { animation-delay: 0.09s; }
 .stagger-3 { animation-delay: 0.14s; }

@@ -1,3 +1,62 @@
+## [0.19.1] - 2026-03-12
+
+### Added — Sprint 14: Prioridad fecha única "Solo puede hoy"
+
+- **`scoring_engine.py`** — `has_single_date(fechas_disponibles)`: devuelve `True` si el cómico tiene exactamente una fecha disponible; `CandidateScore.is_single_date` campo persistido en `gold.solicitudes`; `build_ranking` computa y pasa `is_single_date` a `compute_score`; `persist_pending_score` incluye `is_single_date` en el INSERT/UPDATE SQL
+- **`scoring_config.py`** — `_SINGLE_DATE_BONUS = 40` constante interna (no configurable); `single_date_priority_enabled: bool` toggle en `ScoringConfig`; `compute_score(is_single_date=False)` aplica el bono cuando el toggle está activo
+- **`ScoringConfigurator.jsx`** — nueva sección "Prioridad fecha única" (toggle, solo en scoring básico) con descripción del efecto (+40 pts internos + badge)
+- **`App.jsx`** — `is_single_date` añadido al select de `lineup_candidates`; `singleDateMode` calculado desde `openMicConfig.single_date_priority`; ambos pasados a `ExpandedView`
+- **`ExpandedView.jsx`** — prop `singleDateMode`; pasa `singleDateMode` e `isSingleDate` a `ComicCard`
+- **`ComicCard.jsx`** — badge rojo "Solo puede hoy" (Bangers, `#DC2626`) cuando `singleDateMode && isSingleDate`
+- **Migración SQL** — `specs/sql/migrations/20260312_add_is_single_date_to_gold.sql`: columna `is_single_date boolean NOT NULL DEFAULT false` en `gold.solicitudes`; vista `gold.lineup_candidates` recreada con la nueva columna
+
+### Tests
+
+- **`test_scoring_engine.py`** — `test_has_single_date_detects_single_or_multiple_tokens`, `test_persist_pending_score_includes_is_single_date`, `test_build_ranking_sets_is_single_date_true_for_single_date`, `test_build_ranking_sets_is_single_date_false_for_multiple_dates`
+- **`test_scoring_config.py`** — `test_from_dict_parses_single_date_priority`, `test_compute_score_applies_single_date_priority`, `test_compute_score_single_date_disabled_has_no_effect`
+- **`ComicCard.test.jsx`** — 3 tests para badge "Solo puede hoy" (`singleDateMode`/`isSingleDate`)
+- **Fix** `test_scoring_engine_custom.py` — helpers `_custom_config`/`_basic_config` deshabilitan `single_date_priority` para aislar tests de scoring custom
+- **Total acumulado**: 339 backend + 40 frontend = 379 tests verdes
+
+---
+
+## [0.19.0] - 2026-03-12
+
+### Added — Sprint 14: Flag "Puede Hoy" — Last-Minute Availability
+
+- **`scoring_config.py`** — `apply_custom_rules` ignora cualquier regla con `field == "backup"` (el campo canónico ya no puntúa)
+- **`custom_scoring_proposer.py`** — filtra `backup` de `unmapped_fields` antes de enviar a Gemini; si solo hay `backup` en la lista, no llama a Gemini
+- **`scoring_engine.py`** — `CandidateScore.puede_hoy: bool`; derivado de `metadata['backup']` (truthy: `sí/si/yes/true/1`, case-insensitive); persistido en `gold.solicitudes.puede_hoy`
+- **`App.jsx`** — fetch de `openMicConfig`; `isLastMinuteMode` useMemo: activo si `scoring_type==='basic'` ∨ (custom + `backup` en `field_mapping`) y `0 ≤ días_hasta_evento ≤ 1`; `puede_hoy` en select query
+- **`ExpandedView.jsx`** — prop `isLastMinuteMode`; pasa `lastMinuteMode` e `isLastMinute` a `ComicCard` (solo si cómico no está seleccionado)
+- **`ComicCard.jsx`** — badge ámbar "Puede hoy" (Bangers, `#EAB308`) + clase `last-minute-glow` cuando `lastMinuteMode && isLastMinute`
+- **`index.css`** — `@keyframes last-minute-pulse` + `.last-minute-glow` (glow ámbar pulsante)
+- **Migración SQL** — `specs/sql/migrations/20260312_add_puede_hoy_to_gold.sql`; backfill desde `silver.solicitudes.metadata->>'backup'`
+- **Spec SDD** — `specs/last_minute_flag_spec.md`
+
+### Tests
+
+- **`test_scoring_config_custom.py`** — `test_apply_custom_rules_ignores_backup_field`, `test_apply_custom_rules_ignores_backup_but_applies_other_rules`
+- **`test_custom_scoring_proposer.py`** — `test_propose_filters_out_backup_field`, `test_propose_only_backup_returns_empty_without_calling_gemini`
+- **`test_scoring_engine.py`** — 8 variantes truthy de `backup` (`puede_hoy=True`), `puede_hoy=False` (No/ausente), persist SQL incluye `puede_hoy`
+- **`ComicCard.test.jsx`** — 7 tests: badge visible/ausente + clase `last-minute-glow` según condiciones
+
+---
+
+## [0.18.5] - 2026-03-12
+
+### Changed — UI polish: fondo rojo show + BgIcons globales + chalk underline + fixes
+
+- **`index.css`** — `--c-bg: #8C2020` fondo rojo show mate; `--c-bg-grad` gradiente ámbar/rojo oscuro fixed; `.paint-bg` SIN `background-color` para que BgIcons sean visibles a través de la capa de textura
+- **`BgIcons.jsx`** (nuevo) — 14 iconos SVG semitransparentes `position:fixed, z-index:0`; micro, estrella×4, cerveza, libreta×2, foco×2, nota musical×3; renderizado global en `main.jsx` antes de cada vista
+- **`main.jsx`** — `<BgIcons />` inserado antes de `<Login />`, `<OpenMicSelector />`, `<OpenMicDetail />` y `<App />`
+- **`Header.jsx`** — chalk underline SVG blanco bajo la fecha del lineup: 3 capas (dust blur, trazo 4.5px, hilo luz 1.5px)
+- **`ExpandedView.jsx`** — cabecera `bg-[#3D5A3E]` verde bosque mate + `text-[#FEFDF8]` letras blancas; X-button `bg-[#3D5F6C]`
+- **`ComicCard.jsx`** — info contacto (instagram, teléfono, estado) en fila separada full-width centrada; fuentes `text-base font-bold` / `text-sm uppercase tracking-widest`
+- **`OpenMicSelector.jsx`** — fix: iconos de fondo `bg-[#EDE8DC]` con opacidad 80% (antes heredaban el rojo del body)
+
+---
+
 ## [0.18.4] - 2026-03-12
 
 ### Fixed — GoogleFormBuilder lazy init

@@ -29,11 +29,32 @@ function App({ session, openMicId, onBack }) {
     () => !!localStorage.getItem(`validated_${openMicId}`),
   );
   const [showCambiarConfirm, setShowCambiarConfirm] = useState(false);
+  const [openMicConfig, setOpenMicConfig] = useState(null);
 
   const activeCandidate = useMemo(
     () => candidates.find((candidate) => candidate.row_key === activeId),
     [candidates, activeId],
   );
+
+  const isLastMinuteMode = useMemo(() => {
+    if (!eventDate || !openMicConfig) return false;
+    const scoringType = openMicConfig.scoring_type ?? 'basic';
+    const hasBackupField =
+      scoringType === 'basic' ||
+      (scoringType === 'custom' &&
+        Object.values(openMicConfig.field_mapping ?? {}).includes('backup'));
+    if (!hasBackupField) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const event = new Date(eventDate + 'T00:00:00');
+    const diffDays = Math.round((event - today) / (1000 * 60 * 60 * 24));
+    return diffDays === 0 || diffDays === 1;
+  }, [eventDate, openMicConfig]);
+
+  const singleDateMode = useMemo(() => {
+    if (!openMicConfig) return false;
+    return openMicConfig.single_date_priority?.enabled !== false;
+  }, [openMicConfig]);
 
   const fetchCandidates = async () => {
     setLoading(true);
@@ -45,7 +66,7 @@ function App({ session, openMicId, onBack }) {
 
     const { data: dataV2, error: errorV2 } = await supabase
       .from('lineup_candidates')
-      .select('solicitud_id,fecha_evento,nombre,genero,categoria,estado,score_final,comico_id,contacto,telefono,instagram')
+      .select('solicitud_id,fecha_evento,nombre,genero,categoria,estado,score_final,comico_id,contacto,telefono,instagram,puede_hoy,is_single_date')
       .eq('open_mic_id', openMicId)
       .order('score_final', { ascending: false, nullsFirst: false });
 
@@ -133,6 +154,8 @@ function App({ session, openMicId, onBack }) {
 
   useEffect(() => {
     fetchCandidates();
+    supabase.schema('silver').from('open_mics').select('config').eq('id', openMicId).single()
+      .then(({ data }) => { if (data?.config) setOpenMicConfig(data.config); });
   }, []);
 
 
@@ -493,6 +516,8 @@ function App({ session, openMicId, onBack }) {
           onUpdateGenero={handleGeneroUpdate}
           getDraft={getDraft}
           hasPendingEdit={hasPendingEdit}
+          isLastMinuteMode={isLastMinuteMode}
+          singleDateMode={singleDateMode}
         />
       )}
     </main>

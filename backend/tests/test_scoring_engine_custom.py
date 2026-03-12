@@ -81,7 +81,7 @@ def _custom_config(rules: list[dict]) -> ScoringConfig:
     return ScoringConfig.from_dict(OM_ID, {
         "scoring_type": "custom",
         "custom_scoring_rules": rules,
-        "single_date_boost": {"enabled": False, "boost_points": 0},
+        "single_date_priority": {"enabled": False},
     })
 
 
@@ -89,7 +89,7 @@ def _basic_config(rules: list[dict] | None = None) -> ScoringConfig:
     return ScoringConfig.from_dict(OM_ID, {
         "scoring_type": "basic",
         "custom_scoring_rules": rules or [],
-        "single_date_boost": {"enabled": False, "boost_points": 0},
+        "single_date_priority": {"enabled": False},
     })
 
 
