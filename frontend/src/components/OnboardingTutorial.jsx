@@ -125,10 +125,18 @@ export function OnboardingTutorial() {
   const [run, setRun] = useState(false);
 
   useEffect(() => {
-    if (localStorage.getItem(STORAGE_KEY) !== 'true') {
-      const timer = setTimeout(() => setRun(true), 800);
-      return () => clearTimeout(timer);
-    }
+    if (localStorage.getItem(STORAGE_KEY) === 'true') return;
+    // Poll until the first target element is in the DOM (selector page rendered)
+    const poll = setInterval(() => {
+      if (document.querySelector('[data-tutorial="open-mic-selector"]')) {
+        clearInterval(poll);
+        clearTimeout(maxWait);
+        setRun(true);
+      }
+    }, 150);
+    // Safety cap: start anyway after 8s even if target never appears
+    const maxWait = setTimeout(() => { clearInterval(poll); setRun(true); }, 8000);
+    return () => { clearInterval(poll); clearTimeout(maxWait); };
   }, []);
 
   function handleCallback({ status }) {

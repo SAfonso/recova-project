@@ -26,34 +26,42 @@ import { OnboardingTutorial } from '../components/OnboardingTutorial';
 
 const STORAGE_KEY = 'recova_tutorial_done';
 
+// Element that simulates the selector being in the DOM
+let targetEl;
+
 beforeEach(() => {
   localStorage.clear();
   capturedCallback = null;
   capturedRun = false;
   vi.useFakeTimers();
+  // Insert the target element so the poll finds it immediately
+  targetEl = document.createElement('div');
+  targetEl.setAttribute('data-tutorial', 'open-mic-selector');
+  document.body.appendChild(targetEl);
 });
 
 afterEach(() => {
   vi.useRealTimers();
+  targetEl?.remove();
 });
 
 describe('OnboardingTutorial', () => {
   it('no activa el tutorial si recova_tutorial_done=true', async () => {
     localStorage.setItem(STORAGE_KEY, 'true');
     render(<OnboardingTutorial />);
-    await act(async () => { vi.advanceTimersByTime(1000); });
+    await act(async () => { vi.advanceTimersByTime(500); });
     expect(capturedRun).toBe(false);
   });
 
-  it('activa el tutorial si la key no existe', async () => {
+  it('activa el tutorial cuando el target aparece en el DOM', async () => {
     render(<OnboardingTutorial />);
-    await act(async () => { vi.advanceTimersByTime(1000); });
+    await act(async () => { vi.advanceTimersByTime(200); });
     expect(capturedRun).toBe(true);
   });
 
   it('setea localStorage al recibir status=finished', async () => {
     render(<OnboardingTutorial />);
-    await act(async () => { vi.advanceTimersByTime(1000); });
+    await act(async () => { vi.advanceTimersByTime(200); });
     expect(capturedCallback).not.toBeNull();
     act(() => { capturedCallback({ status: 'finished' }); });
     expect(localStorage.getItem(STORAGE_KEY)).toBe('true');
@@ -61,7 +69,7 @@ describe('OnboardingTutorial', () => {
 
   it('setea localStorage al recibir status=skipped', async () => {
     render(<OnboardingTutorial />);
-    await act(async () => { vi.advanceTimersByTime(1000); });
+    await act(async () => { vi.advanceTimersByTime(200); });
     expect(capturedCallback).not.toBeNull();
     act(() => { capturedCallback({ status: 'skipped' }); });
     expect(localStorage.getItem(STORAGE_KEY)).toBe('true');
