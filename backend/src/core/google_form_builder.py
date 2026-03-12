@@ -187,37 +187,46 @@ class GoogleFormBuilder:
     """Crea Google Forms con campos estándar usando una service account."""
 
     def __init__(self) -> None:
-        client_id     = os.environ.get("GOOGLE_OAUTH_CLIENT_ID", "")
-        client_secret = os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET", "")
-        refresh_token = os.environ.get("GOOGLE_OAUTH_REFRESH_TOKEN", "")
+        self._client_id     = os.environ.get("GOOGLE_OAUTH_CLIENT_ID", "")
+        self._client_secret = os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET", "")
+        self._refresh_token = os.environ.get("GOOGLE_OAUTH_REFRESH_TOKEN", "")
+        self._backend_url = (
+            os.environ.get("BACKEND_URL", "https://api.machango.org").rstrip("/")
+            + "/api/form-submission"
+        )
+        # Servicios inicializados de forma lazy en _ensure_services()
+        self._creds  = None
+        self._forms  = None
+        self._sheets = None
+        self._drive  = None
+        self._script = None
 
-        if not all([client_id, client_secret, refresh_token]):
+    def _ensure_services(self) -> None:
+        """Inicializa credenciales y clientes de Google API la primera vez que se necesitan."""
+        if self._forms is not None:
+            return
+
+        if not all([self._client_id, self._client_secret, self._refresh_token]):
             raise ValueError(
                 "Faltan variables de entorno: GOOGLE_OAUTH_CLIENT_ID, "
                 "GOOGLE_OAUTH_CLIENT_SECRET, GOOGLE_OAUTH_REFRESH_TOKEN"
             )
 
-        self._backend_url = (
-            os.environ.get("BACKEND_URL", "https://api.machango.org").rstrip("/")
-            + "/api/form-submission"
-        )
-
         creds = Credentials(
             token=None,
-            refresh_token=refresh_token,
+            refresh_token=self._refresh_token,
             token_uri="https://oauth2.googleapis.com/token",
-            client_id=client_id,
-            client_secret=client_secret,
+            client_id=self._client_id,
+            client_secret=self._client_secret,
             scopes=SCOPES,
         )
         creds.refresh(Request())
-        self._creds = creds
-
+        self._creds  = creds
         self._forms  = build("forms",  "v1", credentials=creds, cache_discovery=False)
         self._sheets = build("sheets", "v4", credentials=creds, cache_discovery=False)
         self._drive  = build("drive",  "v3", credentials=creds, cache_discovery=False)
         # Apps Script requiere scope 'script.projects' en el refresh token.
-        # Si no está autorizado, se inicializa a None y deploy_submit_webhook es no-op.
+        # Si no está autorizado, se deja a None y deploy_submit_webhook es no-op.
         try:
             self._script = build("script", "v1", credentials=creds, cache_discovery=False)
         except Exception:
@@ -238,6 +247,7 @@ class GoogleFormBuilder:
         4. Inyecta columna open_mic_id con ARRAYFORMULA en la Sheet.
         5. Devuelve FormCreationResult con URLs, IDs y bg_color.
         """
+        self._ensure_services()
         info = info or {}
         bg_color = self._random_form_color()
         form_id = self._create_form(nombre, info, bg_color)
@@ -496,6 +506,7 @@ class GoogleFormBuilder:
 
         Returns: script_id del proyecto creado.
         """
+        self._ensure_services()
         if self._script is None:
             raise RuntimeError(
                 "Apps Script no disponible. Regenera el refresh token con scope "

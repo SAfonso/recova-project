@@ -1,6 +1,6 @@
 # AI LineUp Architect
 
-**Versión:** `0.18.3` · **Estado:** Desarrollo activo · **Metodología:** SDD + TDD
+**Versión:** `0.18.4` · **Estado:** Desarrollo activo · **Metodología:** SDD + TDD
 
 SaaS multi-tenant para gestión de open mics de comedia. Automatiza la recogida de solicitudes (Google Forms), el scoring con IA y la notificación del lineup por Telegram.
 
@@ -81,7 +81,7 @@ Variables de entorno: [`docs/setup.md`](docs/setup.md)
 
 ```bash
 source backend/venv/bin/activate
-PYTHONPATH=. pytest backend/tests/        # 321 tests backend
+PYTHONPATH=. pytest backend/tests/        # 321 tests backend (+ 32 google_form_builder ahora verdes)
 cd frontend && npm test                   # 30 tests frontend
 ```
 

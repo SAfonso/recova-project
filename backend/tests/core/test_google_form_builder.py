@@ -17,10 +17,36 @@ from __future__ import annotations
 
 import datetime as dt
 import os
+import sys
 import unittest.mock as mock
 from unittest.mock import MagicMock, call, patch
 
 import pytest
+
+# ---------------------------------------------------------------------------
+# Stub google libs para que el módulo sea importable sin instalar las deps
+# ---------------------------------------------------------------------------
+_mock_google            = MagicMock()
+_mock_oauth2            = MagicMock()
+_mock_credentials       = MagicMock()
+_mock_transport         = MagicMock()
+_mock_requests          = MagicMock()
+_mock_discovery         = MagicMock()
+
+sys.modules.setdefault("google",                              _mock_google)
+sys.modules.setdefault("google.oauth2",                       _mock_oauth2)
+sys.modules.setdefault("google.oauth2.credentials",           _mock_credentials)
+sys.modules.setdefault("google.auth",                         MagicMock())
+sys.modules.setdefault("google.auth.transport",               _mock_transport)
+sys.modules.setdefault("google.auth.transport.requests",      _mock_requests)
+sys.modules.setdefault("googleapiclient",                     MagicMock())
+sys.modules.setdefault("googleapiclient.discovery",           _mock_discovery)
+
+_mock_google.oauth2 = _mock_oauth2
+_mock_oauth2.credentials = _mock_credentials
+_mock_google.auth = MagicMock()
+_mock_google.auth.transport = _mock_transport
+_mock_transport.requests = _mock_requests
 
 # ---------------------------------------------------------------------------
 # Helpers para construir el builder con todas las APIs mockeadas
@@ -78,14 +104,16 @@ class TestInit:
         from backend.src.core.google_form_builder import GoogleFormBuilder
         with patch.dict(os.environ, {}, clear=True), \
              pytest.raises(ValueError, match="GOOGLE_OAUTH_CLIENT_ID"):
-            GoogleFormBuilder()
+            builder = GoogleFormBuilder()
+            builder._ensure_services()
 
     def test_raises_if_partial_env_vars(self):
         from backend.src.core.google_form_builder import GoogleFormBuilder
         partial = {"GOOGLE_OAUTH_CLIENT_ID": "x", "GOOGLE_OAUTH_CLIENT_SECRET": "y"}
         with patch.dict(os.environ, partial, clear=True), \
              pytest.raises(ValueError):
-            GoogleFormBuilder()
+            builder = GoogleFormBuilder()
+            builder._ensure_services()
 
     def test_builds_three_api_clients(self):
         with patch.dict(os.environ, FAKE_ENV), \
@@ -95,7 +123,8 @@ class TestInit:
 
             mock_build.return_value = MagicMock()
             from backend.src.core.google_form_builder import GoogleFormBuilder
-            GoogleFormBuilder()
+            builder = GoogleFormBuilder()
+            builder._ensure_services()
 
         services = [c.args[0] for c in mock_build.call_args_list]
         assert set(services) == {"forms", "sheets", "drive", "script"}

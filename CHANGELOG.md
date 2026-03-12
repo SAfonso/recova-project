@@ -1,3 +1,16 @@
+## [0.18.4] - 2026-03-12
+
+### Fixed — GoogleFormBuilder lazy init
+
+- **`google_form_builder.py`** — `__init__` ya no hace llamadas de red al arrancar; nuevo método `_ensure_services()` inicializa credenciales OAuth2 y clientes de Google API (Forms, Sheets, Drive, Script) de forma lazy la primera vez que se necesitan. Evita crash en PM2 si las variables de entorno de Google no están configuradas o el token es inválido al inicio del proceso.
+- **`test_google_form_builder.py`** — stubs de `sys.modules` para `google.*` y `googleapiclient` al inicio del archivo (mismo patrón que otros tests con Gemini); tests `TestInit` actualizados para llamar `_ensure_services()` en lugar de esperar el error en el constructor.
+
+### Tests
+- **32 tests** `backend/tests/core/test_google_form_builder.py` — todos verdes (antes fallaban por falta de `google-auth` en venv de tests)
+- **Total acumulado**: 321 backend + 30 frontend = 351 tests verdes
+
+---
+
 ## [0.18.3] - 2026-03-12
 
 ### Changed — Render póster desactivado temporalmente
