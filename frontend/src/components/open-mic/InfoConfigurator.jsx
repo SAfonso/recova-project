@@ -214,6 +214,11 @@ export function InfoConfigurator({ openMicId, openMic, onSaved }) {
           aria-label="Fecha de inicio"
           className={INPUT}
         />
+        {form.fecha_inicio && (
+          <span className="text-xs text-[#6B5C4A]">
+            {form.fecha_inicio.split('-').reverse().join('/')}
+          </span>
+        )}
       </Field>
 
       {/* Día y Hora */}

@@ -17,7 +17,6 @@ from pathlib import Path as _Path
 import jwt
 
 from flask import Flask, jsonify, request, send_file
-from flask_cors import CORS
 from supabase import create_client
 
 from backend.src.core.poster_composer import PosterComposer
@@ -30,7 +29,23 @@ from backend.src.core.custom_scoring_proposer import CustomScoringProposer
 from backend.src.scoring_engine import execute_scoring
 
 app = Flask(__name__)
-CORS(app)
+
+_CORS_HEADERS = {
+    "Access-Control-Allow-Origin":  "*",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-API-KEY, Accept",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+}
+
+@app.before_request
+def _handle_options():
+    if request.method == "OPTIONS":
+        return "", 204, _CORS_HEADERS
+
+@app.after_request
+def _add_cors(response):
+    for k, v in _CORS_HEADERS.items():
+        response.headers[k] = v
+    return response
 
 from pathlib import Path
 _ROOT_ENV = Path(__file__).resolve().parents[3] / ".env"

@@ -1,3 +1,40 @@
+## [0.21.0] - 2026-03-13
+
+### Added — Tutorial onboarding + fixes CORS y scripts
+
+- **`OnboardingTutorial.jsx`** — tutorial interactivo React Joyride (10 pasos): selector de open mics, crear open mic, pestañas Info/Scoring, lineup, tarjeta cómico, badges "Puede hoy"/"Solo puede hoy", validar lineup, bot Telegram
+- **`DevToolsPanel.jsx`** — botón "Resetear tutorial" que elimina la clave `recova_tutorial_done` de localStorage
+- **Tutorial multi-página** — modo controlado con `stepIndex` + polling cada 300ms sobre el selector CSS del step actual; pausa con badge `📍` cuando el target no está en el DOM, reanuda automáticamente al detectar el elemento
+- **`OpenMicSelector.jsx`** — `[data-tutorial="create-open-mic"]` movido a un `<div>` wrapper siempre presente (el botón solo existe cuando `canCreate=true`, causaba `TARGET_NOT_FOUND` al pulsar "Siguiente")
+- **`InfoConfigurator.jsx`** — muestra la fecha de inicio en formato `dd/mm/yyyy` como texto auxiliar bajo el campo de fecha
+
+### Fixed
+
+- **CORS** — elimina `CORS(app, ...)` de flask-cors 6.x (dejó de añadir headers por defecto); reemplazado por `@app.before_request` (OPTIONS → 204) y `@app.after_request` (headers en todas las respuestas)
+- **Scripts locales** — `seed_full.py`, `seed_conditional.py`, `reset_data.py` y sus tests añadidos al `.gitignore`; seeds usan el sábado más próximo; `reset_data.py` borra `telegram_users` y `telegram_registration_codes` por defecto
+- **CI** — `DummyFlask` en `test_webhook_listener.py` añade `before_request`/`after_request` como decoradores no-op; mockeados módulos faltantes en `load_webhook_module`
+
+### Tests
+
+- **`OnboardingTutorial.test.jsx`** — 4 tests: no activa si `recova_tutorial_done=true`, activa cuando target aparece en DOM, setea localStorage en `finished`/`skipped`
+- **Total acumulado**: 339 backend + 44 frontend = 383 tests verdes
+
+---
+
+## [0.20.0] - 2026-03-12
+
+### Added — Sprint 15: Onboarding Tutorial + Security Hardening
+
+- **`specs/onboarding_tutorial_spec.md`** — SDD: tutorial paso a paso para hosts nuevos (React Joyride, 10 steps, solo una vez vía localStorage)
+- **Security** — Migraciones SQL para corregir todos los warnings del Supabase Security Advisor:
+  - `gold.lineup_candidates`, `gold.v_lineup_host`, `silver.v_lineup_candidatos`, `silver.v_ultimas_ediciones` → `WITH (security_invoker = on)` (respetan RLS del usuario llamante)
+  - `public.set_updated_at` → `SET search_path = ''`
+  - `public.confirm_lineup` → `SET search_path = silver, public`
+- **Server hardening** — iptables: bloqueo externo de `:5000` (Flask) y `:5050` (renderer); solo accesibles desde redes Docker (`10.0.0.0/8`) y loopback; reglas persistidas con `iptables-persistent`
+- **Server updates** — Docker CE 29.3.0, containerd.io 2.2.2, docker-compose-plugin 5.1.0, cloud-init 25.3, kernel 6.8.0-101
+
+---
+
 ## [0.19.1] - 2026-03-12
 
 ### Added — Sprint 14: Prioridad fecha única "Solo puede hoy"

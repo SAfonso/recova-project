@@ -129,6 +129,23 @@ export function DevToolsPanel({ openMicId, openMic, onSeedDone }) {
 
       <hr className="border-[#C8B89A]" />
 
+      {/* Tutorial */}
+      <div className="space-y-2">
+        <h3 className="text-sm font-bold text-[#1a1a1a]">Tutorial onboarding</h3>
+        <p className="text-xs text-[#6B5C4A]">
+          Resetea el tutorial para que vuelva a aparecer al recargar.
+        </p>
+        <DevButton
+          label="Resetear tutorial"
+          onClick={() => {
+            localStorage.removeItem('recova_tutorial_done');
+            showToast('✓ Tutorial reseteado — recarga la página');
+          }}
+        />
+      </div>
+
+      <hr className="border-[#C8B89A]" />
+
       {/* Scoring */}
       <div className="space-y-2">
         <h3 className="text-sm font-bold text-[#1a1a1a]">Forzar scoring</h3>

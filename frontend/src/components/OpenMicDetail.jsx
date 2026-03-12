@@ -258,6 +258,7 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
                   key={tab.id}
                   type="button"
                   onClick={() => setConfigTab(tab.id)}
+                  data-tutorial={tab.id === 'info' ? 'open-mic-detail-info' : tab.id === 'scoring' ? 'open-mic-detail-scoring' : undefined}
                   className={`paper-note relative z-10 cursor-pointer rounded-none border-[3px] border-[#0D0D0D] px-5 py-1.5 text-sm font-bold tracking-wide transition-all duration-150
                     ${configTab === tab.id
                       ? 'border-b-0 text-[#0D0D0D]'

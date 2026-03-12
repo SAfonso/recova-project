@@ -159,7 +159,7 @@ export function OpenMicSelector({ session, onSelect }) {
         {/* Card rugosa + botón Telegram en esquina superior derecha */}
         <div className="relative">
         <div className="animate-pop-in -rotate-[1deg] paper-drop">
-          <div className="scrapbook-panel pin-corner paper-rough paper-note p-6">
+          <div data-tutorial="open-mic-selector" className="scrapbook-panel pin-corner paper-rough paper-note p-6">
             <h2 className="mb-4 font-['Bangers'] text-2xl tracking-wide text-[#1a1a1a] md:text-3xl">Tus Open Mics</h2>
 
             {error && (
@@ -190,6 +190,7 @@ export function OpenMicSelector({ session, onSelect }) {
               <p className="mb-4 text-sm text-[#6B5C4A]">No tienes acceso a ningún open mic todavía.</p>
             )}
 
+            <div data-tutorial="create-open-mic">
             {showCreateForm ? (
               <div className="flex flex-col gap-3 border-t-2 border-dashed border-[#C8B89A] pt-4">
                 <label className="text-sm font-bold text-[#1a1a1a]">Nombre del nuevo Open Mic</label>
@@ -255,6 +256,7 @@ export function OpenMicSelector({ session, onSelect }) {
                 <PlusIcon />Nuevo Open Mic
               </button>
             ) : null}
+            </div>
           </div>
         </div>
 
@@ -275,6 +277,7 @@ export function OpenMicSelector({ session, onSelect }) {
           <button
             type="button"
             onClick={handleTelegramClick}
+            data-tutorial="telegram-button"
             className={`flex cursor-pointer items-center justify-center rounded-full bg-[#229ED9] text-white transition-all duration-300 hover:scale-110 ${
               tgSeen
                 ? 'h-10 w-10 opacity-50 shadow-none hover:opacity-90'
