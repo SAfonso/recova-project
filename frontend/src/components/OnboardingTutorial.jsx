@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import Joyride from 'react-joyride';
+import { useEffect, useRef, useState } from 'react';
+import Joyride, { EVENTS, ACTIONS, STATUS } from 'react-joyride';
 
 const STORAGE_KEY = 'recova_tutorial_done';
 
@@ -123,10 +123,12 @@ const STEPS = [
 
 export function OnboardingTutorial() {
   const [run, setRun] = useState(false);
+  const [stepIndex, setStepIndex] = useState(0);
+  const pollRef = useRef(null);
 
+  // Start: poll until the first target appears
   useEffect(() => {
     if (localStorage.getItem(STORAGE_KEY) === 'true') return;
-    // Poll until the first target element is in the DOM (selector page rendered)
     const poll = setInterval(() => {
       if (document.querySelector('[data-tutorial="open-mic-selector"]')) {
         clearInterval(poll);
@@ -134,15 +136,46 @@ export function OnboardingTutorial() {
         setRun(true);
       }
     }, 150);
-    // Safety cap: start anyway after 8s even if target never appears
     const maxWait = setTimeout(() => { clearInterval(poll); setRun(true); }, 8000);
     return () => { clearInterval(poll); clearTimeout(maxWait); };
   }, []);
 
-  function handleCallback({ status }) {
-    if (['finished', 'skipped'].includes(status)) {
+  // When paused (run=false, stepIndex>0): wait for the current step's target to appear
+  useEffect(() => {
+    if (run) return;
+    if (localStorage.getItem(STORAGE_KEY) === 'true') return;
+    if (stepIndex === 0) return;
+
+    const target = STEPS[stepIndex]?.target;
+    if (!target) return;
+
+    clearInterval(pollRef.current);
+    pollRef.current = setInterval(() => {
+      if (document.querySelector(target)) {
+        clearInterval(pollRef.current);
+        setRun(true);
+      }
+    }, 300);
+
+    return () => clearInterval(pollRef.current);
+  }, [run, stepIndex]);
+
+  function handleCallback({ status, type, index, action }) {
+    // Target not found → pause and wait for it
+    if (type === EVENTS.TARGET_NOT_FOUND) {
+      setRun(false);
+      return;
+    }
+    // Advance step index after each step
+    if (type === EVENTS.STEP_AFTER) {
+      setStepIndex(index + (action === ACTIONS.PREV ? -1 : 1));
+      return;
+    }
+    // Tour done
+    if ([STATUS.FINISHED, STATUS.SKIPPED].includes(status)) {
       localStorage.setItem(STORAGE_KEY, 'true');
       setRun(false);
+      setStepIndex(0);
     }
   }
 
@@ -150,6 +183,7 @@ export function OnboardingTutorial() {
     <Joyride
       steps={STEPS}
       run={run}
+      stepIndex={stepIndex}
       continuous
       showSkipButton
       scrollToFirstStep

@@ -41,11 +41,6 @@ def load_webhook_module(monkeypatch, api_key: str = "test-key"):
     fake_flask.send_file = lambda path, **kw: (path, 200)
     monkeypatch.setitem(sys.modules, "flask", fake_flask)
 
-    # Mock flask_cors
-    fake_cors = types.ModuleType("flask_cors")
-    fake_cors.CORS = lambda app, **kwargs: None
-    monkeypatch.setitem(sys.modules, "flask_cors", fake_cors)
-
     # Mock supabase
     fake_supabase = types.ModuleType("supabase")
     fake_supabase.create_client = lambda url, key: None

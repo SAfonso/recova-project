@@ -17,7 +17,6 @@ from pathlib import Path as _Path
 import jwt
 
 from flask import Flask, jsonify, request, send_file
-from flask_cors import CORS
 from supabase import create_client
 
 from backend.src.core.poster_composer import PosterComposer
@@ -30,7 +29,6 @@ from backend.src.core.custom_scoring_proposer import CustomScoringProposer
 from backend.src.scoring_engine import execute_scoring
 
 app = Flask(__name__)
-CORS(app, allow_headers=["Content-Type", "Authorization", "X-API-KEY", "Accept"])
 
 _CORS_HEADERS = {
     "Access-Control-Allow-Origin":  "*",

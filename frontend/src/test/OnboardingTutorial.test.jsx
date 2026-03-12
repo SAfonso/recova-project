@@ -1,11 +1,11 @@
 /**
- * Tests — OnboardingTutorial (v0.21.0)
+ * Tests — OnboardingTutorial (v0.21.1)
  *
- * Cubre (spec onboarding_tutorial_spec §Tests):
- *   - No renderiza Joyride si recova_tutorial_done=true en localStorage
- *   - Renderiza Joyride si la key no existe
- *   - Al llamar callback con 'finished' → setea localStorage
- *   - Al llamar callback con 'skipped' → setea localStorage
+ * Cubre:
+ *   - No activa si recova_tutorial_done=true
+ *   - Activa cuando el target aparece en el DOM
+ *   - STATUS.FINISHED → setea localStorage
+ *   - STATUS.SKIPPED → setea localStorage
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, act } from '@testing-library/react';
@@ -13,12 +13,25 @@ import { render, act } from '@testing-library/react';
 // Mock react-joyride para capturar props y simular callbacks
 let capturedCallback = null;
 let capturedRun = false;
+let capturedStepIndex = 0;
 
 vi.mock('react-joyride', () => ({
-  default: ({ run, callback }) => {
+  default: ({ run, callback, stepIndex }) => {
     capturedRun = run;
     capturedCallback = callback;
+    capturedStepIndex = stepIndex;
     return run ? <div data-testid="joyride-mock" /> : null;
+  },
+  EVENTS: {
+    STEP_AFTER: 'step:after',
+    TARGET_NOT_FOUND: 'error:target_not_found',
+  },
+  ACTIONS: {
+    PREV: 'prev',
+  },
+  STATUS: {
+    FINISHED: 'finished',
+    SKIPPED: 'skipped',
   },
 }));
 
@@ -26,15 +39,14 @@ import { OnboardingTutorial } from '../components/OnboardingTutorial';
 
 const STORAGE_KEY = 'recova_tutorial_done';
 
-// Element that simulates the selector being in the DOM
 let targetEl;
 
 beforeEach(() => {
   localStorage.clear();
   capturedCallback = null;
   capturedRun = false;
+  capturedStepIndex = 0;
   vi.useFakeTimers();
-  // Insert the target element so the poll finds it immediately
   targetEl = document.createElement('div');
   targetEl.setAttribute('data-tutorial', 'open-mic-selector');
   document.body.appendChild(targetEl);
@@ -63,7 +75,7 @@ describe('OnboardingTutorial', () => {
     render(<OnboardingTutorial />);
     await act(async () => { vi.advanceTimersByTime(200); });
     expect(capturedCallback).not.toBeNull();
-    act(() => { capturedCallback({ status: 'finished' }); });
+    act(() => { capturedCallback({ status: 'finished', type: 'tour:end', index: 9, action: 'next' }); });
     expect(localStorage.getItem(STORAGE_KEY)).toBe('true');
   });
 
@@ -71,7 +83,7 @@ describe('OnboardingTutorial', () => {
     render(<OnboardingTutorial />);
     await act(async () => { vi.advanceTimersByTime(200); });
     expect(capturedCallback).not.toBeNull();
-    act(() => { capturedCallback({ status: 'skipped' }); });
+    act(() => { capturedCallback({ status: 'skipped', type: 'tour:end', index: 0, action: 'skip' }); });
     expect(localStorage.getItem(STORAGE_KEY)).toBe('true');
   });
 });
