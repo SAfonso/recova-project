@@ -1,57 +1,316 @@
-@import url('https://fonts.googleapis.com/css2?family=Bangers&family=Patrick+Hand&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bangers&family=Patrick+Hand&family=Space+Grotesk:wght@400;500;700&family=Oswald:wght@700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ══════════════════════════════════════════════════════
+   VARIABLES — Cartoon-Brutalist Táctil
+   Paleta: Terracota, Verde bosque, Azul petróleo, Ocre mostaza
+   Bordes 3px negro · Sombra dura 5px negro puro · Sin gradientes
+   ══════════════════════════════════════════════════════ */
+
 :root {
   color-scheme: light;
+
+  /* ── Fondos ──────────────────────────────────────────
+     bg: rojo show mate — vibe escenario comedia
+     paper: casi blanco cálido — tarjetas visiblemente más claras
+  ─────────────────────────────────────────────────── */
+  --c-bg:          #8C2020;   /* fondo general — rojo show mate */
+  --c-bg-grad:
+    radial-gradient(ellipse 75% 55% at 18% 8%,  rgba(210, 140, 30, 0.30) 0%, transparent 55%),
+    radial-gradient(ellipse 55% 65% at 88% 92%, rgba(35,  0,   0,  0.45) 0%, transparent 52%),
+    radial-gradient(ellipse 90% 80% at 50% 50%, rgba(100, 15,  15, 0.20) 0%, transparent 65%);
+  --c-paper:       #FEFDF8;   /* papel tarjeta — casi blanco, claramente más claro que el fondo */
+  --c-paper-alt:   #F0EDE6;   /* papel secundario */
+
+  /* ── Tinta ── */
+  --c-ink:         #0D0D0D;   /* negro puro texto/bordes */
+  --c-ink-soft:    #1E1A16;
+  --c-muted:       #5A5248;   /* texto secundario */
+
+  /* ── Acentos Cartoon-Brutalist (todos mate/desaturados) ── */
+  --c-petrol:      #2C4A52;   /* azul petróleo mate — primario (spec) */
+  --c-petrol-dark: #1E3840;
+  --c-sage:        #5E7153;   /* verde bosque suave — éxito (spec) */
+  --c-sage-dark:   #4A5940;
+  --c-ochre:       #C9A66B;   /* ocre/mostaza — advertencia (spec) */
+  --c-ochre-dark:  #A8853A;
+  --c-danger:      #A34A42;   /* rojo terracota — peligro (spec) */
+  --c-danger-dark: #7D3530;
+
+  /* ── Sombras duras — 5px negro 100% opacidad (spec) ── */
+  --c-shadow:      #000000;
+  --shadow-hard:   5px 5px 0 var(--c-shadow);
+  --shadow-med:    3px 3px 0 var(--c-shadow);
+  --shadow-sm:     2px 2px 0 var(--c-shadow);
+  --shadow-xs:     1px 1px 0 var(--c-shadow);
+
+  /* ── Bordes 3px sólido negro (spec) ── */
+  --border-ink:    3px solid var(--c-ink);
+  --border-ink2:   2px solid var(--c-ink);
+
+  /* ── Textura papel — grano SVG direccional warm ──
+     feTurbulence asimétrico: fibras horizontales
+     feColorMatrix: tono cálido marrón papel         */
+  --paper-noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='p' color-interpolation-filters='linearRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.35%200.75' numOctaves='4' seed='12' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0.4%200%200%200%200.3%200.3%200%200%200%200.18%200.2%200%200%200%200.08%200%200%200%200%200.42'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23p)'/%3E%3C/svg%3E");
 }
 
 * {
   box-sizing: border-box;
 }
 
+/* Tipografía responsiva — escala proporcional desktop */
+html                          { font-size: 15px; }
+@media (min-width: 768px)  { html { font-size: 16px; } }
+@media (min-width: 1024px) { html { font-size: 17px; } }
+@media (min-width: 1280px) { html { font-size: 18px; } }
+
 body {
   margin: 0;
   min-height: 100vh;
-  font-family: 'Patrick Hand', 'Comic Sans MS', cursive;
+  font-family: 'Space Grotesk', 'Patrick Hand', 'Comic Sans MS', cursive;
+  background-color: var(--c-bg);
+  background-image: var(--c-bg-grad);
+  background-attachment: fixed;
+  color: var(--c-ink);
 }
 
-.notebook-lines {
-  background-image: repeating-linear-gradient(
-    transparent,
-    transparent 31px,
-    #c8b89a 31px,
-    #c8b89a 32px
-  );
-  background-size: 100% 32px;
+#root {
+  min-height: 100vh;
 }
+
+/* ══════════════════════════════════════════════════════
+   TIPOGRAFÍA — Bangers para títulos, Space Grotesk para UI
+   ══════════════════════════════════════════════════════ */
+
+[class*="Bangers"] {
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.18);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 {
+  font-weight: 900;
+  color: var(--c-ink);
+  letter-spacing: 0.02em;
+}
+
+.paint-bg [class*="Bangers"],
+.paper-note [class*="Bangers"] {
+  color: var(--c-ink);
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.20);
+}
+
+/* ══════════════════════════════════════════════════════
+   PAPEL — textura + bordes orgánicos
+   Sin clip-path (nunca), sin celo (removed).
+   El efecto "papel" viene del grano SVG + border-radius.
+   ══════════════════════════════════════════════════════ */
+
+/* filter:drop-shadow sigue el contorno del paper-rough hijo */
+.paper-drop {
+  position: relative;
+  filter:
+    drop-shadow(5px 5px 0px #000000)
+    drop-shadow(6px 6px 0px rgba(0,0,0,0.08));
+}
+
+/* Esquinas ligeramente asimétricas — efecto papel recortado */
+.paper-rough {
+  border-radius: 2px 4px 3px 3px / 3px 2px 4px 2px;
+}
+
+.paper-rough-lg {
+  border-radius: 3px 6px 4px 5px / 5px 3px 6px 3px;
+}
+
+/* Cards: fondo casi blanco + grano de papel al ~3% */
+.paper-note {
+  background-color: var(--c-paper);
+  background-image: var(--paper-noise);
+  background-size: 400px 400px;
+  background-repeat: repeat;
+}
+
+.paper-crumpled {
+  background-color: var(--c-paper-alt);
+  background-image:
+    var(--paper-noise),
+    repeating-linear-gradient(32deg, rgba(0,0,0,0.06) 0 2px, transparent 2px 20px),
+    repeating-linear-gradient(-27deg, rgba(0,0,0,0.04) 0 1px, transparent 1px 16px);
+  background-size: 350px 350px, 150px 150px, 120px 120px;
+}
+
+/* ── Scrapbook panel ───────────────────────────────────
+   SIN clip-path (cortaba sombras y botones)
+   La sombra la gestiona el .paper-drop padre.
+   ::before/::after → cinta de carrocero marrón (masking tape)
+─────────────────────────────────────────────────────── */
+.scrapbook-panel {
+  position: relative;
+  border: var(--border-ink);
+  border-radius: 3px 6px 4px 5px / 5px 3px 6px 3px;
+}
+
+.scrapbook-panel::before,
+.scrapbook-panel::after {
+  content: '';
+  position: absolute;
+  width: 54px;
+  height: 15px;
+  background: rgba(190, 160, 110, 0.70);
+  border: 1px solid rgba(140, 105, 55, 0.35);
+  pointer-events: none;
+  z-index: 20;
+}
+
+.scrapbook-panel::before {
+  top: -10px;
+  left: 18px;
+  transform: rotate(-8deg);
+}
+
+.scrapbook-panel::after {
+  top: -8px;
+  right: 20px;
+  transform: rotate(10deg);
+}
+
+/* Pin decorativo (bolita roja) — se mantiene */
+.pin-corner {
+  position: relative;
+}
+
+.pin-corner::before {
+  content: '';
+  position: absolute;
+  right: 14px;
+  top: 12px;
+  width: 13px;
+  height: 13px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 35% 30%, #fff 0 20%, #991b1b 42%, #4a0d0d 100%);
+  border: 2px solid #111;
+  box-shadow: 1px 1px 0 #000;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* Inclinación aleatoria estilo scrapbook */
+.tilt-soft:nth-of-type(odd)  { transform: rotate(-1.2deg); }
+.tilt-soft:nth-of-type(even) { transform: rotate(1.4deg);  }
+
+/* Papel de cuaderno con líneas horizontales y franja izquierda */
+.notebook-lines {
+  background-color: var(--c-paper);
+  background-image:
+    var(--paper-noise),
+    linear-gradient(
+      90deg,
+      rgba(44,74,82,0.10) 0px, rgba(44,74,82,0.05) 42px,
+      transparent 42px
+    ),
+    repeating-linear-gradient(
+      transparent,
+      transparent 29px,
+      rgba(94,113,83,0.28) 29px,
+      rgba(94,113,83,0.28) 30px
+    );
+  background-size: 400px 400px, 100% 100%, 100% 30px;
+  background-repeat: repeat, no-repeat, repeat;
+}
+
+/* ══════════════════════════════════════════════════════
+   FONDO PRINCIPAL — gris cálido mate con grano
+   Claramente más oscuro que las tarjetas (near-white)
+   ══════════════════════════════════════════════════════ */
 
 .paint-bg {
-  background:
-    radial-gradient(ellipse 120px 100px at 15% 20%, rgba(249, 115, 22, 0.5) 0%, transparent 70%),
-    radial-gradient(ellipse 80px 120px at 85% 15%, rgba(245, 158, 11, 0.4) 0%, transparent 70%),
-    radial-gradient(ellipse 150px 80px at 70% 80%, rgba(249, 115, 22, 0.35) 0%, transparent 70%),
-    radial-gradient(ellipse 100px 60px at 25% 75%, rgba(245, 158, 11, 0.45) 0%, transparent 70%),
-    radial-gradient(ellipse 60px 90px at 50% 45%, rgba(251, 146, 60, 0.3) 0%, transparent 70%),
-    radial-gradient(ellipse 90px 50px at 90% 55%, rgba(245, 158, 11, 0.35) 0%, transparent 70%),
-    radial-gradient(ellipse 70px 100px at 10% 50%, rgba(249, 115, 22, 0.25) 0%, transparent 70%),
-    #dc2626;
+  /* Sin background-color — el body ya pone el rojo con gradiente.
+     Solo añadimos la textura semi-transparente encima. */
+  background-image:
+    var(--paper-noise),
+    radial-gradient(circle, rgba(255,220,180,0.06) 1px, transparent 1px);
+  background-size: 400px 400px, 32px 32px;
+  background-repeat: repeat, repeat;
 }
+
+/* Override texto crema heredado de versiones anteriores */
+.paint-bg .text-\[#fff8e7\]     { color: var(--c-ink); }
+.paint-bg .text-\[#fff8e7\]\/70 { color: var(--c-muted); }
+
+/* ══════════════════════════════════════════════════════
+   OVERRIDES de colores JSX → variables del design system
+   (sin !important — se aplican por orden CSS tras utilities)
+   ══════════════════════════════════════════════════════ */
+
+/* Crema/papel → near-white (tarjetas claramente distintas del fondo) */
+.bg-\[\#fff8e7\]  { background-color: var(--c-paper); }
+.bg-\[\#fffef5\]  { background-color: var(--c-paper); }
+.bg-\[\#F5F0E1\]  { background-color: var(--c-paper); }
+.bg-\[\#f5f0e1\]  { background-color: var(--c-paper); }
+.bg-\[\#EDE8DC\]  { background-color: var(--c-paper); }
+
+/* Rojo vivo #DC2626 → rojo terracota (spec danger) */
+.bg-\[\#DC2626\]              { background-color: var(--c-danger); }
+.hover\:bg-\[\#DC2626\]:hover { background-color: var(--c-danger); }
+.border-\[\#DC2626\]          { border-color: var(--c-danger); }
+.text-\[\#DC2626\]            { color: var(--c-danger); }
+.focus\:ring-\[\#DC2626\]:focus { --tw-ring-color: var(--c-danger); }
+
+/* Rojo oscuro #7f1d1d → danger-dark */
+.hover\:bg-\[\#7f1d1d\]:hover { background-color: var(--c-danger-dark); }
+.bg-\[\#7f1d1d\]              { background-color: var(--c-danger-dark); }
+
+/* Petróleo #3D5F6C → petróleo spec #2C4A52 */
+.bg-\[\#3D5F6C\]              { background-color: var(--c-petrol); }
+.hover\:bg-\[\#3D5F6C\]:hover { background-color: var(--c-petrol); }
+.border-\[\#3D5F6C\]          { border-color: var(--c-petrol); }
+.hover\:text-\[\#3D5F6C\]:hover { color: var(--c-petrol); }
+.focus\:ring-\[\#3D5F6C\]:focus { --tw-ring-color: var(--c-petrol); }
+
+/* Petróleo dark #2D4A57 → petróleo-dark spec */
+.bg-\[\#2D4A57\]              { background-color: var(--c-petrol-dark); }
+.hover\:bg-\[\#2D4A57\]:hover { background-color: var(--c-petrol-dark); }
+
+/* Sage #5E7260 → verde bosque spec #5E7153 */
+.bg-\[\#5E7260\]              { background-color: var(--c-sage); }
+.hover\:bg-\[\#5E7260\]:hover { background-color: var(--c-sage); }
+
+/* Sage dark #4A5C4C → sage-dark spec */
+.hover\:bg-\[\#4A5C4C\]:hover { background-color: var(--c-sage-dark); }
+.bg-\[\#4A5C4C\]              { background-color: var(--c-sage-dark); }
+
+/* Ocre #C4905A → ocre/mostaza spec #C9A66B */
+.bg-\[\#C4905A\]              { background-color: var(--c-ochre); }
+.text-\[\#C4905A\]            { color: var(--c-ochre); }
+
+/* ══════════════════════════════════════════════════════
+   COMIC SHADOW — botones estilo comic/dibujo animado
+   Sombra dura 5px · Efecto de presión física al click
+   ══════════════════════════════════════════════════════ */
 
 .comic-shadow {
-  box-shadow: 4px 4px 0 #1a1a1a;
+  box-shadow: var(--shadow-hard);
+  transition: box-shadow 0.10s ease, transform 0.10s ease;
 }
 
-.comic-shadow:active {
-  box-shadow: 2px 2px 0 #1a1a1a;
+.comic-shadow:hover {
+  box-shadow: var(--shadow-med);
   transform: translate(2px, 2px);
 }
 
-.restricted-overlay {
-  position: relative;
+.comic-shadow:active {
+  box-shadow: var(--shadow-xs);
+  transform: translate(4px, 4px);
 }
+
+/* ══════════════════════════════════════════════════════
+   RESTRICCIÓN — overlay X petróleo
+   ══════════════════════════════════════════════════════ */
+
+.restricted-overlay { position: relative; }
 
 .restricted-overlay::before {
   content: 'X';
@@ -61,24 +320,160 @@ body {
   align-items: center;
   justify-content: center;
   font-size: 4rem;
-  font-weight: 700;
-  color: rgba(220, 38, 38, 0.25);
+  font-weight: 900;
+  color: rgba(163, 74, 66, 0.18);
   font-family: 'Bangers', Impact, sans-serif;
   pointer-events: none;
   z-index: 1;
 }
 
-.cartoon-scroll::-webkit-scrollbar {
-  width: 10px;
+/* ══════════════════════════════════════════════════════
+   SCROLLBAR — estilo cartoon
+   ══════════════════════════════════════════════════════ */
+
+.cartoon-scroll::-webkit-scrollbar                { width: 10px; }
+.cartoon-scroll::-webkit-scrollbar-track         { background: var(--c-bg); border-radius: 0; border: 2px solid var(--c-ink); }
+.cartoon-scroll::-webkit-scrollbar-thumb         { background: var(--c-sage); border: 2px solid var(--c-ink); border-radius: 0; }
+.cartoon-scroll::-webkit-scrollbar-thumb:hover   { background: var(--c-petrol); }
+
+/* ══════════════════════════════════════════════════════
+   ACCESIBILIDAD
+   ══════════════════════════════════════════════════════ */
+
+:focus-visible {
+  outline: 3px solid var(--c-petrol);
+  outline-offset: 2px;
 }
 
-.cartoon-scroll::-webkit-scrollbar-track {
-  background: #f5f0e1;
-  border-radius: 5px;
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
-.cartoon-scroll::-webkit-scrollbar-thumb {
-  background: #c8b89a;
-  border: 2px solid #f5f0e1;
-  border-radius: 5px;
+/* ══════════════════════════════════════════════════════
+   ANIMACIONES
+   ══════════════════════════════════════════════════════ */
+
+@keyframes slide-up {
+  from { transform: translateY(18px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
 }
+
+@keyframes pop-in {
+  0%   { transform: scale(0.88); opacity: 0; }
+  65%  { transform: scale(1.04); opacity: 1; }
+  100% { transform: scale(1);    opacity: 1; }
+}
+
+@keyframes stamp-in {
+  0%   { transform: scale(1.7);  opacity: 0; filter: blur(4px); }
+  60%  { transform: scale(0.95); filter: blur(0); }
+  100% { transform: scale(1);    opacity: 1; }
+}
+
+@keyframes spark-pulse {
+  0%, 100% { opacity: 1;   transform: scale(1) rotate(0deg); }
+  50%       { opacity: 0.6; transform: scale(1.2) rotate(15deg); }
+}
+
+.animate-slide-up { animation: slide-up  0.28s ease-out both; }
+.animate-pop-in   { animation: pop-in    0.4s  cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.animate-stamp-in { animation: stamp-in  0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.animate-spark    { animation: spark-pulse 1.8s ease-in-out infinite; }
+
+.stagger-1 { animation-delay: 0.04s; }
+.stagger-2 { animation-delay: 0.09s; }
+.stagger-3 { animation-delay: 0.14s; }
+.stagger-4 { animation-delay: 0.19s; }
+.stagger-5 { animation-delay: 0.24s; }
+.stagger-6 { animation-delay: 0.29s; }
+
+/* ══════════════════════════════════════════════════════
+   BOTÓN VOLVER — neo-brutalista con textura
+   ══════════════════════════════════════════════════════ */
+
+.btn-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 22px;
+  border-radius: 2px 6px 3px 5px / 5px 2px 6px 2px;
+  border: var(--border-ink);
+  background-color: var(--c-paper);
+  background-image: var(--paper-noise);
+  background-size: 200px 200px;
+  color: var(--c-ink);
+  font-family: 'Bangers', Impact, sans-serif;
+  font-size: 1.1rem;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  box-shadow: var(--shadow-hard);
+  transition: box-shadow 0.10s ease, transform 0.10s ease, background-color 0.12s ease, color 0.12s ease;
+  text-shadow: 1px 1px 0 rgba(0,0,0,0.12);
+}
+
+.btn-back:hover {
+  background-color: var(--c-petrol);
+  background-image: none;
+  color: #F5F0E8;
+  box-shadow: var(--shadow-sm);
+  transform: translate(2px, 2px);
+  text-shadow: none;
+}
+
+.btn-back:active {
+  box-shadow: var(--shadow-xs);
+  transform: translate(4px, 4px);
+}
+
+/* ══════════════════════════════════════════════════════
+   COMIC PANEL — corner ticks decorativos (brackets)
+   ══════════════════════════════════════════════════════ */
+
+.comic-panel { position: relative; }
+
+.comic-panel::before,
+.comic-panel::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border-color: var(--c-ink);
+  border-style: solid;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.comic-panel::before { top: 8px;    right: 8px; border-width: 2.5px 2.5px 0 0; }
+.comic-panel::after  { bottom: 8px; left: 8px;  border-width: 0 0 2.5px 2.5px; }
+
+/* ══════════════════════════════════════════════════════
+   PAPER STRIP — tiras de papel para items de lista
+   ══════════════════════════════════════════════════════ */
+
+.paper-strip {
+  background-color: var(--c-paper);
+  background-image: var(--paper-noise);
+  background-size: 200px 200px;
+  border: var(--border-ink2);
+  border-radius: 2px 6px 3px 4px / 4px 2px 6px 2px;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.10s ease, transform 0.10s ease;
+}
+
+.paper-strip:hover {
+  box-shadow: var(--shadow-xs);
+  transform: translate(1px, 1px);
+}
+
+/* ══════════════════════════════════════════════════════
+   UTILIDADES
+   ══════════════════════════════════════════════════════ */
+
+.shadow-hard    { box-shadow: var(--shadow-hard); }
+.shadow-hard-sm { box-shadow: var(--shadow-sm); }
+.border-ink     { border: var(--border-ink); }
+.paper-padded   { padding: 1.5rem 1.75rem; }

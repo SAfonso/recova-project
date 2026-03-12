@@ -1,0 +1,180 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 455" style="max-width:100%;display:block">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <polygon points="0,1 10,5 0,9" fill="#94a3b8"/>
+    </marker>
+    <marker id="arrD" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <polygon points="0,1 10,5 0,9" fill="#475569"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="455" fill="#0f172a"/>
+
+  <!-- Title -->
+  <text x="600" y="28" text-anchor="middle"
+    font-family="'Segoe UI',system-ui,Arial,sans-serif"
+    font-size="15" font-weight="700" fill="#f1f5f9" letter-spacing="0.4">
+    AI LineUp Architect — Flujo de Datos
+  </text>
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <!-- SWIM LANE BACKGROUNDS -->
+  <!-- ══════════════════════════════════════════════════════════ -->
+
+  <!-- Lane 1: INGESTA (y=42 to 152) -->
+  <rect x="5"  y="42"  width="1190" height="108" rx="7" fill="#172554" opacity="0.35"/>
+  <rect x="5"  y="42"  width="52"   height="108" rx="6" fill="#1d4ed8" opacity="0.7"/>
+  <text transform="translate(31,96) rotate(-90)" text-anchor="middle"
+    font-family="'Segoe UI',system-ui,Arial,sans-serif" font-size="10" font-weight="700"
+    fill="#bfdbfe" letter-spacing="1.2">INGESTA</text>
+
+  <!-- Lane 2: APP CORE (y=160 to 308) -->
+  <rect x="5"  y="160" width="1190" height="148" rx="7" fill="#052e16" opacity="0.35"/>
+  <rect x="5"  y="160" width="52"   height="148" rx="6" fill="#047857" opacity="0.7"/>
+  <text transform="translate(31,234) rotate(-90)" text-anchor="middle"
+    font-family="'Segoe UI',system-ui,Arial,sans-serif" font-size="10" font-weight="700"
+    fill="#a7f3d0" letter-spacing="1.2">APP CORE</text>
+
+  <!-- Lane 3: OUTPUT (y=316 to 445) -->
+  <rect x="5"  y="316" width="1190" height="130" rx="7" fill="#2e1065" opacity="0.25"/>
+  <rect x="5"  y="316" width="52"   height="130" rx="6" fill="#7c3aed" opacity="0.7"/>
+  <text transform="translate(31,381) rotate(-90)" text-anchor="middle"
+    font-family="'Segoe UI',system-ui,Arial,sans-serif" font-size="10" font-weight="700"
+    fill="#ddd6fe" letter-spacing="1.2">OUTPUT</text>
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <!-- LANE 1 — INGESTA  (node cy = 96) -->
+  <!-- ══════════════════════════════════════════════════════════ -->
+
+  <!-- 🎤 Cómico -->
+  <rect x="66"  y="76" width="100" height="40" rx="8" fill="#1e293b" stroke="#64748b" stroke-width="1.5"/>
+  <text x="116" y="91"  text-anchor="middle" font-family="'Segoe UI',system-ui,Arial,sans-serif" font-size="13" fill="#cbd5e1">🎤</text>
+  <text x="116" y="109" text-anchor="middle" font-family="'Segoe UI',system-ui,Arial,sans-serif" font-size="10" fill="#94a3b8">Cómico</text>
+
+  <line x1="168" y1="96" x2="226" y2="96" stroke="#94a3b8" stroke-width="2.5" marker-end="url(#arr)"/>
+
+  <!-- 📋 Google Forms -->
+  <rect x="228" y="76" width="134" height="40" rx="8" fill="#1e3a8a" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="295"  y="92"  text-anchor="middle" font-family="'Segoe UI',system-ui,Arial,sans-serif" font-size="11" fill="#93c5fd">📋 Google Forms</text>
+  <text x="295"  y="108" text-anchor="middle" font-family="'Segoe UI',system-ui,Arial,sans-serif" font-size="9"  fill="#60a5fa">recoge solicitudes</text>
+
+  <line x1="364" y1="96" x2="412" y2="96" stroke="#94a3b8" stroke-width="2.5" marker-end="url(#arr)"/>
+
+  <!-- 📊 Google Sheets -->
+  <rect x="414" y="76" width="134" height="40" rx="8" fill="#14532d" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="481"  y="92"  text-anchor="middle" font-family="'Segoe UI',system-ui,Arial,sans-serif" font-size="11" fill="#86efac">📊 Google Sheets</text>
+  <text x="481"  y="108" text-anchor="middle" font-family="'Segoe UI',system-ui,Arial,sans-serif" font-size="9"  fill="#4ade80">almacena datos</text>
+
+  <line x1="550" y1="96" x2="598" y2="96" stroke="#94a3b8" stroke-width="2.5" marker-end="url(#arr)"/>
+
+  <!-- 📥 n8n Ingesta -->
+  <rect x="600" y="76" width="130" height="40" rx="8" fill="#500724" stroke="#be185d" stroke-width="1.5"/>
+  <text x="665"  y="92"  text-anchor="middle" font-family="'Segoe UI',system-ui,Arial,sans-serif" font-size="11" fill="#fbcfe8">📥 n8n Ingesta</text>
+  <text x="665"  y="108" text-anchor="middle" font-family="'Segoe UI',system-ui,Arial,sans-serif" font-size="9"  fill="#f9a8d4">detecta trigger</text>
+
+  <!-- Diagonal arrow: n8n Ingesta → Flask (lane 2) -->
+  <!-- From: cx=665, y=118 → cx=481, y=173 -->
+  <line x1="665" y1="118" x2="481" y2="167"
+        stroke="#64748b" stroke-width="2" stroke-dasharray="6,3"
+        marker-end="url(#arr)"/>
+  <text x="593" y="153" text-anchor="middle"
+    font-family="'Segoe UI',system-ui,Arial,sans-serif" font-size="8" fill="#475569">POST /ingest</text>
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <!-- LANE 2 — APP CORE  (node cy = 234) -->
+  <!-- ══════════════════════════════════════════════════════════ -->
+
+  <!-- 👤 Host -->
+  <rect x="66"  y="214" width="100" height="40" rx="8" fill="#1e293b" stroke="#64748b" stroke-width="1.5"/>
+  <text x="116" y="230" text-anchor="middle" font-family="'Segoe UI',system-ui,Arial,sans-serif" font-size="14" fill="#e2e8f0">👤</text>
+  <text x="116" y="247" text-anchor="middle" font-family="'Segoe UI',system-ui,Arial,sans-serif" font-size="10" fill="#94a3b8">Host</text>
+
+  <line x1="168" y1="234" x2="226" y2="234" stroke="#94a3b8" stroke-width="2.5" marker-end="url(#arr)"/>
+
+  <!-- ⚛️ React App -->
+  <rect x="228" y="214" width="130" height="40" rx="8" fill="#082f49" stroke="#0284c7" stroke-width="1.5"/>
+  <text x="293"  y="230" text-anchor="middle" font-family="'Segoe UI',system-ui,Arial,sans-serif" font-size="11" fill="#7dd3fc">⚛️ React App</text>
+  <text x="293"  y="247" text-anchor="middle" font-family="'Segoe UI',system-ui,Arial,sans-serif" font-size="9"  fill="#38bdf8">Vite · Tailwind</text>
+
+  <line x1="360" y1="234" x2="416" y2="234" stroke="#94a3b8" stroke-width="2.5" marker-end="url(#arr)"/>
+
+  <!-- 🐍 Flask :5000 -->
+  <rect x="418" y="214" width="126" height="40" rx="8" fill="#1c0a00" stroke="#c2410c" stroke-width="2"/>
+  <text x="481"  y="230" text-anchor="middle" font-family="'Segoe UI',system-ui,Arial,sans-serif" font-size="11" fill="#fed7aa">🐍 Flask :5000</text>
+  <text x="481"  y="247" text-anchor="middle" font-family="'Segoe UI',system-ui,Arial,sans-serif" font-size="9"  fill="#fb923c">webhook_listener</text>
+
+  <line x1="546" y1="234" x2="594" y2="234" stroke="#94a3b8" stroke-width="2.5" marker-end="url(#arr)"/>
+
+  <!-- 🥉 Bronze -->
+  <rect x="596" y="214" width="96" height="40" rx="8" fill="#451a03" stroke="#d97706" stroke-width="1.5"/>
+  <text x="644" y="232" text-anchor="middle" font-family="'Segoe UI',system-ui,Arial,sans-serif" font-size="12" fill="#fcd34d">🥉 Bronze</text>
+  <text x="644" y="247" text-anchor="middle" font-family="'Segoe UI',system-ui,Arial,sans-serif" font-size="8"  fill="#b45309">raw data</text>
+
+  <line x1="694" y1="234" x2="740" y2="234" stroke="#94a3b8" stroke-width="2.5" marker-end="url(#arr)"/>
+
+  <!-- 🥈 Silver -->
+  <rect x="742" y="214" width="96" height="40" rx="8" fill="#1e293b" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="790" y="232" text-anchor="middle" font-family="'Segoe UI',system-ui,Arial,sans-serif" font-size="12" fill="#e2e8f0">🥈 Silver</text>
+  <text x="790" y="247" text-anchor="middle" font-family="'Segoe UI',system-ui,Arial,sans-serif" font-size="8"  fill="#64748b">curated</text>
+
+  <line x1="840" y1="234" x2="886" y2="234" stroke="#94a3b8" stroke-width="2.5" marker-end="url(#arr)"/>
+
+  <!-- 🥇 Gold -->
+  <rect x="888" y="214" width="96" height="40" rx="8" fill="#422006" stroke="#ca8a04" stroke-width="1.5"/>
+  <text x="936" y="232" text-anchor="middle" font-family="'Segoe UI',system-ui,Arial,sans-serif" font-size="12" fill="#fde047">🥇 Gold</text>
+  <text x="936" y="247" text-anchor="middle" font-family="'Segoe UI',system-ui,Arial,sans-serif" font-size="8"  fill="#a16207">confirmed</text>
+
+  <!-- React ↔ Supabase (data read loop): arc above the nodes -->
+  <path d="M 293,214 C 293,178 790,178 790,214"
+        stroke="#475569" stroke-width="2" fill="none" stroke-dasharray="5,3"
+        marker-end="url(#arrD)"/>
+  <text x="541" y="174" text-anchor="middle"
+    font-family="'Segoe UI',system-ui,Arial,sans-serif" font-size="8" fill="#334155">auth + data</text>
+
+  <!-- Gold → n8n Scoring → Silver feedback loop (below nodes) -->
+  <path d="M 936,256 C 936,290 790,290 790,256"
+        stroke="#475569" stroke-width="2" fill="none" stroke-dasharray="5,3"
+        marker-end="url(#arrD)"/>
+  <text x="863" y="301" text-anchor="middle"
+    font-family="'Segoe UI',system-ui,Arial,sans-serif" font-size="8" fill="#334155">🧮 scoring</text>
+
+  <!-- Vertical: React → n8n Render (lane 3) -->
+  <line x1="293" y1="256" x2="293" y2="328"
+        stroke="#94a3b8" stroke-width="2.5" marker-end="url(#arr)"/>
+  <text x="307" y="294"
+    font-family="'Segoe UI',system-ui,Arial,sans-serif" font-size="8" fill="#475569">render</text>
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <!-- LANE 3 — OUTPUT  (node cy = 371) -->
+  <!-- ══════════════════════════════════════════════════════════ -->
+
+  <!-- 🎨 n8n Render -->
+  <rect x="228" y="351" width="130" height="40" rx="8" fill="#500724" stroke="#be185d" stroke-width="1.5"/>
+  <text x="293"  y="367" text-anchor="middle" font-family="'Segoe UI',system-ui,Arial,sans-serif" font-size="11" fill="#fbcfe8">🎨 n8n Render</text>
+  <text x="293"  y="383" text-anchor="middle" font-family="'Segoe UI',system-ui,Arial,sans-serif" font-size="9"  fill="#f9a8d4">orquesta poster</text>
+
+  <line x1="360" y1="371" x2="416" y2="371" stroke="#94a3b8" stroke-width="2.5" marker-end="url(#arr)"/>
+  <text x="388" y="366" text-anchor="middle"
+    font-family="'Segoe UI',system-ui,Arial,sans-serif" font-size="8" fill="#475569">POST</text>
+
+  <!-- 🖼️ Renderer :5050 -->
+  <rect x="418" y="351" width="144" height="40" rx="8" fill="#2e1065" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="490"  y="367" text-anchor="middle" font-family="'Segoe UI',system-ui,Arial,sans-serif" font-size="11" fill="#ddd6fe">🖼️ Renderer :5050</text>
+  <text x="490"  y="383" text-anchor="middle" font-family="'Segoe UI',system-ui,Arial,sans-serif" font-size="9"  fill="#a78bfa">Gemini Vision + Pillow</text>
+
+  <line x1="564" y1="371" x2="612" y2="371" stroke="#94a3b8" stroke-width="2.5" marker-end="url(#arr)"/>
+
+  <!-- ☁️ Storage -->
+  <rect x="614" y="351" width="120" height="40" rx="8" fill="#1e1b4b" stroke="#4f46e5" stroke-width="1.5"/>
+  <text x="674"  y="367" text-anchor="middle" font-family="'Segoe UI',system-ui,Arial,sans-serif" font-size="11" fill="#c7d2fe">☁️ Storage</text>
+  <text x="674"  y="383" text-anchor="middle" font-family="'Segoe UI',system-ui,Arial,sans-serif" font-size="9"  fill="#818cf8">PNG poster</text>
+
+  <line x1="736" y1="371" x2="784" y2="371" stroke="#94a3b8" stroke-width="2.5" marker-end="url(#arr)"/>
+
+  <!-- ✈️ Telegram -->
+  <rect x="786" y="351" width="130" height="40" rx="8" fill="#0c3047" stroke="#0ea5e9" stroke-width="1.5"/>
+  <text x="851"  y="367" text-anchor="middle" font-family="'Segoe UI',system-ui,Arial,sans-serif" font-size="11" fill="#bae6fd">✈️ Telegram</text>
+  <text x="851"  y="383" text-anchor="middle" font-family="'Segoe UI',system-ui,Arial,sans-serif" font-size="9"  fill="#38bdf8">@ailineup_bot</text>
+
+</svg>

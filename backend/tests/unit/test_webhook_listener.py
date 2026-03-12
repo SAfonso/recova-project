@@ -27,11 +27,33 @@ class DummyFlask:
 def load_webhook_module(monkeypatch, api_key: str = "test-key"):
     monkeypatch.setenv("WEBHOOK_API_KEY", api_key)
 
+    # Mock flask
     fake_flask = types.ModuleType("flask")
     fake_flask.Flask = DummyFlask
     fake_flask.jsonify = lambda payload: payload
     fake_flask.request = types.SimpleNamespace(headers={})
+    fake_flask.send_file = lambda path, **kw: (path, 200)
     monkeypatch.setitem(sys.modules, "flask", fake_flask)
+
+    # Mock flask_cors
+    fake_cors = types.ModuleType("flask_cors")
+    fake_cors.CORS = lambda app, **kwargs: None
+    monkeypatch.setitem(sys.modules, "flask_cors", fake_cors)
+
+    # Mock supabase
+    fake_supabase = types.ModuleType("supabase")
+    fake_supabase.create_client = lambda url, key: None
+    monkeypatch.setitem(sys.modules, "supabase", fake_supabase)
+
+    # Mock google_form_builder
+    fake_gb_mod = types.ModuleType("backend.src.core.google_form_builder")
+    fake_gb_mod.GoogleFormBuilder = object
+    monkeypatch.setitem(sys.modules, "backend.src.core.google_form_builder", fake_gb_mod)
+
+    # Mock scoring_engine
+    fake_se_mod = types.ModuleType("backend.src.scoring_engine")
+    fake_se_mod.execute_scoring = lambda open_mic_id: {}
+    monkeypatch.setitem(sys.modules, "backend.src.scoring_engine", fake_se_mod)
 
     module_name = "test_webhook_listener_module"
     spec = importlib.util.spec_from_file_location(module_name, MODULE_PATH)

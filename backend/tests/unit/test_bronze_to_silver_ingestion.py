@@ -34,6 +34,7 @@ def make_bronze_record(**overrides):
     base = {
         "id": UUID("30000000-0000-0000-0000-000000000001"),
         "proveedor_id": UUID("10000000-0000-0000-0000-000000000001"),
+        "open_mic_id": UUID("20000000-0000-0000-0000-000000000001"),
         "nombre_raw": "Mati",
         "instagram_raw": "@mati.show",
         "telefono_raw": "+34666555888",

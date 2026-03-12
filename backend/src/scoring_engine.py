@@ -1,4 +1,19 @@
-"""Motor de scoring para proponer lineups semanales desde datos Silver/Gold."""
+"""Motor de scoring para proponer lineups semanales desde datos Silver/Gold.
+
+v3: la configuración de scoring ya no es hardcodeada; se carga desde
+silver.open_mics.config (JSONB) a través de ScoringConfig.
+
+Cambios respecto a la versión anterior:
+  · CATEGORY_BONUS / CATEGORY_ALIASES eliminados → ScoringConfig.compute_score()
+  · compute_score() standalone eliminado
+  · has_recent_acceptance_penalty() ahora recibe open_mic_id y ScoringConfig
+    → la ventana de recencia es scoped por open_mic, no global
+    → fuente de verdad: silver.lineup_slots WHERE status = 'confirmed'
+  · fetch_silver_requests() filtra por open_mic_id
+  · fetch_scoring_config() carga el JSONB desde silver.open_mics
+  · persist_pending_score() escribe open_mic_id en gold.solicitudes
+  · execute_scoring() acepta open_mic_id obligatorio
+"""
 
 from __future__ import annotations
 
@@ -6,36 +21,36 @@ import json
 import logging
 import os
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from logging.handlers import TimedRotatingFileHandler
 from typing import Any
 from uuid import uuid4
 
+from pathlib import Path
 from dotenv import load_dotenv
+
+_ROOT_ENV = Path(__file__).resolve().parents[2] / ".env"
+
+from backend.src.core.scoring_config import ScoringConfig
 
 LOGGER = logging.getLogger("scoring_engine")
 LOG_DIRECTORY = "/root/RECOVA/backend/logs"
-LOG_FILE_PATH = "/root/RECOVA/backend/logs/scoring_engine.log"
+LOG_FILE_PATH  = "/root/RECOVA/backend/logs/scoring_engine.log"
 
-CATEGORY_BONUS = {
-    "gold": 12,
-    "preferred": 10,
-    "standard": 0,
-}
-
-CATEGORY_ALIASES = {
-    "priority": "preferred",
-    "restricted": "blacklist",
-}
-
-SILVER_TO_GOLD_CATEGORY = {
-    "general": "standard",
-    "priority": "priority",
-    "gold": "gold",
+# Mapeo Silver → Gold para el campo categoria de gold.comicos.
+# Silver usa 'general'; Gold usa 'standard' como nombre del enum.
+_SILVER_TO_GOLD_CATEGORY: dict[str, str] = {
+    "general":    "standard",
+    "priority":   "priority",
+    "gold":       "gold",
     "restricted": "restricted",
 }
 
+
+# ---------------------------------------------------------------------------
+# Dataclasses
+# ---------------------------------------------------------------------------
 
 @dataclass(frozen=True)
 class SilverRequest:
@@ -48,6 +63,7 @@ class SilverRequest:
     fechas_disponibles: str
     marca_temporal: datetime | None
     solicitud_id: str = ""
+    metadata: dict = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -58,6 +74,7 @@ class CandidateScore:
     genero: str
     comico_id: str
     categoria: str
+    open_mic_id: str
     score_final: int
     marca_temporal: datetime | None
     fecha_evento: date
@@ -65,6 +82,10 @@ class CandidateScore:
     bono_bala_unica: bool
     solicitud_id: str = ""
 
+
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
 
 def configure_logging() -> None:
     os.makedirs(LOG_DIRECTORY, exist_ok=True)
@@ -85,15 +106,9 @@ def configure_logging() -> None:
     logger.addHandler(rotating_handler)
 
 
-def normalize_category(raw_category: str | None) -> str:
-    category = (raw_category or "standard").strip().lower()
-    return CATEGORY_ALIASES.get(category, category)
-
-
-def map_silver_category_to_gold(raw_category: str | None) -> str:
-    normalized = (raw_category or "general").strip().lower()
-    return SILVER_TO_GOLD_CATEGORY.get(normalized, "standard")
-
+# ---------------------------------------------------------------------------
+# DB
+# ---------------------------------------------------------------------------
 
 @contextmanager
 def db_connection():
@@ -115,60 +130,103 @@ def db_connection():
         conn.close()
 
 
-def fetch_silver_requests(conn) -> list[SilverRequest]:
+# ---------------------------------------------------------------------------
+# Carga de configuración
+# ---------------------------------------------------------------------------
+
+def fetch_scoring_config(conn, open_mic_id: str) -> ScoringConfig:
+    """Carga el JSONB config de silver.open_mics y construye un ScoringConfig.
+
+    Si el open_mic no existe o su config está vacía, devuelve los valores
+    por defecto (ScoringConfig.default) para no interrumpir el pipeline.
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT config FROM silver.open_mics WHERE id = %s",
+            (open_mic_id,),
+        )
+        row = cur.fetchone()
+
+    raw: dict[str, Any] = row[0] if row and row[0] else {}
+    return ScoringConfig.from_dict(open_mic_id, raw)
+
+
+# ---------------------------------------------------------------------------
+# Fetch Silver
+# ---------------------------------------------------------------------------
+
+def fetch_silver_requests(conn, open_mic_id: str) -> list[SilverRequest]:
+    """Obtiene solicitudes Silver pendientes de scoring para un open_mic."""
     with conn.cursor() as cursor:
         cursor.execute(
             """
             SELECT
-                s.id::text AS solicitud_id,
-                s.comico_id::text AS comico_id,
+                s.id::text          AS solicitud_id,
+                s.comico_id::text   AS comico_id,
                 COALESCE(c.nombre, b.nombre_raw, '') AS nombre,
-                c.telefono AS telefono,
+                c.telefono          AS telefono,
                 COALESCE(c.instagram, '') AS instagram,
                 COALESCE(c.genero, 'unknown') AS genero,
-                c.categoria::text AS categoria_silver,
+                c.categoria::text   AS categoria_silver,
                 to_char(s.fecha_evento, 'YYYY-MM-DD') AS fechas_disponibles,
-                s.created_at AS marca_temporal
+                s.created_at        AS marca_temporal,
+                COALESCE(s.metadata, '{}') AS metadata
             FROM silver.solicitudes s
             JOIN silver.comicos c ON c.id = s.comico_id
             LEFT JOIN bronze.solicitudes b ON b.id = s.bronze_id
-            WHERE c.telefono IS NOT NULL
+            WHERE s.open_mic_id = %s
+              AND c.telefono IS NOT NULL
               AND s.status IN ('normalizado', 'scorado')
             ORDER BY s.created_at ASC NULLS LAST
-            """
+            """,
+            (open_mic_id,),
         )
         rows = cursor.fetchall()
 
-    requests: list[SilverRequest] = []
-    for row in rows:
-        requests.append(
-            SilverRequest(
-                solicitud_id=row[0],
-                comico_id=row[1],
-                nombre=row[2],
-                telefono=row[3],
-                instagram=row[4],
-                genero=row[5],
-                categoria_silver=row[6],
-                fechas_disponibles=row[7],
-                marca_temporal=row[8],
-            )
+    return [
+        SilverRequest(
+            solicitud_id=row[0],
+            comico_id=row[1],
+            nombre=row[2],
+            telefono=row[3],
+            instagram=row[4],
+            genero=row[5],
+            categoria_silver=row[6],
+            fechas_disponibles=row[7],
+            marca_temporal=row[8],
+            metadata=row[9] if isinstance(row[9], dict) else {},
         )
-    return requests
+        for row in rows
+    ]
+
+
+# ---------------------------------------------------------------------------
+# Upsert Gold cómico
+# ---------------------------------------------------------------------------
+
+def _map_to_gold_category(categoria_silver: str | None) -> str:
+    normalized = (categoria_silver or "general").strip().lower()
+    return _SILVER_TO_GOLD_CATEGORY.get(normalized, "standard")
 
 
 def upsert_comico(conn, request: SilverRequest) -> tuple[str, str]:
-    categoria_gold = map_silver_category_to_gold(request.categoria_silver)
+    """Sincroniza el perfil del cómico en gold.comicos.
+
+    Devuelve (comico_id, categoria_silver_normalizada).
+    La categoria devuelta usa los nombres Silver (standard/priority/gold/restricted)
+    para que ScoringConfig pueda resolver la regla correcta.
+    """
+    categoria_gold = _map_to_gold_category(request.categoria_silver)
     with conn.cursor() as cursor:
         cursor.execute(
             """
             INSERT INTO gold.comicos (id, telefono, instagram, nombre, genero, categoria)
             VALUES (%s, %s, %s, %s, %s, %s)
             ON CONFLICT (id) DO UPDATE
-            SET telefono = EXCLUDED.telefono,
+            SET telefono  = EXCLUDED.telefono,
                 instagram = EXCLUDED.instagram,
-                nombre = COALESCE(EXCLUDED.nombre, gold.comicos.nombre),
-                genero = EXCLUDED.genero,
+                nombre    = COALESCE(EXCLUDED.nombre, gold.comicos.nombre),
+                genero    = EXCLUDED.genero,
                 categoria = EXCLUDED.categoria
             RETURNING id::text, categoria::text
             """,
@@ -184,38 +242,66 @@ def upsert_comico(conn, request: SilverRequest) -> tuple[str, str]:
         upserted = cursor.fetchone()
 
     if not upserted:
-        return request.comico_id, normalize_category(categoria_gold)
-    return upserted[0], normalize_category(upserted[1])
+        return request.comico_id, categoria_gold
+
+    comico_id, cat_gold = upserted
+    # Devolver en nomenclatura Silver (gold.comicos usa los mismos nombres excepto standard→general)
+    return comico_id, cat_gold
 
 
-def has_recent_acceptance_penalty(conn, comico_id: str) -> bool:
+# ---------------------------------------------------------------------------
+# Penalización de recencia (scoped por open_mic_id)
+# ---------------------------------------------------------------------------
+
+def has_recent_acceptance_penalty(
+    conn,
+    comico_id: str,
+    open_mic_id: str,
+    config: ScoringConfig,
+) -> bool:
+    """True si el cómico actuó en las últimas N ediciones de ESTE open_mic.
+
+    Fuente de verdad: silver.lineup_slots WHERE status = 'confirmed'.
+    La ventana N viene de config.recency_last_n_editions.
+    Si la penalización está desactivada en config, devuelve False directamente.
+    """
+    if not config.recency_penalty_enabled:
+        return False
+
     with conn.cursor() as cursor:
         cursor.execute(
             """
-            WITH ultimos_shows AS (
+            WITH ultimas_ediciones AS (
                 SELECT DISTINCT fecha_evento
-                FROM gold.solicitudes
-                WHERE estado IN ('aprobado', 'aceptado')
+                FROM silver.lineup_slots
+                WHERE open_mic_id = %s
+                  AND status = 'confirmed'
                 ORDER BY fecha_evento DESC
-                LIMIT 2
+                LIMIT %s
             )
             SELECT EXISTS (
                 SELECT 1
-                FROM gold.solicitudes sg
-                JOIN ultimos_shows us ON us.fecha_evento = sg.fecha_evento
-                WHERE sg.comico_id = %s
-                  AND sg.estado IN ('aprobado', 'aceptado')
+                FROM silver.lineup_slots ls
+                JOIN silver.solicitudes   s ON s.id = ls.solicitud_id
+                WHERE s.comico_id   = %s
+                  AND ls.open_mic_id = %s
+                  AND ls.status      = 'confirmed'
+                  AND ls.fecha_evento IN (SELECT fecha_evento FROM ultimas_ediciones)
             )
             """,
-            (comico_id,),
+            (open_mic_id, config.recency_last_n_editions, comico_id, open_mic_id),
         )
         result = cursor.fetchone()
 
     return bool(result[0]) if result else False
 
 
+# ---------------------------------------------------------------------------
+# Helpers de fecha
+# ---------------------------------------------------------------------------
+
 def parse_primary_date(fechas_disponibles: str) -> date:
-    tokens = [item.strip() for item in (fechas_disponibles or "").split(",") if item.strip()]
+    tokens = [t.strip() for t in (fechas_disponibles or "").split(",") if t.strip()]
     for token in tokens:
         for pattern in ("%Y-%m-%d", "%d-%m-%Y", "%d-%m-%y"):
             try:
@@ -226,20 +312,16 @@ def parse_primary_date(fechas_disponibles: str) -> date:
 
 
 def has_single_date(fechas_disponibles: str) -> bool:
-    tokens = [item.strip() for item in (fechas_disponibles or "").split(",") if item.strip()]
+    tokens = [t.strip() for t in (fechas_disponibles or "").split(",") if t.strip()]
     return len(tokens) == 1
 
 
-def compute_score(category: str, penalty_recent_acceptance: bool, single_date: bool) -> int:
-    score = CATEGORY_BONUS.get(category, 0)
-    if penalty_recent_acceptance:
-        score -= 100
-    if single_date:
-        score += 20
-    return score
-
+# ---------------------------------------------------------------------------
+# Persistencia Gold
+# ---------------------------------------------------------------------------
 
 def persist_pending_score(conn, candidate: CandidateScore) -> None:
+    """Escribe/actualiza el score en gold.solicitudes y gold.comicos."""
     solicitud_id = candidate.solicitud_id or str(uuid4())
     with conn.cursor() as cursor:
         cursor.execute(
@@ -248,14 +330,16 @@ def persist_pending_score(conn, candidate: CandidateScore) -> None:
                 id,
                 comico_id,
                 fecha_evento,
+                open_mic_id,
                 estado,
                 score_aplicado,
                 marca_temporal
             )
-            VALUES (%s, %s, %s, 'scorado', %s, %s)
+            VALUES (%s, %s, %s, %s, 'scorado', %s, %s)
             ON CONFLICT (id) DO UPDATE
-            SET comico_id = EXCLUDED.comico_id,
-                fecha_evento = EXCLUDED.fecha_evento,
+            SET comico_id     = EXCLUDED.comico_id,
+                fecha_evento  = EXCLUDED.fecha_evento,
+                open_mic_id   = EXCLUDED.open_mic_id,
                 score_aplicado = EXCLUDED.score_aplicado,
                 marca_temporal = EXCLUDED.marca_temporal
             WHERE gold.solicitudes.estado IN ('pendiente', 'scorado')
@@ -264,6 +348,7 @@ def persist_pending_score(conn, candidate: CandidateScore) -> None:
                 solicitud_id,
                 candidate.comico_id,
                 candidate.fecha_evento,
+                candidate.open_mic_id,
                 float(candidate.score_final),
                 candidate.marca_temporal,
             ),
@@ -281,7 +366,7 @@ def persist_pending_score(conn, candidate: CandidateScore) -> None:
             cursor.execute(
                 """
                 UPDATE silver.solicitudes
-                SET status = 'scorado',
+                SET status     = 'scorado',
                     updated_at = now()
                 WHERE id = %s
                   AND status <> 'aprobado'
@@ -292,37 +377,62 @@ def persist_pending_score(conn, candidate: CandidateScore) -> None:
             """
             UPDATE gold.comicos
             SET score_actual = %s,
-                modified_at = now()
+                modified_at  = now()
             WHERE id = %s
             """,
             (float(candidate.score_final), candidate.comico_id),
         )
 
 
-def build_ranking(conn, requests: list[SilverRequest]) -> tuple[list[CandidateScore], int]:
-    scored_candidates: list[CandidateScore] = []
-    skipped_blacklist = 0
+# ---------------------------------------------------------------------------
+# Ranking
+# ---------------------------------------------------------------------------
+
+def build_ranking(
+    conn,
+    requests: list[SilverRequest],
+    config: ScoringConfig,
+) -> tuple[list[CandidateScore], int]:
+    """Puntúa y ordena candidatos según las reglas del ScoringConfig.
+
+    Devuelve (ranking_balanceado, n_descartados_por_restricción).
+    El ranking balancea géneros f/nb con m en alternancia.
+    """
+    scored: list[CandidateScore] = []
+    skipped_restricted = 0
 
     for request in requests:
         try:
-            comico_id, category = upsert_comico(conn, request)
-            if category == "blacklist":
-                skipped_blacklist += 1
-                LOGGER.info("Descartado por blacklist: %s", request.telefono)
+            comico_id, categoria_gold = upsert_comico(conn, request)
+
+            # Resolver la categoría efectiva para scoring:
+            # gold.comicos puede devolver 'standard' donde silver tenía 'general'
+            # ScoringConfig entiende ambos nombres (gold y silver usan standard)
+            if config.is_restricted(categoria_gold):
+                skipped_restricted += 1
+                LOGGER.info("Descartado por restricción: %s", request.instagram)
                 continue
 
-            penalty = has_recent_acceptance_penalty(conn, comico_id)
+            penalty     = has_recent_acceptance_penalty(conn, comico_id, config.open_mic_id, config)
             single_date = has_single_date(request.fechas_disponibles)
-            score = compute_score(category, penalty, single_date)
+            score       = config.compute_score(categoria_gold, penalty, single_date)
 
-            scored_candidates.append(
+            if score is None:
+                # compute_score devuelve None si la categoría es restringida
+                skipped_restricted += 1
+                continue
+
+            score += config.apply_custom_rules(request.metadata)
+
+            scored.append(
                 CandidateScore(
                     nombre=request.nombre,
                     telefono=request.telefono,
                     instagram=request.instagram,
                     genero=request.genero,
                     comico_id=comico_id,
-                    categoria=category,
+                    categoria=categoria_gold,
+                    open_mic_id=config.open_mic_id,
                     score_final=score,
                     marca_temporal=request.marca_temporal,
                     fecha_evento=parse_primary_date(request.fechas_disponibles),
@@ -333,162 +443,95 @@ def build_ranking(conn, requests: list[SilverRequest]) -> tuple[list[CandidateSc
             )
         except Exception as exc:  # noqa: BLE001
             LOGGER.exception(
-                "Error procesando solicitud telefono=%s: %s",
-                request.telefono,
+                "Error procesando solicitud instagram=%s: %s",
+                request.instagram,
                 exc,
             )
 
-    f_nb_candidates = sorted(
-        [candidate for candidate in scored_candidates if candidate.genero in {"f", "nb"}],
-        key=lambda item: (
-            -item.score_final,
-            item.marca_temporal or datetime.max.replace(tzinfo=timezone.utc),
-        ),
-    )
-    m_candidates = sorted(
-        [candidate for candidate in scored_candidates if candidate.genero == "m"],
-        key=lambda item: (
-            -item.score_final,
-            item.marca_temporal or datetime.max.replace(tzinfo=timezone.utc),
-        ),
-    )
-    unknowns = sorted(
-        [candidate for candidate in scored_candidates if candidate.genero not in {"m", "f", "nb"}],
-        key=lambda item: (
-            -item.score_final,
-            item.marca_temporal or datetime.max.replace(tzinfo=timezone.utc),
-        ),
-    )
+    def sort_key(c: CandidateScore):
+        return (-c.score_final, c.marca_temporal or datetime.max.replace(tzinfo=timezone.utc))
 
-    balanced_ranking: list[CandidateScore] = []
-    seen_ids: set[str] = set()
-    idx_f = 0
-    idx_m = 0
+    f_nb = sorted([c for c in scored if c.genero in {"f", "nb"}], key=sort_key)
+    m    = sorted([c for c in scored if c.genero == "m"],          key=sort_key)
+    unk  = sorted([c for c in scored if c.genero not in {"m", "f", "nb"}], key=sort_key)
 
-    while idx_f < len(f_nb_candidates) or idx_m < len(m_candidates):
-        if idx_f < len(f_nb_candidates):
-            candidate_f = f_nb_candidates[idx_f]
-            idx_f += 1
-            if candidate_f.comico_id not in seen_ids:
-                balanced_ranking.append(candidate_f)
-                seen_ids.add(candidate_f.comico_id)
+    # Alternancia f/nb ↔ m para paridad de género
+    balanced: list[CandidateScore] = []
+    seen: set[str] = set()
+    idx_f = idx_m = 0
 
-        if idx_m < len(m_candidates):
-            candidate_m = m_candidates[idx_m]
-            idx_m += 1
-            if candidate_m.comico_id not in seen_ids:
-                balanced_ranking.append(candidate_m)
-                seen_ids.add(candidate_m.comico_id)
+    while idx_f < len(f_nb) or idx_m < len(m):
+        if idx_f < len(f_nb):
+            c = f_nb[idx_f]; idx_f += 1
+            if c.comico_id not in seen:
+                balanced.append(c); seen.add(c.comico_id)
+        if idx_m < len(m):
+            c = m[idx_m]; idx_m += 1
+            if c.comico_id not in seen:
+                balanced.append(c); seen.add(c.comico_id)
 
-    for candidate_u in unknowns:
-        if candidate_u.comico_id not in seen_ids:
-            balanced_ranking.append(candidate_u)
-            seen_ids.add(candidate_u.comico_id)
+    for c in unk:
+        if c.comico_id not in seen:
+            balanced.append(c); seen.add(c.comico_id)
 
-    return balanced_ranking, skipped_blacklist
+    return balanced, skipped_restricted
 
 
-def execute_scoring() -> dict[str, Any]:
+# ---------------------------------------------------------------------------
+# Punto de entrada principal
+# ---------------------------------------------------------------------------
+
+def execute_scoring(open_mic_id: str) -> dict[str, Any]:
+    """Ejecuta el ciclo completo de scoring para un open_mic concreto.
+
+    1. Carga ScoringConfig desde silver.open_mics.config
+    2. Obtiene solicitudes Silver pendientes del open_mic
+    3. Puntúa y rankea candidatos
+    4. Persiste scores en Gold
+
+    Args:
+        open_mic_id: UUID del open_mic a procesar.
+    """
     with db_connection() as conn:
-        requests = fetch_silver_requests(conn)
-        ranking, skipped_blacklist = build_ranking(conn, requests)
+        config   = fetch_scoring_config(conn, open_mic_id)
+        requests = fetch_silver_requests(conn, open_mic_id)
+        ranking, skipped = build_ranking(conn, requests, config)
 
         for candidate in ranking:
             persist_pending_score(conn, candidate)
 
-    top_10 = [
-        {
-            "nombre": candidate.nombre,
-            "telefono": candidate.telefono,
-            "instagram": candidate.instagram,
-            "genero": candidate.genero,
-            "categoria": candidate.categoria,
-            "score_final": candidate.score_final,
-            "marca_temporal": candidate.marca_temporal.isoformat()
-            if candidate.marca_temporal
-            else None,
-        }
-        for candidate in ranking[:10]
-    ]
-
+    top_n = config.available_slots
     return {
         "status": "ok",
+        "open_mic_id": open_mic_id,
         "filas_procesadas": len(requests),
         "filas_insertadas_gold": len(ranking),
-        "filas_descartadas_blacklist": skipped_blacklist,
-        "top_10_sugeridos": top_10,
+        "filas_descartadas_restriccion": skipped,
+        "top_sugeridos": [
+            {
+                "nombre":          c.nombre,
+                "instagram":       c.instagram,
+                "genero":          c.genero,
+                "categoria":       c.categoria,
+                "score_final":     c.score_final,
+                "penalizado":      c.penalizado_por_recencia,
+                "bono_bala_unica": c.bono_bala_unica,
+                "marca_temporal":  c.marca_temporal.isoformat() if c.marca_temporal else None,
+            }
+            for c in ranking[:top_n]
+        ],
     }
 
 
-def run_dummy_scoring_test() -> None:
-    old_request = SilverRequest(
-        comico_id="1",
-        nombre="Comica A",
-        telefono="+34111111111",
-        instagram="comica_a",
-        genero="f",
-        categoria_silver="priority",
-        fechas_disponibles="2026-03-10",
-        marca_temporal=datetime(2026, 2, 1, 10, 0, tzinfo=timezone.utc),
-    )
-    new_request = SilverRequest(
-        comico_id="2",
-        nombre="Comico B",
-        telefono="+34222222222",
-        instagram="comico_b",
-        genero="m",
-        categoria_silver="priority",
-        fechas_disponibles="2026-03-10",
-        marca_temporal=datetime(2026, 2, 2, 10, 0, tzinfo=timezone.utc),
-    )
-
-    score_a = compute_score("preferred", penalty_recent_acceptance=False, single_date=True)
-    score_b = compute_score("preferred", penalty_recent_acceptance=False, single_date=True)
-
-    ranking = sorted(
-        [
-            CandidateScore(
-                nombre=old_request.nombre,
-                telefono=old_request.telefono,
-                instagram=old_request.instagram,
-                genero=old_request.genero,
-                comico_id="1",
-                categoria="preferred",
-                score_final=score_a,
-                marca_temporal=old_request.marca_temporal,
-                fecha_evento=date(2026, 3, 10),
-                penalizado_por_recencia=False,
-                bono_bala_unica=True,
-            ),
-            CandidateScore(
-                nombre=new_request.nombre,
-                telefono=new_request.telefono,
-                instagram=new_request.instagram,
-                genero=new_request.genero,
-                comico_id="2",
-                categoria="preferred",
-                score_final=score_b,
-                marca_temporal=new_request.marca_temporal,
-                fecha_evento=date(2026, 3, 10),
-                penalizado_por_recencia=False,
-                bono_bala_unica=True,
-            ),
-        ],
-        key=lambda item: (-item.score_final, item.marca_temporal),
-    )
-
-    assert ranking[0].telefono == old_request.telefono
-    assert compute_score("gold", penalty_recent_acceptance=True, single_date=True) == -68
-    assert compute_score("standard", penalty_recent_acceptance=False, single_date=False) == 0
-
-
 if __name__ == "__main__":
-    load_dotenv()
+    import sys
+
+    load_dotenv(dotenv_path=_ROOT_ENV)
     configure_logging()
 
-    if os.getenv("SCORING_ENGINE_DUMMY_TEST", "false").lower() in {"1", "true", "yes"}:
-        run_dummy_scoring_test()
-        print(json.dumps({"status": "dummy_test_ok"}, ensure_ascii=False))
-    else:
-        result = execute_scoring()
-        print(json.dumps(result, ensure_ascii=False))
+    if len(sys.argv) < 2:
+        print(json.dumps({"error": "usage: scoring_engine.py <open_mic_id>"}, ensure_ascii=False))
+        sys.exit(1)
+
+    result = execute_scoring(sys.argv[1])
+    print(json.dumps(result, ensure_ascii=False))

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from './supabaseClient';
+import { CambiarButton } from './components/open-mic/CambiarButton';
 import { ExpandedView } from './components/open-mic/ExpandedView';
 import { Header } from './components/open-mic/Header';
 import { NotebookSheet } from './components/open-mic/NotebookSheet';
@@ -9,9 +10,10 @@ const CATEGORY_OPTIONS = [
   { value: 'gold', label: 'Gold' },
   { value: 'priority', label: 'Preferred' },
   { value: 'restricted', label: 'Restricted' },
+  { value: 'standard', label: 'Standard' },
 ];
 
-function App() {
+function App({ session, openMicId, onBack }) {
   const [candidates, setCandidates] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
   const [edits, setEdits] = useState({});
@@ -23,6 +25,10 @@ function App() {
   const [error, setError] = useState('');
   const [isExpanded, setIsExpanded] = useState(false);
   const [recoveryNotes, setRecoveryNotes] = useState('');
+  const [isValidated, setIsValidated] = useState(
+    () => !!localStorage.getItem(`validated_${openMicId}`),
+  );
+  const [showCambiarConfirm, setShowCambiarConfirm] = useState(false);
 
   const activeCandidate = useMemo(
     () => candidates.find((candidate) => candidate.row_key === activeId),
@@ -40,6 +46,7 @@ function App() {
     const { data: dataV2, error: errorV2 } = await supabase
       .from('lineup_candidates')
       .select('solicitud_id,fecha_evento,nombre,genero,categoria,estado,score_final,comico_id,contacto,telefono,instagram')
+      .eq('open_mic_id', openMicId)
       .order('score_final', { ascending: false, nullsFirst: false });
 
     if (errorV2) {
@@ -97,7 +104,7 @@ function App() {
         : (row.solicitud_id ?? `${row.comico_id ?? 'unknown'}-${index}`),
       fecha_evento: hasFechaEvento ? (row.fecha_evento ?? null) : null,
       genero: row.genero === 'unknown' ? 'nb' : row.genero ?? 'nb',
-      categoria: row.categoria === 'standard' ? 'priority' : row.categoria ?? 'priority',
+      categoria: row.categoria ?? 'standard',
     }));
     const scoredFirst = normalized.filter((candidate) => candidate.estado === 'scorado');
     const pendingLegacy = normalized.filter((candidate) => candidate.estado === 'pendiente');
@@ -110,12 +117,24 @@ function App() {
     if (firstEventDate) {
       setEventDate(firstEventDate);
     }
+
+    // Detectar si ya está validado: hay slots confirmados en silver.lineup_slots
+    const { data: slots } = await supabase
+      .schema('silver')
+      .from('lineup_slots')
+      .select('id')
+      .eq('open_mic_id', openMicId)
+      .eq('status', 'confirmed')
+      .limit(1);
+    if (slots?.length > 0) setIsValidated(true);
+
     setLoading(false);
   };
 
   useEffect(() => {
     fetchCandidates();
   }, []);
+
 
   const getDraft = (candidate) => {
     const existing = edits[candidate.row_key];
@@ -229,40 +248,78 @@ function App() {
 
       setEdits({});
 
-      const n8nResponse = await fetch(normalizedN8nWebhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          fecha: rpcEventDate,
-          status: 'validado',
-          total: selectedIds.length,
-          trace: {
-            recovery_notes: recoveryNotes,
-          },
-        }),
+      // Grabar slots confirmados ANTES de notificar a n8n
+      const approvedIds = selectedCandidates
+        .map((c) => c.solicitud_id)
+        .filter(Boolean);
+      const { error: upsertError } = await supabase.rpc('upsert_confirmed_lineup', {
+        p_open_mic_id: openMicId,
+        p_fecha_evento: rpcEventDate,
+        p_approved_solicitud_ids: approvedIds,
       });
-
-      if (!n8nResponse.ok) {
-        const n8nErrorBody = await n8nResponse.text();
-        console.error('Error HTTP desde n8n webhook', {
-          status: n8nResponse.status,
-          statusText: n8nResponse.statusText,
-          body: n8nErrorBody,
-          webhookUrl: normalizedN8nWebhookUrl,
-        });
-        throw new Error(`HTTP ${n8nResponse.status}`);
+      if (upsertError) {
+        console.error('Error en upsert_confirmed_lineup:', upsertError);
       }
 
-      alert('✅ ¡LineUp validado! Enviando a n8n para generar el póster...');
-      window.location.reload();
+      // Persistir en localStorage para sobrevivir remounts
+      localStorage.setItem(`validated_${openMicId}`, '1');
+      setIsValidated(true);
+
+      // n8n es fire-and-forget: si falla no bloquea el estado validado
+      // Incluimos el lineup exacto seleccionado para evitar re-query en n8n
+      const lineupPayload = selectedCandidates.map((c) => ({
+        name: c.nombre,
+        instagram: (c.instagram || '').replace('@', '').trim(),
+      }));
+      fetch(normalizedN8nWebhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fecha: rpcEventDate,
+          open_mic_id: openMicId,
+          status: 'validado',
+          total: selectedIds.length,
+          lineup: lineupPayload,
+          trace: { recovery_notes: recoveryNotes },
+        }),
+      }).then((res) => {
+        if (!res.ok) {
+          res.text().then((body) =>
+            console.error('n8n webhook error', { status: res.status, body }),
+          );
+        }
+      }).catch((err) => {
+        console.error('Error enviando webhook a n8n:', err);
+      });
+
     } catch (n8nError) {
-      console.error('Error enviando webhook a n8n:', n8nError);
-      setError('No se pudo notificar a n8n. Revisa la consola para más detalle.');
+      console.error('Error en validateLineup:', n8nError);
+      setError('Error al validar. Revisa la consola para más detalle.');
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleCambiarAccept = async () => {
+    await supabase.rpc('reset_lineup_slots', {
+      p_open_mic_id: openMicId,
+      p_fecha_evento: eventDate || null,
+    });
+    localStorage.removeItem(`validated_${openMicId}`);
+    setIsValidated(false);
+    setShowCambiarConfirm(false);
+  };
+
+  const handleGeneroUpdate = (candidateId, genero) => {
+    const targetCandidate = candidates.find((candidate) => candidate.row_key === candidateId);
+    if (!targetCandidate) return;
+    setEdits((previous) => ({
+      ...previous,
+      [candidateId]: {
+        ...getDraft(targetCandidate),
+        genero,
+      },
+    }));
   };
 
   const handleCategoryUpdate = (candidateId, category) => {
@@ -298,12 +355,14 @@ function App() {
   };
 
   return (
-    <main className="paint-bg min-h-screen px-4 pb-8">
-      <div className="mx-auto flex max-w-lg flex-col gap-4 lg:max-w-5xl">
+    <main className="paint-bg min-h-screen px-4 pb-8 md:px-8">
+      <div className="mx-auto flex max-w-xl flex-col gap-4 md:max-w-3xl lg:max-w-5xl xl:max-w-6xl">
         <Header
           eventDate={eventDate}
           onEventDateChange={setEventDate}
           selectedCount={selectedIds.length}
+          hostEmail={session?.user?.email}
+          onBack={onBack}
         />
 
         {error && (
@@ -313,8 +372,31 @@ function App() {
         )}
 
         {loading ? (
-          <section className="notebook-lines rounded-lg border-[3px] border-[#1a1a1a] bg-[#fff8e7] p-8 text-center text-[#6B5C4A]">
-            Cargando candidatos...
+          <section className="notebook-lines relative mx-auto w-full max-w-lg overflow-hidden rounded-lg border-[3px] border-[#1a1a1a] bg-[#fff8e7] px-8 py-6 lg:max-w-4xl">
+            <div className="ml-8 flex flex-col gap-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <span className="w-5 shrink-0 text-right text-xs text-[#C8B89A]">{i + 1}.</span>
+                  <div
+                    className="h-5 rounded"
+                    style={{
+                      width: `${55 + (i * 13) % 35}%`,
+                      background: 'linear-gradient(90deg, #e8dfc8 25%, #f5f0e1 50%, #e8dfc8 75%)',
+                      backgroundSize: '200% 100%',
+                      animation: 'shimmer 1.4s infinite',
+                      animationDelay: `${i * 0.1}s`,
+                    }}
+                  />
+                  <div className="ml-auto h-2.5 w-2.5 shrink-0 rounded-full border border-[#1a1a1a]/20 bg-[#C8B89A]" />
+                </div>
+              ))}
+            </div>
+            <style>{`
+              @keyframes shimmer {
+                0% { background-position: 200% 0; }
+                100% { background-position: -200% 0; }
+              }
+            `}</style>
           </section>
         ) : (
           <NotebookSheet
@@ -327,9 +409,9 @@ function App() {
           />
         )}
 
-        <section className="mx-auto w-full max-w-3xl rounded-lg border-[3px] border-[#1a1a1a] bg-[#fff8e7] p-4">
-          <label htmlFor="recovery-notes" className="mb-2 block text-sm font-bold text-[#1a1a1a]">
-            Notas de recuperación (SDD)
+        <section className="paper-drop mx-auto w-full max-w-3xl"><div className="paper-rough paper-note border-[3px] border-[#1a1a1a] bg-[#fffef5] p-4">
+          <label htmlFor="recovery-notes" className="mb-2 block font-['Bangers'] text-lg tracking-wide text-[#1a1a1a]">
+            Notas de recuperación
           </label>
           <textarea
             id="recovery-notes"
@@ -338,19 +420,65 @@ function App() {
             placeholder="Contexto para Telegram/n8n si el flujo necesita recovery..."
             className="min-h-24 w-full rounded-md border-2 border-[#1a1a1a] bg-[#F5F0E1] p-3 text-sm text-[#1a1a1a] outline-none focus:ring-2 focus:ring-[#DC2626]"
           />
-        </section>
+        </div></section>
 
-        <div className="flex justify-center pt-2">
+        {isValidated && (
+          <div className="flex justify-center">
+            {/* Wrapper rota el sello; hijo anima scale + opacity */}
+            <div className="-rotate-6">
+              <div
+                className="animate-stamp-in flex items-center gap-2 rounded-lg border-[4px] border-double border-[#15803D] bg-[#dcfce7]/90 px-6 py-2 text-2xl font-black uppercase tracking-widest text-[#15803D] shadow-[3px_3px_0px_rgba(0,0,0,0.2)]"
+              >
+                <svg className="h-6 w-6 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                VALIDADO
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="flex justify-center gap-4 pt-2">
           <ValidateButton
-            disabled={saving || selectedIds.length !== 5}
+            disabled={saving || selectedIds.length !== 5 || isValidated}
             saving={saving}
+            isValidated={isValidated}
             onClick={validateLineup}
           />
+          {isValidated && (
+            <CambiarButton onClick={() => setShowCambiarConfirm(true)} />
+          )}
         </div>
 
         <p className="text-center text-sm font-bold text-[#fff8e7]">
           {selectedIds.length === 5 ? 'LineUp completo para validar' : 'Selecciona exactamente 5 cómicos'}
         </p>
+
+        {showCambiarConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="paper-drop animate-pop-in max-w-sm mx-4"><div className="paper-rough paper-note border-[4px] border-[#1a1a1a] bg-[#fffef5] p-6 text-center">
+              <p className="mb-6 text-lg font-bold text-[#1a1a1a]">
+                ¿Seguro que quieres cambiar el lineup validado?
+              </p>
+              <div className="flex justify-center gap-4">
+                <button
+                  type="button"
+                  onClick={handleCambiarAccept}
+                  className="comic-shadow cursor-pointer rounded-lg border-[3px] border-[#1a1a1a] bg-[#EAB308] px-5 py-2 font-bold text-[#1a1a1a] transition-all duration-150 hover:bg-[#CA8A04] hover:scale-[1.03] active:scale-[0.97]"
+                >
+                  Aceptar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCambiarConfirm(false)}
+                  className="cursor-pointer rounded-lg border-[3px] border-[#1a1a1a] bg-[#e5e7eb] px-5 py-2 font-bold text-[#1a1a1a] transition-all duration-150 hover:bg-[#d1d5db]"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div></div>
+          </div>
+        )}
       </div>
 
       {isExpanded && (
@@ -362,6 +490,7 @@ function App() {
           onCardExpand={setActiveId}
           onToggleSelected={toggleSelected}
           onUpdateCategory={handleCategoryUpdate}
+          onUpdateGenero={handleGeneroUpdate}
           getDraft={getDraft}
           hasPendingEdit={hasPendingEdit}
         />

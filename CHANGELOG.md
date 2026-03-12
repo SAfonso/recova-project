@@ -1,3 +1,550 @@
+## [0.18.4] - 2026-03-12
+
+### Fixed — GoogleFormBuilder lazy init
+
+- **`google_form_builder.py`** — `__init__` ya no hace llamadas de red al arrancar; nuevo método `_ensure_services()` inicializa credenciales OAuth2 y clientes de Google API (Forms, Sheets, Drive, Script) de forma lazy la primera vez que se necesitan. Evita crash en PM2 si las variables de entorno de Google no están configuradas o el token es inválido al inicio del proceso.
+- **`test_google_form_builder.py`** — stubs de `sys.modules` para `google.*` y `googleapiclient` al inicio del archivo (mismo patrón que otros tests con Gemini); tests `TestInit` actualizados para llamar `_ensure_services()` en lugar de esperar el error en el constructor.
+
+### Tests
+- **32 tests** `backend/tests/core/test_google_form_builder.py` — todos verdes (antes fallaban por falta de `google-auth` en venv de tests)
+- **Total acumulado**: 321 backend + 30 frontend = 351 tests verdes
+
+---
+
+## [0.18.3] - 2026-03-12
+
+### Changed — Render póster desactivado temporalmente
+
+- **`ScoringConfigurator.jsx`** — sección "Póster del evento" ocultada (toggle, uploads, estados y `handlePosterUpload` comentados); código íntegro conservado para reactivar
+- **`webhook_listener.py`** — comentario sobre `/api/render-poster`: endpoint funcional pero no expuesto desde el frontend
+- **`mcp_server.py`** — nota en docstring del módulo indicando servidor fuera de uso temporal
+- **n8n workflow `This.Render 2`** — nodo `HTTP (render)` eliminado; `Telegram (enviar)` cambiado de `sendPhoto` a `sendMessage` con texto de lineup (nombres + instagrams + fecha)
+
+---
+
+## [0.18.2] - 2026-03-12
+
+### Changed — UI polish: Cartoon-Brutalist refinements
+
+- **`NotebookSheet.jsx`** — pestañas del lineup con clase `paper-note` (mismo tono rugoso que la hoja); color activo vía `style={{ backgroundColor }}` para preservar la textura grain encima del color; hover sutil `#2C4A52/10` en nombres de artistas
+- **`OpenMicDetail.jsx`** — pestañas Info/Scoring/Dev también con `paper-note` para coherencia visual con el rest de la interfaz
+- **`OpenMicSelector.jsx`** — hover por open mic con color determinístico (array de 6 colores del sistema: petróleo, sage, ochre, terracota, deep-petrol, warm-brown); rotativo por índice, siempre igual para cada posición
+- **`ComicCard.jsx`** — tarjeta restricted con fondo rojizo `#FDF0F0` y borde terracota `#A34A42` (antes gris neutro)
+
+---
+
+## [0.18.1] - 2026-03-11
+
+### Changed — Cartoon-Matte Brutalist UI
+
+- **`frontend/src/index.css`** — rediseño completo del sistema de estilos global:
+  - `.paint-bg`: fondo rojo oscuro → off-white matte `#F5F5F0` con grano SVG fractal y puntos petróleo sutiles
+  - `.comic-shadow`: sombra dura brutalista `4px 4px 0 #000`; hover `3px 3px + translate(1,1)`; active `1px 1px + translate(3,3)` (efecto presión física)
+  - `.paper-note` / `.notebook-lines`: `background-color: #EDE8DC` matte; grano SVG fractal; líneas en sage verde `#7B8E7E`; encuadernación en petróleo `#4A6D7C`
+  - `.paper-drop`: sombra hard drop-shadow sin desenfoque
+  - `.paper-tape::before`: cinta ocre matte `#D4A373`
+  - `.btn-back`: rectangular brutalista, hover petróleo
+  - Scrollbar: thumb sage verde + borde ink, hover petróleo
+  - `:focus-visible`: ring petróleo `#4A6D7C`
+  - Overrides globales: `bg-[#fff8e7]` / `bg-[#fffef5]` → `var(--c-paper)`; `[class*="shadow-["]` → hard shadow
+  - Nuevas utilidades: `.paper-strip`, `.shadow-hard`, `.border-ink`
+  - Variables CSS: `--c-petrol`, `--c-sage`, `--c-ochre`, `--shadow-hard/med/sm/xs`, `--border-ink`
+- **`frontend/tailwind.config.js`** — tokens `matte-*` para toda la paleta; presets `boxShadow` hard; font families `bangers`/`hand`
+
+---
+
+## [0.18.0] - 2026-03-11
+
+### Added — Sprint 13: Smart Form Generation
+
+- **Spec SDD** — `specs/smart_form_generation_spec.md`
+- **`google_form_builder.py`** — descripción contextual al crear el form (`_build_description`); color aleatorio de paleta curada de 12 colores (`_random_form_color`, `_FORM_BG_PALETTE`); pregunta de fechas como CHECKBOX calculadas dinámicamente según cadencia (`_build_date_options`): semanal (todos los días del mes ≥ hoy), quincenal (4 fechas cada 14 días), mensual (3 fechas, mismo día del mes); omite pregunta de fechas si `cadencia == 'unico'`; `FormCreationResult.bg_color` nuevo campo; `deploy_submit_webhook` aplica `setBackgroundColor` via Apps Script
+- **`webhook_listener.py`** — endpoint `POST /api/open-mic/create-form` lee `config.info` del open mic y lo pasa al builder; persiste `bg_color`, `last_date` (última fecha calculada) e `info_changed=false` en `config.form`
+- **`InfoConfigurator.jsx`** — selector de cadencia (radio pills: Semanalmente/Quincenalmente/Mensualmente/Evento único); campo `fecha_inicio` (date input); popup modal ⚠️ al guardar si ya existe un form creado; persiste `form.info_changed=true` automáticamente
+- **`FormWarningBadges.jsx`** (nuevo) — badge ⚠️ cuando `info_changed=true`; badge 🗓️ cuando `last_date` ≤ 7 días o en el pasado; con tooltips descriptivos
+- **`ScoringConfigurator.jsx`** — `FormWarningBadges` integrado en el título de la sección Google Form
+
+### Tests
+
+- **9 tests** `backend/tests/core/test_google_form_builder.py` — `_build_description` (2), `_random_form_color` (1), `_build_date_options` (4), `_add_questions` con info (2) — todos verdes
+- **10 tests** `frontend/src/test/OpenMicDetail.test.jsx` — InfoConfigurator cadencia/fecha/popup (5) + FormWarningBadges badges (5) — todos verdes
+- **Fix** `ScoringTypeSelector.test.jsx` — actualizado para reflejar eliminación del `disabled` (v0.17.5)
+- **Total acumulado**: 321 backend + 30 frontend = 351 tests verdes
+
+---
+
+## [0.17.9] - 2026-03-10
+
+### Fixed — seguridad: autenticación en endpoint form-submission
+
+- **`webhook_listener.py`** — añadido `_is_authorized()` al endpoint `POST /api/form-submission`; cualquier petición sin header `X-API-Key` válido recibe 401. El endpoint era accesible sin autenticación, permitiendo inyectar solicitudes falsas en cualquier open mic.
+- **`google_form_builder.py`** — template de Apps Script actualizado para incluir `"X-API-Key": API_KEY` en la cabecera del `UrlFetchApp.fetch`; la clave se bake-in desde `WEBHOOK_API_KEY` en el momento de desplegar el script.
+- **`test_form_submission.py`** — todos los tests actualizados con header `X-API-Key`; añadido test `test_form_submission_unauthorized` que verifica el 401.
+
+---
+
+## [0.17.8] - 2026-03-08
+
+### Fixed — pipeline Gemini para tipografía del cartel
+
+- **`mcp_server.py`** — conectado el pipeline completo: si hay `dirty_image_url` en el config del open_mic, `GeminiDetector` analiza el cartel sucio y detecta posición, tamaño y color exactos de cada `COMICO_N`; `render_on_anchors` estampa los nombres reales sobre el cartel limpio con esa tipografía. Fallback a `PosterComposer` si Gemini falla o no detecta anchors.
+
+---
+
+## [0.17.7] - 2026-03-08
+
+### Fixed — mcp_server usa base_image_url del open_mic config
+
+- **`mcp_server.py` `execute_render`** — ahora lee `open_mic_id` del payload y busca `config.poster.base_image_url` en Supabase; descarga la imagen a tempfile y la pasa a `PosterComposer`; fallback a template local si falla. También soporta `intent.reference_image_url` directo
+- **n8n `LineUp.json`** — "HTTP (render)" actualizado para llamar al endpoint real de producción (`/tools/render_lineup` en `recova-renderer:5050`) e incluir `open_mic_id` en el payload
+
+---
+
+## [0.17.6] - 2026-03-08
+
+### Fixed — validación persistente + lineup exacto en cartel
+
+- **`isValidated` persistente** — inicializado desde `localStorage` (`validated_${openMicId}`) para sobrevivir remounts del componente; guardado al validar, borrado al "Cambiar"
+- **`upsert_confirmed_lineup`** — añadido logging del error para diagnóstico; ya no silencioso
+- **Lineup exacto en cartel** — `validateLineup` incluye `lineup: [{name, instagram}]` en el payload del webhook a n8n con los 5 cómicos exactamente como los seleccionó el host
+- **n8n `Map Payload`** — usa `webhookBody.lineup` si viene en el payload (fuente de verdad: selección del host); cae en query DB solo si no viene el lineup
+
+---
+
+## [0.17.5] - 2026-03-08
+
+### Fixed — 4 bugs post-deploy
+
+- **Poster viejo** — `handlePosterUpload` añade `?v=Date.now()` a la URL pública de Supabase Storage para romper la caché del CDN al re-subir imagen
+- **Nombres extra en cartel** — n8n "Get Approved Comics": añadido filtro `open_mic_id` para no traer cómicos de otros open mics con la misma fecha; corregido `=eq.` → `eq.` en todos los query params (el `=` extra generaba URLs mal formadas)
+- **Validar de nuevo al volver** — `upsert_confirmed_lineup` y `setIsValidated(true)` se ejecutan ahora ANTES del webhook a n8n; n8n pasa a ser fire-and-forget → el estado validado persiste aunque n8n falle
+- **Scoring personalizado bloqueado** — eliminado el `disabled` en la opción "Scoring personalizado" de `ScoringTypeSelector`; ahora se puede seleccionar siempre y el aviso de "analiza tu formulario" aparece como hint descriptivo cuando aún no hay `field_mapping`
+
+---
+
+## [0.17.4] - 2026-03-08
+
+### Fixed — Telegram render: chat_id vacío + poster viejo
+
+- **n8n `LineUp.json`** — "Get Telegram chat_id": `$json[0].proveedor_id` → `$json.proveedor_id` (n8n ya divide los items, `$json[0]` era `undefined` → lookup fallaba → `chat_id` vacío)
+- **n8n `LineUp.json`** — "HTTP (render)": añadido `open_mic_id` al body del render para que el backend sepa qué plantilla usar
+- **`render_poster` endpoint** — si llega `open_mic_id`, busca `config.poster.base_image_url` en Supabase, descarga la imagen a un temp file y la pasa a `PosterComposer`; si falla, usa la imagen local como fallback
+
+---
+
+## [0.17.3] - 2026-03-08
+
+### Fixed — UX Telegram en móvil/tablet
+
+- **`OpenMicSelector.jsx`** — detección de dispositivo móvil/tablet via `navigator.userAgent` + `maxTouchPoints` (iPad)
+- **Modal Telegram en móvil** — en lugar del QR (imposible de escanear desde el mismo dispositivo), se muestran dos botones: "Sí, abrir Telegram" (deep link directo a `t.me`) y "No tengo Telegram — Descargar" (enlaza a `telegram.org`)
+- **Desktop** — comportamiento sin cambios: QR + instrucciones de escaneo
+
+---
+
+## [0.17.2] - 2026-03-08
+
+### Fixed — Correcciones UI post-deploy
+
+- **Crear Open Mic** — día de la semana y hora son ahora campos obligatorios en el formulario de creación; se guardan en `config.info`
+- **Poster** — sección dividida en dos uploads: "imagen limpia" (`poster.base_image_url`) e "imagen sucia" (`poster.dirty_image_url`) para que la IA analice el diseño original; aviso de funcionalidad en pruebas (banner amarillo)
+- **Sin scoring** — "Slots disponibles" ahora siempre visible, independientemente del tipo de scoring
+- **Telegram** — icono semioculto tras el primer uso (más pequeño y con opacidad reducida); soporte para usuarios con múltiples organizaciones (selector de org en el modal)
+- **ComicCard** — clic en la categoría ya activa (gold/priority/restricted) la resetea a `standard`; `CATEGORY_OPTIONS` ampliado para incluir `standard` y así el reseteo no quedaba bloqueado por el guard
+- **ComicCard** — selector de género M / F / NB en la ficha expandida de cada cómico; propagado via `onUpdateGenero` desde `ExpandedView` y `App`
+- **Header lineup** — fecha del evento en `font-['Bangers']` blanco y legible sobre fondo oscuro
+- **NotebookSheet** — eliminada pestaña "Config" de la vista de validación del lineup
+- **Candidatos** — eliminada conversión forzada `standard → priority` en `fetchCandidates`; los cómicos con categoría `standard` ahora se muestran correctamente en lugar de aparecer todos como "Preferred"
+
+---
+
+## [0.17.1] - 2026-03-08
+
+### Fixed — Hotfixes post-deploy
+
+- **Auth JWT** — `_is_authenticated_user` reemplazado de `jwt.decode` (HS256) a `supabase.auth.get_user()`: Supabase usa ES256 en proyectos nuevos y PyJWT no puede verificarlo sin la clave pública
+- **`silver.solicitudes`** — añadida constraint unique `(comico_id, open_mic_id, fecha_evento)` requerida por el `ON CONFLICT` del script de ingesta multi-tenant
+- **`App.jsx`** — `schema('silver')` en query `lineup_slots` (devolvía 404 al buscar en schema `public`)
+- **`App.jsx`** — `open_mic_id` añadido al body del webhook n8n para que el workflow pueda hacer lookup del `telegram_user_id`
+- **`LineUp.json`** — workflow actualizado con nodos "Get Host proveedor_id" y "Get Telegram chat_id" para obtener el `chat_id` de Telegram del host via `open_mics → telegram_users`
+
+---
+
+## [0.17.0] - 2026-03-08
+
+### Added — Sprint 12: Dev Tools Panel
+
+- **Spec SDD** — `specs/dev_tools_spec.md`
+- **`dev_users_pool.py`** — pool de 100 usuarios de prueba con campos variados (`nombre`, `instagram`, `telefono`, `experiencia_raw`, `disponibilidad_ultimo_minuto`, `origen_conocimiento`); función `get_random_users(n)`
+- **`POST /api/dev/seed-open-mic`** — siembra 10 usuarios aleatorios del pool en un open mic; genera fechas futuras en formato `DD-MM-YY`; marca `config.seed_used=true` para evitar repetición; auth via Supabase JWT (`auth.get_user`)
+- **`POST /api/dev/trigger-ingest`** — lanza `bronze_to_silver_ingestion.py` via `subprocess.Popen`; auth Supabase JWT
+- **`POST /api/dev/trigger-scoring`** — ejecuta `execute_scoring(open_mic_id)` directamente; auth Supabase JWT
+- **`DevToolsPanel.jsx`** (nuevo) — panel con 3 botones: Poblar datos, Forzar ingesta, Forzar scoring; JWT via `supabase.auth.getSession()`; toast 4s; spinner de carga
+- **`OpenMicDetail.jsx`** — añadida pestaña "Dev" en la vista Configurar que monta `DevToolsPanel`
+- **10 tests** `backend/tests/test_dev_tools.py` — todos verdes
+
+### Added — Sprint 11: n8n Integration
+
+- **Spec SDD** — `specs/forms_batch_ingest_spec.md`, `specs/render_poster_spec.md`
+- **`POST /api/ingest-from-forms`** — ingesta batch desde Google Forms con deduplicación por cursor `last_form_ingestion_at`; mapeo canónico → bronze
+- **`POST /api/render-poster`** — llama a `PosterComposer` directamente (sin MCP); devuelve PNG binario via `send_file`
+- **`workflows/n8n/LineUp.json`** — workflow reescrito: Webhook → Get Comics → Map Payload → HTTP render → Telegram; usa `$env.RECOVA_BACKEND_URL` y `$env.WEBHOOK_API_KEY`
+- **`Ingesta-Solicitudes.json`** actualizado para llamar `POST /api/ingest-from-forms`
+
+### Fixed
+
+- **Auth JWT** — `_is_authenticated_user` cambiado de `jwt.decode` (HS256) a `supabase.auth.get_user()` para soportar tokens ES256 que usa Supabase en proyectos nuevos
+- **Fechas en seed** — formato corregido de ISO (`YYYY-MM-DD`) a `DD-MM-YY` que espera `parse_event_dates`
+- **`silver.solicitudes`** — añadida constraint unique `(comico_id, open_mic_id, fecha_evento)` requerida por el `ON CONFLICT` del script de ingesta
+- **`App.jsx`** — añadido `schema('silver')` en query `lineup_slots` que devolvía 404 al buscar en schema `public`
+
+### Tests
+
+- **Total acumulado**: ~300 tests verdes (backend + frontend)
+
+---
+
+## [0.15.0] - 2026-03-07
+
+### Added — Sprint 10: Scoring Inteligente Custom
+
+- **Spec SDD** — `specs/custom_scoring_spec.md`
+- **`CustomRule` dataclass** en `scoring_config.py` — regla con `field`, `condition` (`equals`), `value`, `points`, `enabled`, `description`; método `matches(metadata)` insensible a mayúsculas
+- **`ScoringConfig.apply_custom_rules(metadata)`** — suma los puntos de las reglas activas que coinciden; devuelve 0 si `scoring_type != 'custom'`
+- **`custom_scoring_proposer.py`** — clase `CustomScoringProposer`: envía los campos no mapeados a Gemini 2.5 Flash y recibe una lista de reglas propuestas; devuelve `[]` si la lista de campos está vacía (sin llamada a Gemini); strip de markdown fences; `ValueError` en JSON inválido
+- **`POST /api/open-mic/propose-custom-rules`** — carga config del open mic, extrae campos sin mapear, llama a `CustomScoringProposer`, guarda reglas en `config.custom_scoring_rules` via RPC `update_open_mic_config_keys`
+- **`scoring_engine.py`** — `SilverRequest.metadata` (nuevo campo, leer `COALESCE(s.metadata, '{}')` de BD); tras calcular `compute_score` se suma `config.apply_custom_rules(request.metadata)`
+- **`CustomScoringConfigurator.jsx`** (nuevo) — lista de reglas con toggle (`role="switch"`) y slider de puntos (`min=-50`, `max=50`, `step=5`); estado vacío con botón "Proponer reglas automáticas"
+- **`ScoringConfigurator.jsx`** — sección de formulario (URL + análisis) movida a la pestaña Scoring; renderizado condicional por `scoring_type`:
+  - `none`: solo `ScoringTypeSelector`
+  - `basic`: `ScoringTypeSelector` + form + slots + categorías + recencia + boost + paridad + poster
+  - `custom`: `ScoringTypeSelector` + subir form + `CustomScoringConfigurator` + slots + categorías + paridad + poster
+
+### Fixed
+
+- **`ScoringTypeSelector.jsx`** — cambiado `supabase.rpc()` → `supabase.schema('silver').rpc()` (la función `update_open_mic_config_keys` está en schema `silver`, no `public`); corregía un bug donde seleccionar un tipo no persistía
+- **`ScoringConfigurator.jsx`** — `onChanged` del `ScoringTypeSelector` cambiado de `onSaved` a `fetchConfig`; `onSaved` llamaba a `setView('info')` y redirigía al hub al cambiar el tipo
+- **Variables de entorno en `handlePropose`** — corregidas de `VITE_API_KEY`/`VITE_API_URL` a `VITE_WEBHOOK_API_KEY`/`VITE_BACKEND_URL`; eliminaba el error "Error de red al proponer reglas"
+- **`OpenMicDetail.jsx`** — eliminada sección Google Form duplicada (movida a Scoring tab); limpieza de estados e imports innecesarios
+
+### Tests
+
+- 5 tests `backend/tests/core/test_custom_scoring_proposer.py` — todos verdes
+- 6 tests `backend/tests/core/test_scoring_config_custom.py` — todos verdes
+- 7 tests `backend/tests/test_propose_custom_rules_endpoint.py` — todos verdes
+- 4 tests `backend/tests/test_scoring_engine_custom.py` — todos verdes
+- 6 tests `frontend/src/test/CustomScoringConfigurator.test.jsx` — todos verdes
+- **Total acumulado**: ~268 tests verdes (248 backend + 20 frontend)
+
+---
+
+## [0.14.0] - 2026-03-07
+
+### Added — Sprint 9: Smart Form Ingestion
+
+- **Spec SDD** — `specs/smart_form_ingestion_spec.md`
+- **`form_ingestor.py`** — clase `FormIngestor`: lee preguntas y respuestas de cualquier Google Form via Forms API v1 (sin necesidad de Sheet vinculado)
+  - `get_form_questions(form_id)` → lista `[{question_id, title, kind}]`
+  - `get_responses(form_id, field_mapping)` → campos canónicos + `metadata_extra` para campos no mapeados
+- **`form_analyzer.py`** — clase `FormAnalyzer`: envía títulos de preguntas a Gemini 2.5 Flash y recibe `{titulo → campo_canónico | null}`; strip de markdown fences; `ValueError` en JSON inválido
+- **`POST /api/open-mic/analyze-form`** — orquesta `FormIngestor` + `FormAnalyzer`, guarda `field_mapping` y `external_form_id` en `silver.open_mics.config` via RPC, devuelve métricas de cobertura
+- **`ScoringTypeSelector.jsx`** (nuevo) — radio pills `none / basic / custom`; `custom` deshabilitado si no hay `field_mapping`; persiste via RPC `update_open_mic_config_keys`
+- **`OpenMicDetail.jsx`** — sección Google Form ampliada: campo URL/ID + botón "Analizar campos" + badge con resultado (N de M campos mapeados + lista sin mapeo)
+- **`ScoringConfigurator.jsx`** — integra `ScoringTypeSelector` en subtab Scoring
+- **`frontend/src/utils/formUtils.js`** — `extractFormId(urlOrId)`: extrae el ID de una URL de Google Forms o lo devuelve limpio
+- **Migración** — `specs/sql/migrations/20260307_smart_form_ingestion.sql`:
+  - `ALTER TABLE silver.solicitudes ADD COLUMN metadata JSONB DEFAULT '{}'`
+  - RPC `silver.update_open_mic_config_keys(p_open_mic_id, p_keys)` — merge JSONB seguro
+- **34 tests** — 9 `test_form_ingestor.py` + 5 `test_form_analyzer.py` + 6 `test_analyze_form_endpoint.py` + 7 `formUtils.test.js` + 7 `ScoringTypeSelector.test.jsx` — todos verdes
+- **Setup Vitest** — `vitest` + `@testing-library/react` + `happy-dom` (jsdom@28 incompatible con ESM)
+
+### Changed
+
+- Google OAuth scopes ampliados: añadidos `forms.body.readonly` y `forms.responses.readonly`
+- `google_oauth_setup.py` actualizado con los nuevos scopes; refresh token regenerado y desplegado en servidor
+
+### Fixed
+
+- `POST /api/open-mic/analyze-form`: cambiado `sb.rpc()` → `sb.schema("silver").rpc()` para evitar PGRST202 (función en schema `silver`, no `public`)
+
+---
+
+## [0.13.0] - 2026-03-07
+
+### Added — Sprint 8: Registro Abierto con Google OAuth
+
+- **`LoginScreen.jsx`** — reemplaza magic link por botón "Continuar con Google" (OAuth2)
+- **`OnboardingScreen.jsx`** (nuevo) — captura el nombre del venue en el primer login; llama RPC `silver.onboard_new_host`
+- **`main.jsx`** — nuevo estado `onboarding` entre `no-session` y `ready`; `checkMembership` detecta si el usuario ya tiene proveedor
+- **RPC `silver.onboard_new_host(p_nombre_comercial)`** — crea `silver.proveedores` + `silver.organization_members` (rol `host`); `SECURITY DEFINER`, idempotente, slug generado y sin colisiones
+- **Migración** — `specs/sql/migrations/20260307_onboard_new_host.sql`
+- **11 tests TDD** en `backend/tests/core/test_onboard_new_host.py` — 11/11 verdes
+
+### Changed
+
+- Cualquier usuario con cuenta Google puede registrarse (antes solo hosts pre-registrados via whitelist)
+- `Auth` en tabla Stack actualizada: magic link → Google OAuth
+
+---
+
+## [0.12.0] - 2026-03-07
+
+### Added — Sprint 7: Poster Renderer (Gemini Flash Vision)
+
+- **Spec SDD** — `specs/poster_detector_spec.md`
+- **`poster_detector_base.py`** — tipos compartidos: `PlaceholderAnchor`, `AbstractDetector`, función pura `render_on_anchors`
+- **`poster_detector_gemini.py`** — `GeminiDetector`: envía el PNG sucio a Gemini 2.5 Flash Vision, recibe JSON con coordenadas/tamaño/color de cada placeholder `COMICO_N`, renderiza sobre PNG limpio con Pillow
+- **`backend/scripts/compare_poster_renderers.py`** — script CLI de prueba: `--dirty`, `--clean`, `--names`, `--date`, `--output`
+- **Assets** — `backend/assets/templates/base_poster_clean.png` + `base_poster_dirty.png`
+- **8 tests** en `backend/tests/core/test_poster_detector_gemini.py` — 8/8 verdes
+- **`google-genai>=1.0.0`** añadido a `requirements.txt`
+- **`GEMINI_API_KEY`** añadida a `.env` y `.env.example`
+
+### Decision log
+- EasyOCR evaluado y descartado: detectó 2/5 placeholders sobre fondo rojo complejo
+- Gemini 2.5 Flash detectó los 5/5 con posiciones correctas en el primer intento
+
+---
+
+## [0.11.1] - 2026-03-07
+
+### Changed — Consolidación de variables de entorno
+
+- Todas las variables de entorno unificadas en un único `.env` raíz (antes divididas entre `backend/.env` y raíz)
+- `backend/.env` eliminado
+- `webhook_listener.py`, `bronze_to_silver_ingestion.py`, `scoring_engine.py`: `load_dotenv()` actualizado para apuntar explícitamente al `.env` raíz via `Path(__file__).parents[N] / ".env"`
+- `.env.example` raíz reescrito como fuente única de verdad con todas las variables documentadas
+- `backend/.env.example` eliminado (redundante)
+- `frontend/.env.example` completado con `VITE_BACKEND_URL`, `VITE_WEBHOOK_API_KEY`, `VITE_N8N_WEBHOOK_URL`
+
+---
+
+## [0.11.0] - 2026-03-07
+
+### Added — Sprint 6: Ingesta Multi-Tenant + Scripts de Utilidad
+
+#### Backend — Ingesta desde Google Sheets
+- `POST /api/ingest-from-sheets`: ingesta batch multi-tenant — itera todos los open mics con `sheet_id`, lee filas pendientes via `SheetIngestor`, inserta en Bronze y lanza `bronze_to_silver_ingestion.py` en background; marca filas como procesadas con `n8n_procesado=si`
+- `POST /api/form-submission`: ingesta individual desde Apps Script `onFormSubmit`; lookup de `proveedor_id` por `open_mic_id`, INSERT bronze, lanza ingestión
+- `backend/src/core/sheet_ingestor.py` — clase `SheetIngestor`:
+  - `get_pending_rows(sheet_id)`: lee rango A:K, filtra por `Marca temporal` no vacía y `n8n_procesado` vacío; añade `_row_number` a cada dict
+  - `mark_rows_processed(sheet_id, row_numbers)`: `batchUpdate` con `"si"` en columna K
+
+#### Backend — GoogleFormBuilder actualizado
+- Nuevos scopes OAuth2: `script.projects`, `forms.currentonly`, `script.external_request`, `script.scriptapp`
+- `self._script = build("script", "v1", ...)` — cuarto cliente de API
+- `deploy_submit_webhook(form_id, open_mic_id)`: crea proyecto Apps Script bound al form, sube código con trigger `onFormSubmit`, despliega como API executable y ejecuta `setup()`
+- `_inject_open_mic_id_column`: escribe `["open_mic_id", "n8n_procesado"]` en J1:K1 (antes solo `open_mic_id`)
+
+#### Scripts de utilidad (`backend/scripts/`)
+- `seed_conditional.py`: lee open mics existentes; para cada uno sin solicitudes inserta 10 cómicos aleatorios con bronze+silver solicitudes; skippea los que ya tienen datos
+- `seed_full.py`: crea un escenario completo desde cero — 1 proveedor + 3 open mics + 30 cómicos distintos (10 por open mic) con solicitudes en bronze y silver
+- `reset_data.py`: TRUNCATE de todas las tablas bronze/silver/gold con backup CSV previo; flags `--yes`, `--include-auth`, `--no-backup`
+
+#### n8n
+- `workflows/n8n/Ingesta-Solicitudes.json` reescrito (multi-tenant):
+  - Schedule Trigger 09:00 → `POST https://api.machango.org/api/ingest-from-sheets` (URL hardcodeada)
+  - → Clasificador de género batch (Gemini): obtiene cómicos con `genero=unknown`, clasifica con LLM, PATCH en `silver.comicos`
+
+#### Spec y Tests
+- `specs/ingest_from_sheets_spec.md`: SDD de `POST /api/ingest-from-sheets`
+- `specs/seed_scripts_spec.md`: SDD de los tres scripts de utilidad
+- `backend/tests/test_form_submission.py`: 7/7 tests verdes
+- `backend/tests/test_ingest_from_sheets.py`: 12/12 tests verdes
+- `backend/tests/scripts/test_seed_conditional.py`: 7/7 tests verdes
+- `backend/tests/scripts/test_seed_full.py`: 8/8 tests verdes
+- `backend/tests/scripts/test_reset_data.py`: 9/9 tests verdes
+- `backend/tests/core/test_google_form_builder.py`: actualizado para cliente `script` (4 APIs)
+
+### Fixed
+- `test_google_form_builder.py`: `KeyError: 'script'` — `_build_side_effect` ahora incluye el cliente `script`; test `test_builds_three_api_clients` actualizado a `{"forms", "sheets", "drive", "script"}`
+- `test_ingest_from_sheets_no_open_mics`: early return antes de instanciar `SheetIngestor` evita error de credenciales faltantes en tests
+
+---
+
+## [0.10.0] - 2026-03-06
+
+### Added — Sprint 5: Validación de Lineup via Telegram
+
+#### Backend
+- `POST /api/lineup/prepare-validation`: calcula próximo evento (`_next_event_datetime`), ejecuta scoring, genera token UUID en `silver.validation_tokens`, devuelve `lineup + validate_url`
+- `GET /api/validate-view/lineup?token=xxx`: valida token, devuelve candidatos e `is_validated`
+- `POST /api/validate-view/validate`: valida token, llama `gold.validate_lineup` + `silver.upsert_confirmed_lineup`, elimina token
+- `_next_event_datetime(dia_semana, hora)`: calcula próxima ocurrencia semanal; devuelve `None` si el show ya empezó hoy
+- Endpoints `/api/validate-view/*` sin autenticación API key (acceso por token UUID)
+
+#### DB
+- Migración `specs/sql/migrations/20260306_validation_tokens.sql`: tabla `silver.validation_tokens` (token UUID, host_id, open_mic_id, fecha_evento, expires_at)
+
+#### Frontend
+- `frontend/src/components/ValidateView.jsx`: vista standalone de validación (sin auth de sesión)
+  - Estados: loading → error | ready | validated
+  - Lista de candidatos con toggle (máx 5 seleccionados)
+  - Sello "VALIDADO" animado al confirmar
+  - Misma estética papel arrugado (paper-drop/tape/rough/notebook-lines)
+- `frontend/src/main.jsx`: ruta `/validate` → `<ValidateView />` (sin login)
+
+#### n8n
+- `workflows/n8n/Scoring & Draft.json` reconstruido (multi-tenant):
+  - Schedule Trigger diario 10:00
+  - Obtiene todos los hosts desde `silver.telegram_users`
+  - Por cada host: obtiene open mics vía `/mcp/open-mics`
+  - `Code (flatten)`: expande 1 host en N items (uno por open mic)
+  - Llama `POST /api/lineup/prepare-validation` con `neverError:true`
+  - Si hay `validate_url`: formatea mensaje con lineup + link y envía por Telegram
+- `workflows/n8n/Test BOT.json`: `Tool_Lineup_Link` añadido al AI Agent
+  - Llama `POST /api/lineup/prepare-validation` y devuelve link de validación al host
+  - System prompt actualizado: host pide lineup → Tool_Lineup_Link → link (no navegar por app)
+
+#### Spec y Tests
+- `specs/telegram_validate_lineup_spec.md`: SDD completo Sprint 5
+- `backend/tests/test_validate_lineup_view.py`: 12/12 tests verdes
+
+### Fixed
+- `workflows/n8n/Test BOT.json`: URL doble `==` (`=={{ ... }}` → `={{ ... }}`) en nodo `Supabase (Validar Host)1`
+- `workflows/n8n/Test BOT.json`: filtro Supabase por `telegram_user_id` del usuario actual (evitaba `[{}]` vacío)
+- `backend/tests/unit/test_n8n_workflows_security.py`: contrato Scoring & Draft actualizado a nuevas env vars (`RECOVA_BACKEND_URL`, `SUPABASE_URL`, `WEBHOOK_API_KEY`)
+
+---
+
+## [0.9.1] - 2026-03-06
+
+### Added — Sprint 4b: Telegram Register Endpoint
+
+#### Backend
+- `POST /api/telegram/register`: procesa `/start RCV-XXXX` desde n8n
+  - Valida codigo en `silver.telegram_registration_codes` (existe, no expirado, no usado)
+  - Comprueba si `telegram_user_id` ya esta en `silver.telegram_users` (idempotente)
+  - Si ya registrado: marca codigo usado si es necesario y responde `already_registered: true`
+  - Si nuevo: INSERT en `silver.telegram_users` + marca codigo usado
+  - Errores diferenciados: 404 (no encontrado), 409 (ya usado), 410 (expirado)
+
+#### Spec y Tests
+- `specs/telegram_register_spec.md`: SDD completo con logica idempotente
+- `backend/tests/test_telegram_register.py`: 10/10 tests verdes
+
+---
+
+## [0.9.0] - 2026-03-06
+
+### Added — Sprint 4a: Telegram QR Self-Registration
+
+#### Frontend
+- `frontend/src/components/OpenMicSelector.jsx`: icono Telegram en esquina superior derecha del card (fuera del div)
+- Tooltip animado "¡Click Me!" visible solo la primera vez (persiste en `localStorage: tg_btn_seen`)
+- Modal con QR code (`qrcode.react`), código `RCV-XXXX` y instrucciones paso a paso
+- El código expira en 15 minutos (gestionado por BD)
+
+#### Backend
+- `POST /api/telegram/generate-code`: genera código `RCV-[A-Z0-9]{4}`, inserta en `silver.telegram_registration_codes`, devuelve `{code, qr_url}`
+- Variable de entorno: `TELEGRAM_BOT_USERNAME`
+
+#### Spec y Tests
+- `specs/telegram_qr_connect_spec.md`: SDD completo del flujo de registro
+- `backend/tests/test_telegram_generate_code.py`: 5/5 tests verdes
+
+### Infraestructura
+- Traefik (Coolify) configurado para proxy HTTPS: `api.machango.org → localhost:5000`
+- Config: `/data/coolify/proxy/dynamic/recova-backend.yaml`
+- Dominio: `machango.org` (Porkbun) — subdominio `api` apunta a VPS Hetzner `46.225.120.243`
+- `VITE_BACKEND_URL` actualizado en Vercel a `https://api.machango.org`
+
+### Fixed
+- Nombre del servidor MCP: `recova_mcp_renderer` (guiones → underscores)
+
+---
+
+## [0.8.0] - 2026-03-06
+
+### Added — Sprint 3: Telegram Lineup Agent ✅
+
+#### Backend — endpoints MCP Flask
+- `backend/src/triggers/webhook_listener.py`: 5 endpoints `/mcp/*` con auth `X-API-Key`
+  - `GET /mcp/open-mics` — lista open mics del host via `organization_members → proveedor_id`
+  - `GET /mcp/lineup` — lineup confirmado desde `silver.lineup_slots`
+  - `GET /mcp/candidates` — candidatos scoring desde `gold.lineup_candidates`
+  - `POST /mcp/run-scoring` — ejecuta scoring engine
+  - `POST /mcp/reopen-lineup` — resetea slots de lineup
+- Fix: carga de `.env` con búsqueda en múltiples rutas candidatas (`backend/.env`, `../../.env`, `../../../.env`)
+
+#### Tests
+- `backend/tests/mcp/test_lineup_mcp_endpoints.py`: 11/11 tests verdes
+- Mock actualizado para query en dos pasos en `GET /mcp/open-mics`
+
+#### Infraestructura DB
+- Migración `specs/sql/migrations/20260305_telegram_users.sql`: tablas `silver.telegram_users` y `silver.telegram_registration_codes`
+
+#### Workflow n8n
+- Workflow `telegram-lineup-agent` operativo con Gemini 2.5 Flash
+- 5 nodos tool (`tool_open_mics`, `tool_lineup`, `tool_candidatos`, `tool_run_scoring`, `tool_reopen_lineup`)
+- Validación de host en Supabase (`silver.telegram_users`) antes de llegar al agente
+- System message con regla de redirección a web cuando no hay open mics: `https://recova-project-z5zp.vercel.app`
+
+### Fixed
+- Nombres de nodos tool en n8n: solo caracteres alfanuméricos y underscores (requisito n8n)
+- Nombre del servidor MCP: `recova_mcp_renderer` (guiones reemplazados por underscores)
+- `SUPABASE_SERVICE_KEY` separada de `SUPABASE_KEY` (publishable) en `.env` del servidor
+
+---
+
+## [0.7.0] - 2026-03-05
+
+### Added — Sprint 2: Google Forms + Integración Backend
+
+#### Auto-creación de Google Form al crear open mic
+- `backend/src/core/google_form_builder.py`: migración de service account a OAuth2 con refresh token; crea Sheet propia vía Sheets API (la Forms API no genera `linkedSheetId` por API); Sheet incluye cabeceras estándar (9 campos) + columna `open_mic_id` con ARRAYFORMULA en col J
+- `backend/scripts/google_oauth_setup.py`: script de autorización OAuth2 de un solo uso para obtener el refresh token
+- `backend/src/triggers/webhook_listener.py`: añade `flask-cors` (CORS habilitado para llamadas desde el navegador)
+- `frontend/src/components/OpenMicSelector.jsx`: auto-crea el form en segundo plano (fire-and-forget) al insertar un nuevo open mic
+- `frontend/src/components/OpenMicDetail.jsx`: botón manual "Crear Google Form" como fallback; muestra enlaces a form y sheet si ya existen en `config.form`
+- `frontend/src/main.jsx`: `handleSelect` acepta `options.isNew` para navegar a vista `config` al crear un open mic nuevo
+
+### Variables de entorno añadidas
+- `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `GOOGLE_OAUTH_REFRESH_TOKEN` en `backend/.env`
+- `VITE_BACKEND_URL`, `VITE_WEBHOOK_API_KEY` en `frontend/.env`
+
+### Versioning
+- Bump de versión a `0.7.0` en `package.json`, `pyproject.toml` y `README.md`
+
+## [0.6.0] - 2026-03-04
+
+### Added — Sprint 1: Pivot SaaS Multi-Tenant
+
+#### Esquema v3 (Medallion extendido)
+- `specs/sql/v3_schema.sql`: extiende Bronze/Silver/Gold con `silver.organization_members`, `silver.open_mics` (config JSONB), `silver.lineup_slots`, `confirm_lineup()` RPC y RLS por host
+- `specs/sql/migrations/20260304_add_open_mic_id_to_bronze.sql`: añade `open_mic_id` a `bronze.solicitudes`
+- `specs/sql/migrations/20260304_update_lineup_candidates_add_open_mic_id.sql`: añade `open_mic_id` a la view `lineup_candidates` para filtrado multi-tenant
+
+#### Auth (magic link)
+- `frontend/src/components/LoginScreen.jsx`: pantalla de login con Supabase OTP; solo hosts pre-registrados (`shouldCreateUser: false`)
+- `frontend/src/main.jsx`: componente `Root` con flujo `Login → OpenMicSelector → OpenMicDetail → App`
+
+#### Selección y creación de Open Mics
+- `frontend/src/components/OpenMicSelector.jsx`: lista open mics del host vía `organization_members`; soporta roles `host` y `collaborator`; solo `host` puede crear nuevos
+- `frontend/src/components/OpenMicDetail.jsx`: hub del open mic — tarjeta info (solo lectura) con resumen de config + vista de edición con `ScoringConfigurator`
+
+#### Scoring configurable por Open Mic
+- `backend/src/core/scoring_config.py`: `ScoringConfig.from_dict(open_mic_id, raw)` lee config JSONB de `silver.open_mics`; reemplaza constantes hardcodeadas
+- `backend/tests/core/test_scoring_config.py`: 27 tests
+- `frontend/src/components/ScoringConfigurator.jsx`: formulario React para editar config JSONB del open mic; integrado en `OpenMicDetail` y pestaña Config del Lineup
+
+#### Scoring engine v3
+- `backend/src/scoring_engine.py`: refactorizado — `execute_scoring(open_mic_id)`, penalización de recencia scoped por `open_mic_id` via `silver.lineup_slots`, usa `ScoringConfig`
+
+#### Ingesta Bronze → Silver v3
+- `backend/src/bronze_to_silver_ingestion.py`: `BronzeRecord` con `open_mic_id`, `fetch_pending_bronze_rows` filtra `open_mic_id IS NOT NULL`, `insert_silver_rows` bifurca v3/legacy
+- `specs/google_form_campos_spec.md`: un Google Form por open mic, campos estandarizados
+- `specs/sql/seed_data.sql`: actualizado con `silver.open_mics`, `open_mic_id` en bronze/silver
+
+#### Frontend — aislamiento y navegación
+- `frontend/src/App.jsx`: filtra `lineup_candidates` por `open_mic_id`; recibe `openMicId` y `onBack` como props
+- `frontend/src/components/open-mic/Header.jsx`: botón "← Volver al Open Mic" y logout
+- `frontend/src/components/open-mic/NotebookSheet.jsx`: pestaña Config integrada con `ScoringConfigurator`
+- `setup_db.py`: `v3_schema.sql` y migración bronze añadidos a `SQL_SEQUENCE`
+
+### Versioning
+- Bump de versión a `0.6.0` en `package.json`, `pyproject.toml` y `README.md`
+
 ## [0.5.61] - 2026-03-03
 
 ### Fixed

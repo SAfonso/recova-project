@@ -1,0 +1,834 @@
+{
+  "name": "Test BOT",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "90c5595d-ac29-4241-bc21-ae801c320f18",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [
+        -768,
+        208
+      ],
+      "webhookId": "recova-telegram-webhook",
+      "credentials": {
+        "telegramApi": {
+          "id": "6Ab7xKZYHk0wK6KP",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.message.text }}",
+              "operation": "startsWith",
+              "value2": "/start RCV-"
+            }
+          ]
+        }
+      },
+      "id": "cc100001-0000-0000-0000-000000000001",
+      "name": "If (¿Registro QR?)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -380,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.RECOVA_BACKEND_URL }}/api/telegram/register",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "WEBHOOK_API_KEY_REDACTED"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "telegram_user_id",
+              "value": "={{ $('Telegram Trigger').item.json.message.from.id }}"
+            },
+            {
+              "name": "code",
+              "value": "={{ $('Telegram Trigger').item.json.message.text.split(' ')[1] }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "cc100001-0000-0000-0000-000000000002",
+      "name": "HTTP (Register)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -380,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.host_id }}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "id": "cc100001-0000-0000-0000-000000000003",
+      "name": "If (¿Registro OK?)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -140,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.already_registered }}",
+              "operation": "equal",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "cc100001-0000-0000-0000-000000000004",
+      "name": "If (¿Ya registrado?)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        100,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "Tu cuenta ya estaba conectada.",
+        "additionalFields": {}
+      },
+      "id": "cc100001-0000-0000-0000-000000000005",
+      "name": "Telegram (Ya Conectada)",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        100,
+        600
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "6Ab7xKZYHk0wK6KP",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "Cuenta conectada. Ya puedes gestionar tu lineup desde aqui.",
+        "additionalFields": {}
+      },
+      "id": "cc100001-0000-0000-0000-000000000006",
+      "name": "Telegram (Cuenta Conectada)",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        340,
+        420
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "6Ab7xKZYHk0wK6KP",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.message === 'codigo no encontrado' ? 'Codigo no encontrado.' : $json.message === 'codigo ya usado' ? 'Este codigo ya fue usado.' : $json.message === 'codigo expirado' ? 'El codigo ha expirado. Genera uno nuevo desde la app.' : 'Error inesperado. Intentalo de nuevo.' }}",
+        "additionalFields": {}
+      },
+      "id": "cc100001-0000-0000-0000-000000000007",
+      "name": "Telegram (Error Registro)",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        -140,
+        600
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "6Ab7xKZYHk0wK6KP",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.host_id }}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "id": "876854aa-1376-4370-a202-3f4d0943a5f5",
+      "name": "If (Host Registrado?)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "=Acceso denegado. Tu ID de Telegram ({{ $('Telegram Trigger').item.json.message.from.id }}) no está vinculado a ninguna cuenta de organización en Recova. Contacta con soporte.",
+        "additionalFields": {}
+      },
+      "id": "a523fc79-024f-40a6-8144-850aee2eaa20",
+      "name": "Telegram (Rechazo)",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        -108,
+        480
+      ],
+      "webhookId": "a58cf06b-bba1-425f-b911-bcf8c6e3681c",
+      "credentials": {
+        "telegramApi": {
+          "id": "6Ab7xKZYHk0wK6KP",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "text": "={{ $('Telegram Trigger').item.json.message.text }}",
+        "options": {
+          "systemMessage": "=Eres el asistente de operaciones de Recova, un SaaS para Open Mics.\n\nREGLA ESTRICTA DE ARQUITECTURA:\nEl Host que te esta hablando tiene el ID: {{ $('Supabase (Validar Host)1').item.json.host_id }}.\n\nUsa este ID de forma obligatoria cuando llames a las herramientas. No asumas IDs, no inventes IDs. Responde de forma concisa, profesional y directa.\n\nSi la herramienta de listar open mics devuelve una lista vacia, responde exactamente:\n\"Aun no tienes ningun Open Mic creado. Entra en la app web para crear el primero: https://recova-project-z5zp.vercel.app\"\n\nCUANDO EL HOST PIDA EL LINEUP O QUIERA VALIDARLO:\n1. Usa Tool_Lineup_Link con su host_id y el open_mic_id del show.\n2. Responde con la lista de comicos y el link de validacion que devuelva la herramienta.\n3. Indica que el link expira cuando empiece el show.\n4. NO navegues a otras vistas ni ofrezcas navegar por la app."
+        }
+      },
+      "id": "df270a6c-ea4e-4388-9304-c8341fcb3e51",
+      "name": "AI Agent (Recova MCP)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1,
+      "position": [
+        180,
+        96
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "b4531bf1-3c8d-4dd0-aea5-30121517f635",
+      "name": "Window Buffer Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1,
+      "position": [
+        196,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {}
+      },
+      "id": "dfcc2ab9-0830-4c6a-95e5-14483a6940a4",
+      "name": "Telegram (Respuesta AI)",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        500,
+        96
+      ],
+      "webhookId": "28c2672b-46fe-48f2-b544-48660e105449",
+      "credentials": {
+        "telegramApi": {
+          "id": "6Ab7xKZYHk0wK6KP",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SUPABASE_URL + '/rest/v1/telegram_users' }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "SUPABASE_SERVICE_KEY_REDACTED"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer SUPABASE_SERVICE_KEY_REDACTED"
+            },
+            {
+              "name": "Accept-Profile",
+              "value": "silver"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a40cca2e-d9d3-4833-8b83-84d3135714b5",
+      "name": "Supabase (Validar Host)1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -284,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.RECOVA_BACKEND_URL }}/mcp/open-mics",
+        "sendQuery": true,
+        "parametersQuery": {
+          "values": [
+            {
+              "name": "host_id"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "parametersHeaders": {
+          "values": [
+            {
+              "name": "X-API-KEY",
+              "valueProvider": "fieldValue",
+              "value": "WEBHOOK_API_KEY_REDACTED"
+            }
+          ]
+        }
+      },
+      "id": "0fa7c1f8-95a6-4a5e-b67c-8f100467f467",
+      "name": "Tool_Open_Mics",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1,
+      "position": [
+        324,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.RECOVA_BACKEND_URL }}/mcp/lineup",
+        "sendQuery": true,
+        "parametersQuery": {
+          "values": [
+            {
+              "name": "open_mic_id"
+            },
+            {
+              "name": "fecha_evento"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "parametersHeaders": {
+          "values": [
+            {
+              "name": "X-API-KEY",
+              "valueProvider": "fieldValue",
+              "value": "WEBHOOK_API_KEY_REDACTED"
+            }
+          ]
+        }
+      },
+      "id": "a113f6a9-a977-4c57-a696-1740a0763e1c",
+      "name": "Tool_Lineup",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1,
+      "position": [
+        452,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.RECOVA_BACKEND_URL }}/mcp/candidates",
+        "sendQuery": true,
+        "parametersQuery": {
+          "values": [
+            {
+              "name": "open_mic_id"
+            },
+            {
+              "name": "limit"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "parametersHeaders": {
+          "values": [
+            {
+              "name": "X-API-KEY",
+              "valueProvider": "fieldValue",
+              "value": "WEBHOOK_API_KEY_REDACTED"
+            }
+          ]
+        }
+      },
+      "id": "d4813b91-ee5f-4a02-9d68-96f2f04892fe",
+      "name": "Tool_Candidatos",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1,
+      "position": [
+        596,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.RECOVA_BACKEND_URL }}/mcp/run-scoring",
+        "sendHeaders": true,
+        "parametersHeaders": {
+          "values": [
+            {
+              "name": "X-API-KEY",
+              "valueProvider": "fieldValue",
+              "value": "WEBHOOK_API_KEY_REDACTED"
+            },
+            {
+              "name": "Content-Type"
+            }
+          ]
+        },
+        "sendBody": true,
+        "parametersBody": {
+          "values": [
+            {
+              "name": "open_mic_id"
+            }
+          ]
+        }
+      },
+      "id": "50bfe97b-813a-49f0-9e7c-2d845bb48acb",
+      "name": "Tool_Ejecutar_Scoring",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1,
+      "position": [
+        740,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.RECOVA_BACKEND_URL }}/mcp/reopen-lineup",
+        "sendHeaders": true,
+        "parametersHeaders": {
+          "values": [
+            {
+              "name": "X-API-KEY",
+              "valueProvider": "fieldValue",
+              "value": "WEBHOOK_API_KEY_REDACTED"
+            },
+            {
+              "name": "Content-Type"
+            }
+          ]
+        },
+        "sendBody": true,
+        "parametersBody": {
+          "values": [
+            {
+              "name": "open_mic_id"
+            },
+            {
+              "name": "fecha_evento"
+            }
+          ]
+        }
+      },
+      "id": "fcdda9ce-938c-4f72-9ac9-2c37900ac574",
+      "name": "Tool_Reopen_Lineup",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1,
+      "position": [
+        884,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.RECOVA_BACKEND_URL }}/api/lineup/prepare-validation",
+        "sendHeaders": true,
+        "parametersHeaders": {
+          "values": [
+            {
+              "name": "X-API-KEY",
+              "valueProvider": "fieldValue",
+              "value": "={{ $env.WEBHOOK_API_KEY }}"
+            },
+            {
+              "name": "Content-Type"
+            }
+          ]
+        },
+        "sendBody": true,
+        "parametersBody": {
+          "values": [
+            {
+              "name": "host_id"
+            },
+            {
+              "name": "open_mic_id"
+            }
+          ]
+        },
+        "toolDescription": "Obtiene el lineup del proximo show de un open mic y genera un link de validacion. Requiere host_id y open_mic_id. Devuelve: fecha_evento, lineup (lista de comicos con nombre e instagram), validate_url (link para validar el lineup, expira al empezar el show)."
+      },
+      "id": "dd000001-0000-0000-0000-000000000001",
+      "name": "Tool_Lineup_Link",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1,
+      "position": [
+        1012,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        132,
+        272
+      ],
+      "id": "b790e5a8-0c2e-472c-9fe1-690389b22a41",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "ImSu7hn5P6MJj2QI",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      }
+    },
+    {
+      "id": "if-bienvenida-001",
+      "name": "If (¿Bienvenida?)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -640,
+        208
+      ],
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.message.text }}",
+              "operation": "equal",
+              "value2": "/start"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "telegram-bienvenida-001",
+      "name": "Telegram (Bienvenida)",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        -480,
+        80
+      ],
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "👋 ¡Hola! Soy *AIline*, tu asistente de gestión de Open Mics 🎤\n\nEstoy aquí para ayudarte a organizar tus noches de comedia de forma sencilla. Esto es lo que puedo hacer por ti:\n\n📋 *Ver tu lineup* — consulta quién está apuntado al próximo open mic\n🏆 *Gestionar candidatos* — revisa la lista de cómicos con su puntuación\n🧮 *Ejecutar scoring* — calcula y actualiza las puntuaciones automáticamente\n🎨 *Generar el cartel* — crea el poster del evento listo para compartir\n📲 *Enviar el lineup* — manda el cartel directamente a este chat\n\n⚠️ *Antes de empezar*, necesitas conectar tu cuenta:\n\n1️⃣ Entra en la web y crea tu Open Mic\n2️⃣ Configúralo a tu gusto (scoring, formulario, poster…)\n3️⃣ En la sección de Telegram, genera tu código de conexión y envíamelo aquí\n\n¡Cuando estés listo, escríbeme! 🚀",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "If (¿Bienvenida?)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If (¿Registro QR?)": {
+      "main": [
+        [
+          {
+            "node": "HTTP (Register)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Supabase (Validar Host)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP (Register)": {
+      "main": [
+        [
+          {
+            "node": "If (¿Registro OK?)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If (¿Registro OK?)": {
+      "main": [
+        [
+          {
+            "node": "If (¿Ya registrado?)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Telegram (Error Registro)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If (¿Ya registrado?)": {
+      "main": [
+        [
+          {
+            "node": "Telegram (Ya Conectada)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Telegram (Cuenta Conectada)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If (Host Registrado?)": {
+      "main": [
+        [
+          {
+            "node": "AI Agent (Recova MCP)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Telegram (Rechazo)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Window Buffer Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent (Recova MCP)",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent (Recova MCP)": {
+      "main": [
+        [
+          {
+            "node": "Telegram (Respuesta AI)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase (Validar Host)1": {
+      "main": [
+        [
+          {
+            "node": "If (Host Registrado?)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool_Open_Mics": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent (Recova MCP)",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool_Lineup": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent (Recova MCP)",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool_Candidatos": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent (Recova MCP)",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool_Ejecutar_Scoring": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent (Recova MCP)",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool_Reopen_Lineup": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent (Recova MCP)",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool_Lineup_Link": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent (Recova MCP)",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent (Recova MCP)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If (¿Bienvenida?)": {
+      "main": [
+        [
+          {
+            "node": "Telegram (Bienvenida)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If (¿Registro QR?)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "510f3b52-c02c-4d45-b355-2aaf86cc7c2a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0a875fbb3d2fbb10ab816e54655a603076a1de35a069a813489d324e1ea27d6a"
+  },
+  "id": "wJPPsUWoJH8enbwr",
+  "tags": []
+}

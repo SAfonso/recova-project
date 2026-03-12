@@ -15,7 +15,10 @@ from typing import Iterable
 from uuid import UUID
 
 import psycopg2
+from pathlib import Path
 from dotenv import load_dotenv
+
+_ROOT_ENV = Path(__file__).resolve().parents[2] / ".env"
 
 LOGGER = logging.getLogger("bronze_to_silver_ingestion")
 LOG_DIRECTORY = "/root/RECOVA/backend/logs"
@@ -29,8 +32,12 @@ INSTAGRAM_URL_PATTERN = re.compile(
     flags=re.IGNORECASE,
 )
 EXPERIENCE_MAP = {
+    # Opciones v3 (Google Form estandarizado — specs/google_form_campos_spec.md)
     "Es mi primera vez": 0,
     "He probado alguna vez": 1,
+    "Llevo tiempo haciendo stand-up": 2,
+    "Soy un profesional / tengo cachés": 3,
+    # Opciones legacy (formulario anterior — compatibilidad hacia atrás)
     "Llevo tiempo": 2,
     "No me conoces? ....¿Tu tampoco?": 3,
 }
@@ -40,6 +47,7 @@ EXPERIENCE_MAP = {
 class BronzeRecord:
     id: UUID
     proveedor_id: UUID
+    open_mic_id: UUID | None      # None en registros legacy (pre-v3)
     nombre_raw: str | None
     instagram_raw: str | None
     telefono_raw: str | None
@@ -136,33 +144,66 @@ def normalize_phone(phone_raw: str | None) -> str | None:
 def normalize_row(row: dict[str, str | None]) -> dict[str, object]:
     errors: list[str] = []
 
-    nombre = (row.get("¿Nombre?") or "").strip().title()
-    instagram = normalize_instagram_user(row.get("¿Instagram?"))
-    telefono = clean_phone(row.get("Whatsapp"))
+    # Campos de nombre: v3 primero, fallback a nombre legacy
+    nombre = (
+        row.get("Nombre artístico")
+        or row.get("¿Nombre?")
+        or ""
+    ).strip().title()
+
+    # Campos de instagram: v3 primero, fallback legacy
+    instagram = normalize_instagram_user(
+        row.get("Instagram (sin @)")
+        or row.get("¿Instagram?")
+    )
+
+    # Campos de teléfono: v3 primero, fallback legacy
+    telefono = clean_phone(
+        row.get("WhatsApp")
+        or row.get("Whatsapp")
+    )
 
     if not nombre:
-        errors.append("Campo obligatorio inválido/vacío: ¿Nombre?")
+        errors.append("Campo obligatorio inválido/vacío: Nombre artístico")
     if not instagram:
-        errors.append("Campo obligatorio inválido/vacío: ¿Instagram?")
+        errors.append("Campo obligatorio inválido/vacío: Instagram (sin @)")
     if not telefono:
-        errors.append("Campo obligatorio inválido/vacío: Whatsapp")
+        errors.append("Campo obligatorio inválido/vacío: WhatsApp")
 
-    fechas_raw = (row.get("Fecha") or "").strip()
+    # Fechas: v3 primero, fallback legacy
+    fechas_raw = (
+        row.get("¿Qué fechas te vienen bien?")
+        or row.get("Fecha")
+        or ""
+    ).strip()
     fechas_lista = [token.strip() for token in fechas_raw.split(",") if token.strip()]
 
     normalized = {
         "nombre": nombre,
         "instagram": instagram,
         "telefono": telefono,
-        "experiencia_raw": (row.get("¿Has actuado alguna vez?") or "").strip(),
+        "experiencia_raw": (
+            row.get("¿Cuántas veces has actuado en un open mic?")
+            or row.get("¿Has actuado alguna vez?")
+            or ""
+        ).strip(),
         "fechas_raw": fechas_raw,
         "fechas_lista": fechas_lista,
         "disponibilidad_ultimo_minuto": (
-            row.get("Si nos falla alguien en ultimo momento ¿Te podemos llamar?")
+            row.get("¿Estarías disponible si nos falla alguien de última hora?")
+            or row.get("Si nos falla alguien en ultimo momento ¿Te podemos llamar?")
             or ""
         ).strip(),
-        "info_show_cercano": (row.get("¿Tienes algun Show cercano o algo?") or "").strip(),
-        "origen_conocimiento": (row.get("¿Por donde nos conociste?") or "").strip(),
+        "info_show_cercano": (
+            row.get("¿Tienes algún show próximo que quieras mencionar?")
+            or row.get("¿Tienes algun Show cercano o algo?")
+            or ""
+        ).strip(),
+        "origen_conocimiento": (
+            row.get("¿Cómo nos conociste?")
+            or row.get("¿Por donde nos conociste?")
+            or ""
+        ).strip(),
     }
 
     return {
@@ -227,6 +268,7 @@ def fetch_pending_bronze_rows(conn) -> list[BronzeRecord]:
             SELECT
                 id,
                 proveedor_id,
+                open_mic_id,
                 nombre_raw,
                 instagram_raw,
                 telefono_raw,
@@ -332,35 +374,72 @@ def insert_silver_rows(
     available_last_minute: bool,
 ) -> int:
     inserted_count = 0
+
+    # Pipeline v3: tiene open_mic_id → usa constraint multi-tenant
+    # Pipeline legacy: open_mic_id es None → usa constraint anterior
+    is_v3 = bronze.open_mic_id is not None
+
     with conn.cursor() as cursor:
         for event_date in event_dates:
-            cursor.execute(
-                """
-                INSERT INTO silver.solicitudes (
-                    bronze_id,
-                    proveedor_id,
-                    comico_id,
-                    fecha_evento,
-                    nivel_experiencia,
-                    disponibilidad_ultimo_minuto,
-                    show_cercano,
-                    origen_conocimiento,
-                    status
+            if is_v3:
+                cursor.execute(
+                    """
+                    INSERT INTO silver.solicitudes (
+                        bronze_id,
+                        proveedor_id,
+                        open_mic_id,
+                        comico_id,
+                        fecha_evento,
+                        nivel_experiencia,
+                        disponibilidad_ultimo_minuto,
+                        show_cercano,
+                        origen_conocimiento,
+                        status
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'normalizado')
+                    ON CONFLICT (comico_id, open_mic_id, fecha_evento) DO NOTHING
+                    """,
+                    (
+                        str(bronze.id),
+                        str(bronze.proveedor_id),
+                        str(bronze.open_mic_id),
+                        str(comico_id),
+                        event_date,
+                        level,
+                        available_last_minute,
+                        bronze.info_show_cercano,
+                        bronze.origen_conocimiento,
+                    ),
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'normalizado')
-                ON CONFLICT (comico_id, fecha_evento) DO NOTHING
-                """,
-                (
-                    str(bronze.id),
-                    str(bronze.proveedor_id),
-                    str(comico_id),
-                    event_date,
-                    level,
-                    available_last_minute,
-                    bronze.info_show_cercano,
-                    bronze.origen_conocimiento,
-                ),
-            )
+            else:
+                # Legacy: sin open_mic_id, constraint original (comico_id, fecha_evento)
+                cursor.execute(
+                    """
+                    INSERT INTO silver.solicitudes (
+                        bronze_id,
+                        proveedor_id,
+                        comico_id,
+                        fecha_evento,
+                        nivel_experiencia,
+                        disponibilidad_ultimo_minuto,
+                        show_cercano,
+                        origen_conocimiento,
+                        status
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'normalizado')
+                    ON CONFLICT (comico_id, fecha_evento) DO NOTHING
+                    """,
+                    (
+                        str(bronze.id),
+                        str(bronze.proveedor_id),
+                        str(comico_id),
+                        event_date,
+                        level,
+                        available_last_minute,
+                        bronze.info_show_cercano,
+                        bronze.origen_conocimiento,
+                    ),
+                )
             inserted_count += cursor.rowcount
 
     return inserted_count
@@ -427,15 +506,16 @@ def process_single_solicitud(
 
     try:
         phase = "normalizacion"
+        # Usar nombres de campos v3 (normalize_row soporta fallback a legacy)
         form_row = {
-            "¿Nombre?": bronze.nombre_raw,
-            "¿Instagram?": bronze.instagram_raw,
-            "Whatsapp": bronze.telefono_raw,
-            "¿Has actuado alguna vez?": bronze.experiencia_raw,
-            "Fecha": bronze.fechas_seleccionadas_raw,
-            "Si nos falla alguien en ultimo momento ¿Te podemos llamar?": bronze.disponibilidad_ultimo_minuto,
-            "¿Tienes algun Show cercano o algo?": bronze.info_show_cercano,
-            "¿Por donde nos conociste?": bronze.origen_conocimiento,
+            "Nombre artístico":                                           bronze.nombre_raw,
+            "Instagram (sin @)":                                          bronze.instagram_raw,
+            "WhatsApp":                                                   bronze.telefono_raw,
+            "¿Cuántas veces has actuado en un open mic?":                bronze.experiencia_raw,
+            "¿Qué fechas te vienen bien?":                               bronze.fechas_seleccionadas_raw,
+            "¿Estarías disponible si nos falla alguien de última hora?": bronze.disponibilidad_ultimo_minuto,
+            "¿Tienes algún show próximo que quieras mencionar?":         bronze.info_show_cercano,
+            "¿Cómo nos conociste?":                                      bronze.origen_conocimiento,
         }
         normalized_result = normalize_row(form_row)
         if not normalized_result["is_valid"]:
@@ -519,7 +599,7 @@ def process_single_solicitud(
 
 
 def run_pipeline() -> dict[str, object]:
-    load_dotenv()
+    load_dotenv(dotenv_path=_ROOT_ENV)
     configure_logging()
     today = date.today()
     detalles_descarte: list[dict[str, str]] = []

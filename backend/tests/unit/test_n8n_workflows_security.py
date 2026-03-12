@@ -44,8 +44,12 @@ def test_n8n_workflows_use_env_references_for_sensitive_values():
     assert "$env.SUPABASE_KEY" in ingesta
     assert "'Bearer ' + $env.SUPABASE_KEY" in ingesta
 
-    assert "$env.N8N_BACKEND_SCORING_URL" in scoring
+    # Scoring & Draft reconstruido (multi-tenant, Sprint 5): usa RECOVA_BACKEND_URL y SUPABASE_URL
+    assert "$env.RECOVA_BACKEND_URL" in scoring
+    assert "$env.SUPABASE_URL" in scoring
+    assert "$env.WEBHOOK_API_KEY" in scoring
 
     assert "$env.SUPABASE_URL + '/rest/v1/lineup_candidates'" in lineup
     assert "$env.SUPABASE_KEY" in lineup
     assert "'Bearer ' + $env.SUPABASE_KEY" in lineup
+    assert "$env.RECOVA_RENDERER_URL" in lineup  # render va a recova-renderer:5050
