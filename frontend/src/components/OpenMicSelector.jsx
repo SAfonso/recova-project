@@ -19,6 +19,19 @@ const TelegramIcon = ({ className }) => (
 
 const STAGGER_CLASSES = ['stagger-1','stagger-2','stagger-3','stagger-4','stagger-5','stagger-6'];
 
+const MicIcon = ({ className }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+    <path d="M19 10v2a7 7 0 0 1-14 0v-2H3v2a9 9 0 0 0 8 8.94V22H8v2h8v-2h-3v-1.06A9 9 0 0 0 21 12v-2h-2z"/>
+  </svg>
+);
+
+const SparkIcon = ({ className }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M12 2l2.09 6.26L20 10l-5.91 1.74L12 18l-2.09-6.26L4 10l5.91-1.74z" />
+  </svg>
+);
+
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
   || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
@@ -135,7 +148,20 @@ export function OpenMicSelector({ session, onSelect }) {
   const showCreateForm = creating || showEmptyForm;
 
   return (
-    <main className="paint-bg flex min-h-screen items-center justify-center px-4 md:px-8">
+    <main className="paint-bg relative flex min-h-screen items-center justify-center overflow-hidden px-4 md:px-8" style={{ backgroundColor: '#B8B3AC' }}>
+
+      {/* Decoración de fondo: micros y estrellas */}
+      <div className="pointer-events-none absolute inset-0 select-none" aria-hidden="true">
+        <MicIcon  className="absolute top-[6%]  left-[4%]  w-20 -rotate-[15deg] text-[#2C4A52] opacity-[0.07]" />
+        <SparkIcon className="absolute top-[18%] right-[7%]  w-12 rotate-[25deg]  text-[#C9A66B] opacity-[0.10]" />
+        <MicIcon  className="absolute top-[42%] left-[2%]  w-10 -rotate-[5deg]  text-[#5E7153] opacity-[0.06]" />
+        <SparkIcon className="absolute bottom-[28%] left-[7%] w-9 -rotate-[12deg] text-[#A34A42] opacity-[0.08]" />
+        <MicIcon  className="absolute bottom-[10%] right-[5%] w-16 rotate-[12deg] text-[#A34A42] opacity-[0.07]" />
+        <SparkIcon className="absolute top-[68%] right-[11%] w-7  rotate-[18deg]  text-[#C9A66B] opacity-[0.07]" />
+        <MicIcon  className="absolute top-[28%] right-[2%]  w-12 rotate-[20deg] text-[#2C4A52] opacity-[0.05]" />
+        <SparkIcon className="absolute bottom-[50%] left-[13%] w-6 -rotate-[8deg] text-[#5E7153] opacity-[0.06]" />
+      </div>
+
       <div className="w-full max-w-md md:max-w-lg lg:max-w-xl">
 
         <div className="mb-6 rotate-[0.8deg] text-center">

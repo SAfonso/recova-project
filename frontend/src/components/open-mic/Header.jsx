@@ -44,9 +44,8 @@ export function Header({ eventDate, onEventDateChange, selectedCount, hostEmail,
       <div className="relative inline-flex items-center gap-3">
         <div className="relative inline-block px-1">
           <p className="font-['Bangers'] text-3xl tracking-wider text-[#0D0D0D]">{formatDateForSheet(eventDate)}</p>
-          <svg className="absolute -bottom-1 left-0 w-full" height="6" viewBox="0 0 200 6" fill="none" preserveAspectRatio="none" aria-hidden="true">
-            <path d="M0,3 Q20,0 40,4 T80,2 T120,5 T160,1 T200,3" stroke="#3D5F6C" strokeWidth="3" fill="none" strokeLinecap="round" />
-          </svg>
+          <div className="absolute -bottom-1 left-0 right-0 h-[3px] bg-[#2C4A52]" aria-hidden="true" />
+          <div className="absolute -bottom-2.5 left-1 right-0 h-px bg-[#2C4A52]/30" aria-hidden="true" />
           <input
             type="date"
             value={eventDate}
