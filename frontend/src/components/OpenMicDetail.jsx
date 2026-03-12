@@ -250,25 +250,26 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
             </div></div>
           </>
         ) : (
-          <div className="animate-pop-in -rotate-[1deg] paper-drop">
+          <div className="animate-pop-in">
+            {/* Tabs fuera del panel — mismo patrón que NotebookSheet */}
+            <div className="relative z-10 flex items-end gap-1 -mb-[3px]">
+              {[{ id: 'info', label: 'INFO' }, { id: 'scoring', label: 'SCORING' }, { id: 'dev', label: 'DEV' }].map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setConfigTab(tab.id)}
+                  className={`relative z-10 cursor-pointer rounded-none border-[3px] border-[#0D0D0D] px-5 py-1.5 text-sm font-bold tracking-wide transition-all duration-150
+                    ${configTab === tab.id
+                      ? 'border-b-0 bg-[#FEFDF8] text-[#0D0D0D]'
+                      : 'border-b-[3px] bg-[#FEFDF8] text-[#0D0D0D]/50 hover:text-[#0D0D0D]'
+                    }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+            <div className="-rotate-[1deg] paper-drop">
             <div className="scrapbook-panel pin-corner paper-rough paper-note px-6 py-4">
-              {/* Subtabs Info / Scoring */}
-              <div className="mb-4 flex gap-1 border-b-2 border-[#C8B89A] pb-0">
-                {[{ id: 'info', label: 'Info' }, { id: 'scoring', label: 'Scoring' }, { id: 'dev', label: 'Dev' }].map((tab) => (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => setConfigTab(tab.id)}
-                    className={`cursor-pointer rounded-none border-[3px] border-b-0 border-[#0D0D0D] px-5 py-1.5 text-sm font-bold transition-all duration-150
-                      ${configTab === tab.id
-                        ? 'relative z-10 -mb-[2px] bg-[#0D0D0D] text-[#F5F5F0]'
-                        : 'bg-[#EDE8DC] text-[#0D0D0D]/60 hover:bg-[#E4DDD0] hover:text-[#0D0D0D]'
-                      }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
 
               {configTab === 'info' ? (
                 <InfoConfigurator openMicId={openMicId} openMic={openMic} onSaved={handleSaved} />
@@ -292,6 +293,7 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
                 </>
               )}
             </div>
+            </div>{/* /paper-drop */}
           </div>
         )}
 

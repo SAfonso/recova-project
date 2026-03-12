@@ -37,18 +37,18 @@ export function NotebookSheet({
           Activa: border-b-0 + bg del color de categoría → se funde con la hoja
           Inactiva: borde completo + bg oscuro → claramente separada                    */}
       <div className="relative z-10 flex flex-wrap items-end gap-1 -mb-[3px]">
-        {TABS.map((tab) => {
+        {TABS.map((tab, index) => {
           const isActive = activeTab === tab.value;
           return (
             <button
               key={tab.value}
               type="button"
               onClick={() => onTabChange(tab.value)}
-              className={`relative z-10 cursor-pointer rounded-none border-[3px] border-[#0D0D0D] px-3 py-1 text-sm font-bold transition-all duration-150 sm:px-4 sm:text-base ${
+              className={`relative z-10 cursor-pointer rounded-none border-[3px] border-[#0D0D0D] px-3 py-1 text-sm font-bold tracking-wide transition-all duration-150 sm:px-4 sm:text-base ${
                 isActive
                   ? `border-b-0 ${tab.bg} ${tab.activeText}`
-                  : 'border-b-[3px] bg-[#D8D4CC] text-[#0D0D0D]/60 hover:bg-[#C8C3BC] hover:text-[#0D0D0D]'
-              }`}
+                  : 'border-b-[3px] bg-[#FEFDF8] text-[#0D0D0D]/50 hover:text-[#0D0D0D]'
+              } ${index === 0 ? 'mr-auto' : ''}`}
             >
               {tab.label}
             </button>

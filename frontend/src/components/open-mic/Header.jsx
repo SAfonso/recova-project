@@ -43,7 +43,7 @@ export function Header({ eventDate, onEventDateChange, selectedCount, hostEmail,
 
       <div className="relative inline-flex items-center gap-3">
         <div className="relative inline-block px-1">
-          <p className="font-['Bangers'] text-3xl tracking-wider text-[#0D0D0D]">{formatDateForSheet(eventDate)}</p>
+          <p className="font-['Oswald'] text-4xl font-bold italic tracking-wider text-[#0D0D0D] sm:text-5xl">{formatDateForSheet(eventDate)}</p>
           <div className="absolute -bottom-1 left-0 right-0 h-[3px] bg-[#2C4A52]" aria-hidden="true" />
           <div className="absolute -bottom-2.5 left-1 right-0 h-px bg-[#2C4A52]/30" aria-hidden="true" />
           <input
