@@ -1,8 +1,8 @@
 const TABS = [
-  { value: 'lineup',     label: 'Line Up',    bg: 'bg-[#FEFDF8]', activeText: 'text-[#0D0D0D]' },
-  { value: 'gold',       label: 'Gold',       bg: 'bg-[#C4905A]', activeText: 'text-[#0D0D0D]' },
-  { value: 'priority',   label: 'Priority',   bg: 'bg-[#3D5F6C]', activeText: 'text-[#F5F5F0]' },
-  { value: 'restricted', label: 'Restricted', bg: 'bg-[#0D0D0D]', activeText: 'text-[#F5F5F0]' },
+  { value: 'lineup',     label: 'Line Up',    activeBg: null,       activeText: 'text-[#0D0D0D]' },
+  { value: 'gold',       label: 'Gold',       activeBg: '#C9A66B',  activeText: 'text-[#0D0D0D]' },
+  { value: 'priority',   label: 'Priority',   activeBg: '#2C4A52',  activeText: 'text-[#FEFDF8]' },
+  { value: 'restricted', label: 'Restricted', activeBg: '#0D0D0D',  activeText: 'text-[#FEFDF8]' },
 ];
 
 function getFilteredCandidates({ activeTab, candidates, selectedCandidates, getDraft }) {
@@ -44,11 +44,12 @@ export function NotebookSheet({
               key={tab.value}
               type="button"
               onClick={() => onTabChange(tab.value)}
-              className={`relative z-10 cursor-pointer rounded-none border-[3px] border-[#0D0D0D] px-3 py-1 text-sm font-bold tracking-wide transition-all duration-150 sm:px-4 sm:text-base ${
+              className={`paper-note relative z-10 cursor-pointer rounded-none border-[3px] border-[#0D0D0D] px-3 py-1 text-sm font-bold tracking-wide transition-all duration-150 sm:px-4 sm:text-base ${
                 isActive
-                  ? `border-b-0 ${tab.bg} ${tab.activeText}`
-                  : 'border-b-[3px] bg-[#FEFDF8] text-[#0D0D0D]/50 hover:text-[#0D0D0D]'
+                  ? `border-b-0 ${tab.activeText}`
+                  : 'border-b-[3px] text-[#0D0D0D]/50 hover:text-[#0D0D0D]'
               } ${index === 0 ? 'mr-auto' : ''}`}
+              style={isActive && tab.activeBg ? { backgroundColor: tab.activeBg } : undefined}
             >
               {tab.label}
             </button>
@@ -101,7 +102,7 @@ export function NotebookSheet({
                   const draft = getDraft(candidate);
                   const stagger = index < 6 ? `stagger-${index + 1}` : 'stagger-6';
                   return (
-                    <li key={candidate.row_key} className={`animate-slide-up tilt-soft ${stagger} paper-strip mb-2 flex items-center gap-2 px-2 py-[7px] text-[#0D0D0D] last:border-0`}>
+                    <li key={candidate.row_key} className={`animate-slide-up tilt-soft ${stagger} paper-strip mb-2 flex cursor-pointer items-center gap-2 px-2 py-[7px] text-[#0D0D0D] transition-colors duration-150 last:border-0 hover:bg-[#2C4A52]/10`}>
                       <span className="w-5 shrink-0 text-right text-xs font-bold text-[#0D0D0D]/40">{index + 1}</span>
                       <span className="truncate font-['Patrick_Hand'] text-xl font-bold md:text-2xl">{candidate.nombre ?? candidate.instagram ?? 'Sin nombre'}</span>
                       <span

@@ -19,7 +19,7 @@ const GENDER_OPTIONS = [
 const CARD_BORDER = {
   gold:       'border-[#C4905A] bg-[#EDE8DC]',
   priority:   'border-[#3D5F6C] bg-[#EDE8DC]',
-  restricted: 'restricted-overlay border-[#0D0D0D] bg-[#E8DDD8]',
+  restricted: 'restricted-overlay border-[#A34A42] bg-[#FDF0F0]',
   default:    'border-[#0D0D0D] bg-[#EDE8DC]',
 };
 

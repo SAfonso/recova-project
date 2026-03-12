@@ -19,6 +19,15 @@ const TelegramIcon = ({ className }) => (
 
 const STAGGER_CLASSES = ['stagger-1','stagger-2','stagger-3','stagger-4','stagger-5','stagger-6'];
 
+const MIC_HOVER_COLORS = [
+  'hover:bg-[#2C4A52] hover:text-[#FEFDF8]',
+  'hover:bg-[#5E7260] hover:text-[#FEFDF8]',
+  'hover:bg-[#C9A66B] hover:text-[#0D0D0D]',
+  'hover:bg-[#A34A42] hover:text-[#FEFDF8]',
+  'hover:bg-[#3D5F6C] hover:text-[#FEFDF8]',
+  'hover:bg-[#7B6D4A] hover:text-[#FEFDF8]',
+];
+
 
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
   || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -181,7 +190,7 @@ export function OpenMicSelector({ session, onSelect }) {
                     <button
                       type="button"
                       onClick={() => onSelect(mic.id)}
-                      className="paper-strip group flex w-full cursor-pointer items-center gap-3 rounded-none border-[3px] border-[#0D0D0D] bg-[#EDE8DC] px-4 py-3 text-left text-base font-bold text-[#1a1a1a] transition-all duration-200 hover:bg-[#3D5F6C] hover:text-[#F5F5F0] md:px-5 md:py-4 md:text-lg"
+                      className={`paper-strip group flex w-full cursor-pointer items-center gap-3 rounded-none border-[3px] border-[#0D0D0D] bg-[#EDE8DC] px-4 py-3 text-left text-base font-bold text-[#1a1a1a] transition-all duration-200 md:px-5 md:py-4 md:text-lg ${MIC_HOVER_COLORS[index % MIC_HOVER_COLORS.length]}`}
                     >
                       <OpenMicIcon iconId={mic.config?.info?.icono} className="h-4 w-4 shrink-0" />
                       <span className="flex-1 truncate">{mic.nombre}</span>
