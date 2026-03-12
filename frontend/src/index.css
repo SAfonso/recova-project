@@ -17,8 +17,8 @@
      bg: gris cálido medio — claramente distinto de las tarjetas
      paper: casi blanco cálido — tarjetas visiblemente más claras
   ─────────────────────────────────────────────────── */
-  --c-bg:          #EBE9E4;   /* fondo general — gris cálido/crema (spec) */
-  --c-paper:       #FEFDF8;   /* papel tarjeta — casi blanco, contrasta con fondo */
+  --c-bg:          #D4CFC8;   /* fondo general — gris cálido medio, contrasta con tarjetas */
+  --c-paper:       #FEFDF8;   /* papel tarjeta — casi blanco, claramente más claro que el fondo */
   --c-paper-alt:   #F0EDE6;   /* papel secundario */
 
   /* ── Tinta ── */
@@ -138,13 +138,37 @@ h1, h2, h3 {
 
 /* ── Scrapbook panel ───────────────────────────────────
    SIN clip-path (cortaba sombras y botones)
-   SIN ::before/::after (eliminados — eran el "celo")
    La sombra la gestiona el .paper-drop padre.
+   ::before/::after → cinta de carrocero marrón (masking tape)
 ─────────────────────────────────────────────────────── */
 .scrapbook-panel {
   position: relative;
   border: var(--border-ink);
   border-radius: 3px 6px 4px 5px / 5px 3px 6px 3px;
+}
+
+.scrapbook-panel::before,
+.scrapbook-panel::after {
+  content: '';
+  position: absolute;
+  width: 54px;
+  height: 15px;
+  background: rgba(190, 160, 110, 0.70);
+  border: 1px solid rgba(140, 105, 55, 0.35);
+  pointer-events: none;
+  z-index: 20;
+}
+
+.scrapbook-panel::before {
+  top: -10px;
+  left: 18px;
+  transform: rotate(-8deg);
+}
+
+.scrapbook-panel::after {
+  top: -8px;
+  right: 20px;
+  transform: rotate(10deg);
 }
 
 /* Pin decorativo (bolita roja) — se mantiene */
