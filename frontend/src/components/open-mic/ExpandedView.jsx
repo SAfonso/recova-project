@@ -33,6 +33,7 @@ export function ExpandedView({
   getDraft,
   hasPendingEdit,
   isLastMinuteMode,
+  singleDateMode,
 }) {
   const selectedCount = selectedIds.length;
   const canSelect = selectedCount < 5;
@@ -91,6 +92,8 @@ export function ExpandedView({
                 hasPendingEdit={hasPendingEdit(candidate)}
                 lastMinuteMode={isLastMinuteMode && !selectedIds.includes(candidate.row_key)}
                 isLastMinute={!!candidate.puede_hoy}
+                singleDateMode={singleDateMode && !selectedIds.includes(candidate.row_key)}
+                isSingleDate={!!candidate.is_single_date}
               />
             ))}
           </div>

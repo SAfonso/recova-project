@@ -42,6 +42,23 @@ const defaultProps = {
   isLastMinute: false,
 };
 
+describe('ComicCard — flag Solo puede hoy', () => {
+  it('muestra el badge "Solo puede hoy" cuando singleDateMode=true e isSingleDate=true', () => {
+    render(<ComicCard {...defaultProps} singleDateMode={true} isSingleDate={true} />);
+    expect(screen.getByText('Solo puede hoy')).toBeInTheDocument();
+  });
+
+  it('no muestra el badge cuando singleDateMode=false', () => {
+    render(<ComicCard {...defaultProps} singleDateMode={false} isSingleDate={true} />);
+    expect(screen.queryByText('Solo puede hoy')).not.toBeInTheDocument();
+  });
+
+  it('no muestra el badge cuando isSingleDate=false', () => {
+    render(<ComicCard {...defaultProps} singleDateMode={true} isSingleDate={false} />);
+    expect(screen.queryByText('Solo puede hoy')).not.toBeInTheDocument();
+  });
+});
+
 describe('ComicCard — flag Puede Hoy', () => {
   it('muestra el badge "Puede hoy" cuando lastMinuteMode=true e isLastMinute=true', () => {
     render(<ComicCard {...defaultProps} lastMinuteMode={true} isLastMinute={true} />);

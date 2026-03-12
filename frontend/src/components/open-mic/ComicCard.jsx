@@ -41,10 +41,12 @@ export function ComicCard({
   candidate, draft, selected, expanded, canSelect,
   onExpand, onToggleSelected, onUpdateCategory, onUpdateGenero, hasPendingEdit,
   lastMinuteMode, isLastMinute,
+  singleDateMode, isSingleDate,
 }) {
   const borderClass = CARD_BORDER[draft.categoria] ?? CARD_BORDER.default;
   const shadow = DROP_SHADOW[draft.categoria] ?? DROP_SHADOW.default;
   const showLastMinute = lastMinuteMode && isLastMinute;
+  const showSingleDate = singleDateMode && isSingleDate;
 
   const handleCategoryClick = (value) => {
     // Si ya está activo, volver a standard (quitar categoría especial)
@@ -74,6 +76,11 @@ export function ComicCard({
             {showLastMinute && (
               <span className="shrink-0 rounded-none border-[2px] border-[#0D0D0D] bg-[#EAB308] px-2 py-0.5 font-['Bangers'] text-xs tracking-wide text-[#0D0D0D]">
                 Puede hoy
+              </span>
+            )}
+            {showSingleDate && (
+              <span className="shrink-0 rounded-none border-[2px] border-[#0D0D0D] bg-[#DC2626] px-2 py-0.5 font-['Bangers'] text-xs tracking-wide text-[#FEFDF8]">
+                Solo puede hoy
               </span>
             )}
           </span>

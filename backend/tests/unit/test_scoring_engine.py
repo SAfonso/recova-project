@@ -75,7 +75,7 @@ def _make_candidate(**kwargs) -> engine.CandidateScore:
         marca_temporal=datetime(2026, 2, 1, 10, 0, tzinfo=timezone.utc),
         fecha_evento=datetime(2026, 3, 14, tzinfo=timezone.utc).date(),
         penalizado_por_recencia=False,
-        bono_bala_unica=True,
+        is_single_date=False,
         solicitud_id="22222222-2222-2222-2222-222222222222",
     )
     return engine.CandidateScore(**{**defaults, **kwargs})
@@ -359,3 +359,44 @@ def test_persist_pending_score_puede_hoy_false_persisted():
     insert_query, insert_params = cursor.executed[0]
     assert "puede_hoy" in insert_query.lower()
     assert False in insert_params
+
+
+def test_persist_pending_score_includes_is_single_date():
+    """INSERT incluye is_single_date en la query y en los params."""
+    cursor = RecordingCursor()
+    conn = RecordingConnection(cursor)
+    candidate = _make_candidate(is_single_date=True)
+
+    engine.persist_pending_score(conn, candidate)
+
+    insert_query, insert_params = cursor.executed[0]
+    assert "is_single_date" in insert_query.lower()
+    assert True in insert_params
+
+
+def test_build_ranking_sets_is_single_date_true_for_single_date(monkeypatch):
+    """Cómico con una sola fecha → is_single_date=True en el candidato."""
+    requests = [
+        _make_request(comico_id="id-a", instagram="a", genero="f",
+                      fechas_disponibles="2026-03-14"),
+    ]
+    monkeypatch.setattr(engine, "upsert_comico", _fake_upsert)
+    monkeypatch.setattr(engine, "has_recent_acceptance_penalty", _fake_no_penalty)
+
+    ranking, _ = engine.build_ranking(conn=None, requests=requests, config=_default_config())
+
+    assert ranking[0].is_single_date is True
+
+
+def test_build_ranking_sets_is_single_date_false_for_multiple_dates(monkeypatch):
+    """Cómico con varias fechas → is_single_date=False."""
+    requests = [
+        _make_request(comico_id="id-a", instagram="a", genero="f",
+                      fechas_disponibles="2026-03-14,2026-03-21"),
+    ]
+    monkeypatch.setattr(engine, "upsert_comico", _fake_upsert)
+    monkeypatch.setattr(engine, "has_recent_acceptance_penalty", _fake_no_penalty)
+
+    ranking, _ = engine.build_ranking(conn=None, requests=requests, config=_default_config())
+
+    assert ranking[0].is_single_date is False

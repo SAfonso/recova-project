@@ -1,10 +1,10 @@
 """ScoringConfig — configuración de scoring leída desde silver.open_mics.config (JSONB).
 
 Reemplaza las constantes hardcodeadas del scoring_engine:
-  · CATEGORY_BONUS           → ScoringConfig.categories
-  · penalización recencia     → ScoringConfig.recency_penalty_*
-  · bono bala única           → ScoringConfig.single_date_boost_*
-  · ventana de ediciones      → ScoringConfig.recency_last_n_editions
+  · CATEGORY_BONUS            → ScoringConfig.categories
+  · penalización recencia      → ScoringConfig.recency_penalty_*
+  · prioridad fecha única      → ScoringConfig.single_date_priority_enabled (+40 interno)
+  · ventana de ediciones       → ScoringConfig.recency_last_n_editions
 
 La estructura del JSONB esperado está documentada en specs/sql/v3_schema.sql §3.
 """
@@ -18,6 +18,8 @@ from typing import Any
 # Valores por defecto — deben mantenerse sincronizados con el DEFAULT JSONB
 # definido en silver.open_mics.config (specs/sql/v3_schema.sql §3).
 # ---------------------------------------------------------------------------
+_SINGLE_DATE_BONUS = 40  # Bono interno fijo — no configurable por el host
+
 _DEFAULTS: dict[str, Any] = {
     "available_slots": 8,
     "categories": {
@@ -31,9 +33,8 @@ _DEFAULTS: dict[str, Any] = {
         "last_n_editions": 2,
         "penalty_points": 20,
     },
-    "single_date_boost": {
+    "single_date_priority": {
         "enabled": True,
-        "boost_points": 10,
     },
     "gender_parity": {
         "enabled": False,
@@ -112,9 +113,8 @@ class ScoringConfig:
     recency_last_n_editions: int = 2
     recency_penalty_points: int = 20
 
-    # Bono bala única (disponible solo para una fecha)
-    single_date_boost_enabled: bool = True
-    single_date_boost_points: int = 10
+    # Prioridad para cómicos que solo pueden ese día (bono interno fijo)
+    single_date_priority_enabled: bool = True
 
     # Paridad de género
     gender_parity_enabled: bool = False
@@ -154,9 +154,9 @@ class ScoringConfig:
             if cat_name not in merged_cats:
                 merged_cats[cat_name] = CategoryRule.from_dict(raw_rule)
 
-        recency = raw.get("recency_penalty", _DEFAULTS["recency_penalty"])
-        boost   = raw.get("single_date_boost", _DEFAULTS["single_date_boost"])
-        parity  = raw.get("gender_parity", _DEFAULTS["gender_parity"])
+        recency    = raw.get("recency_penalty",    _DEFAULTS["recency_penalty"])
+        single_prio = raw.get("single_date_priority", _DEFAULTS["single_date_priority"])
+        parity     = raw.get("gender_parity",        _DEFAULTS["gender_parity"])
 
         raw_rules = raw.get("custom_scoring_rules", [])
         custom_rules = [CustomRule.from_dict(r) for r in raw_rules if isinstance(r, dict)]
@@ -168,8 +168,7 @@ class ScoringConfig:
             recency_penalty_enabled=bool(recency.get("enabled", True)),
             recency_last_n_editions=int(recency.get("last_n_editions", 2)),
             recency_penalty_points=int(recency.get("penalty_points", 20)),
-            single_date_boost_enabled=bool(boost.get("enabled", True)),
-            single_date_boost_points=int(boost.get("boost_points", 10)),
+            single_date_priority_enabled=bool(single_prio.get("enabled", True)),
             gender_parity_enabled=bool(parity.get("enabled", False)),
             gender_parity_target_pct=int(parity.get("target_female_nb_pct", 40)),
             scoring_type=raw.get("scoring_type", "basic"),
@@ -197,7 +196,7 @@ class ScoringConfig:
         self,
         category: str,
         has_recency_penalty: bool,
-        is_single_date: bool,
+        is_single_date: bool = False,
     ) -> int | None:
         """Calcula el score final para un candidato.
 
@@ -214,8 +213,8 @@ class ScoringConfig:
         if self.recency_penalty_enabled and has_recency_penalty:
             score -= self.recency_penalty_points
 
-        if self.single_date_boost_enabled and is_single_date:
-            score += self.single_date_boost_points
+        if self.single_date_priority_enabled and is_single_date:
+            score += _SINGLE_DATE_BONUS
 
         return score
 

@@ -97,6 +97,32 @@ Form response (backup = "Sí")
 
 ---
 
+---
+
+## Addendum v0.19.1 — `single_date_priority`
+
+### Decisión
+El bono por "disponibilidad única" deja de ser un valor configurable (puntos) y se convierte en un toggle con efecto interno fijo. Un cómico que marcó UNA sola fecha disponible (la del show en curso) recibe un bono interno de **+40 pts** al hacer el scoring — suficiente para competir con categorías superiores. El host no ve ni controla los puntos, solo activa/desactiva la prioridad.
+
+### Reglas
+- `single_date_priority_enabled`: boolean en `open_mics.config`. Default `true`.
+- `has_single_date(fechas_disponibles)`: el cómico tiene exactamente 1 fecha disponible.
+- Si ambos → `score += 40` al calcular el ranking (interno, no expuesto en UI).
+- `gold.solicitudes.is_single_date boolean` — persiste el flag en gold.
+- `gold.lineup_candidates` expone `is_single_date`.
+- **Badge "Solo puede hoy"** en `ComicCard` dentro de `ExpandedView` cuando `candidate.is_single_date && config.single_date_priority_enabled`.
+
+### Archivos afectados
+- `specs/sql/migrations/20260312_add_is_single_date_to_gold.sql` — DDL + backfill
+- `backend/src/core/scoring_config.py` — toggle + `compute_score(is_single_date)`
+- `backend/src/scoring_engine.py` — `has_single_date` + `CandidateScore.is_single_date` + persist
+- `frontend/src/components/ScoringConfigurator.jsx` — toggle UI (sin campo de puntos)
+- `frontend/src/App.jsx` — select `is_single_date`
+- `frontend/src/components/open-mic/ExpandedView.jsx` — prop `singleDateMode`
+- `frontend/src/components/open-mic/ComicCard.jsx` — badge "Solo puede hoy"
+
+---
+
 ## Tests
 
 ### Backend
