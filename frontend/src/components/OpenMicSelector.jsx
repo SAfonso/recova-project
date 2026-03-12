@@ -190,6 +190,7 @@ export function OpenMicSelector({ session, onSelect }) {
               <p className="mb-4 text-sm text-[#6B5C4A]">No tienes acceso a ningún open mic todavía.</p>
             )}
 
+            <div data-tutorial="create-open-mic">
             {showCreateForm ? (
               <div className="flex flex-col gap-3 border-t-2 border-dashed border-[#C8B89A] pt-4">
                 <label className="text-sm font-bold text-[#1a1a1a]">Nombre del nuevo Open Mic</label>
@@ -250,12 +251,12 @@ export function OpenMicSelector({ session, onSelect }) {
             ) : canCreate ? (
               <button
                 type="button" onClick={() => setCreating(true)}
-                data-tutorial="create-open-mic"
                 className="mt-2 flex w-full cursor-pointer items-center justify-center gap-2 rounded-none border-[3px] border-dashed border-[#0D0D0D] bg-transparent py-2 text-sm font-bold text-[#1a1a1a] transition-all duration-200 hover:bg-[#C8B89A]"
               >
                 <PlusIcon />Nuevo Open Mic
               </button>
             ) : null}
+            </div>
           </div>
         </div>
 
