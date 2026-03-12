@@ -1,8 +1,8 @@
 # AI LineUp Architect
 
-**Versión:** `0.18.2` · **Estado:** Desarrollo activo · **Metodología:** SDD + TDD
+**Versión:** `0.18.3` · **Estado:** Desarrollo activo · **Metodología:** SDD + TDD
 
-SaaS multi-tenant para gestión de open mics de comedia. Automatiza la recogida de solicitudes (Google Forms), el scoring con IA y la generación del cartel en PNG.
+SaaS multi-tenant para gestión de open mics de comedia. Automatiza la recogida de solicitudes (Google Forms), el scoring con IA y la notificación del lineup por Telegram.
 
 ---
 
@@ -20,7 +20,7 @@ SaaS multi-tenant para gestión de open mics de comedia. Automatiza la recogida 
 |------|-----------|
 | Frontend | React + Vite + Tailwind |
 | Backend | Python / Flask :5000 |
-| Renderer | mcp_server.py — FastAPI :5050 (Gemini Vision + Pillow) |
+| Renderer | mcp_server.py — FastAPI :5050 (Gemini Vision + Pillow) · *desactivado temporalmente* |
 | Base de datos | Supabase (PostgreSQL — Bronze / Silver / Gold) |
 | Auth | Supabase (Google OAuth) |
 | Orquestación | n8n |
@@ -81,8 +81,8 @@ Variables de entorno: [`docs/setup.md`](docs/setup.md)
 
 ```bash
 source backend/venv/bin/activate
-PYTHONPATH=. pytest backend/tests/        # 312 tests backend
-cd frontend && npm test                   # 20 tests frontend
+PYTHONPATH=. pytest backend/tests/        # 321 tests backend
+cd frontend && npm test                   # 30 tests frontend
 ```
 
 ---

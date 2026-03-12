@@ -1,3 +1,14 @@
+## [0.18.3] - 2026-03-12
+
+### Changed — Render póster desactivado temporalmente
+
+- **`ScoringConfigurator.jsx`** — sección "Póster del evento" ocultada (toggle, uploads, estados y `handlePosterUpload` comentados); código íntegro conservado para reactivar
+- **`webhook_listener.py`** — comentario sobre `/api/render-poster`: endpoint funcional pero no expuesto desde el frontend
+- **`mcp_server.py`** — nota en docstring del módulo indicando servidor fuera de uso temporal
+- **n8n workflow `This.Render 2`** — nodo `HTTP (render)` eliminado; `Telegram (enviar)` cambiado de `sendPhoto` a `sendMessage` con texto de lineup (nombres + instagrams + fecha)
+
+---
+
 ## [0.18.2] - 2026-03-12
 
 ### Changed — UI polish: Cartoon-Brutalist refinements
