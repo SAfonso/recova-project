@@ -69,79 +69,91 @@ export function ComicCard({
         </button>
 
         {expanded && (
-          <div className="relative z-10 border-t-2 border-dashed border-[#1a1a1a]/20 px-3 pb-3 pt-2">
-            <div className="flex items-start gap-3">
-              <div className="flex flex-col gap-2.5">
-                {/* Categoría */}
-                <div className="flex flex-col gap-1">
-                  <span className="text-xs text-[#6B5C4A]">Categoría <span className="text-[#9ca3af]">(clic activo = quitar)</span></span>
-                  <div className="flex gap-1.5">
-                    {CATEGORY_BUTTONS.map((btn) => {
-                      const active = draft.categoria === btn.value;
-                      return (
-                        <button
-                          key={btn.value}
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); handleCategoryClick(btn.value); }}
-                          className={`h-8 min-w-16 cursor-pointer rounded-none border-[3px] border-[#0D0D0D] px-2 text-xs font-bold transition-all duration-150 ${btn.className} ${active ? 'ring-2 ring-[#1a1a1a] ring-offset-1' : 'opacity-70 hover:opacity-100'}`}
-                          aria-label={`Asignar categoría ${btn.label}`}
-                        >
-                          {btn.label}
-                        </button>
-                      );
-                    })}
+          <div className="relative z-10 border-t-2 border-dashed border-[#1a1a1a]/20 px-3 pb-4 pt-3">
+            <div className="flex flex-col gap-4">
+
+              {/* Fila 1: controles + botón lineup */}
+              <div className="flex items-start gap-3">
+                <div className="flex flex-1 flex-col gap-2.5">
+                  {/* Categoría */}
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs text-[#6B5C4A]">Categoría <span className="text-[#9ca3af]">(clic activo = quitar)</span></span>
+                    <div className="flex gap-1.5">
+                      {CATEGORY_BUTTONS.map((btn) => {
+                        const active = draft.categoria === btn.value;
+                        return (
+                          <button
+                            key={btn.value}
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); handleCategoryClick(btn.value); }}
+                            className={`h-8 min-w-16 cursor-pointer rounded-none border-[3px] border-[#0D0D0D] px-2 text-xs font-bold transition-all duration-150 ${btn.className} ${active ? 'ring-2 ring-[#1a1a1a] ring-offset-1' : 'opacity-70 hover:opacity-100'}`}
+                            aria-label={`Asignar categoría ${btn.label}`}
+                          >
+                            {btn.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Género */}
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs text-[#6B5C4A]">Género</span>
+                    <div className="flex gap-1.5">
+                      {GENDER_OPTIONS.map((opt) => {
+                        const active = draft.genero === opt.value;
+                        return (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); onUpdateGenero(opt.value); }}
+                            className={`h-8 w-12 cursor-pointer rounded-none border-[3px] border-[#0D0D0D] text-xs font-bold transition-all duration-150
+                              ${active
+                                ? 'bg-[#1a1a1a] text-[#fff8e7] ring-2 ring-[#1a1a1a] ring-offset-1'
+                                : 'bg-[#F5F0E1] text-[#1a1a1a] opacity-70 hover:opacity-100'
+                              }`}
+                            aria-label={`Género ${opt.label}`}
+                          >
+                            {opt.label}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
 
-                {/* Género */}
-                <div className="flex flex-col gap-1">
-                  <span className="text-xs text-[#6B5C4A]">Género</span>
-                  <div className="flex gap-1.5">
-                    {GENDER_OPTIONS.map((opt) => {
-                      const active = draft.genero === opt.value;
-                      return (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); onUpdateGenero(opt.value); }}
-                          className={`h-8 w-12 cursor-pointer rounded-none border-[3px] border-[#0D0D0D] text-xs font-bold transition-all duration-150
-                            ${active
-                              ? 'bg-[#1a1a1a] text-[#fff8e7] ring-2 ring-[#1a1a1a] ring-offset-1'
-                              : 'bg-[#F5F0E1] text-[#1a1a1a] opacity-70 hover:opacity-100'
-                            }`}
-                          aria-label={`Género ${opt.label}`}
-                        >
-                          {opt.label}
-                        </button>
-                      );
-                    })}
-                  </div>
+                <div className="flex flex-col items-center gap-1">
+                  <span className="text-xs text-[#6B5C4A]">LineUp</span>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); if (!selected && !canSelect) return; onToggleSelected(); }}
+                    disabled={!selected && !canSelect}
+                    className={`flex h-8 w-8 cursor-pointer items-center justify-center rounded-none border-[3px] border-[#0D0D0D] transition-all duration-150 ${selected ? 'bg-[#5E7260] text-[#F5F5F0]' : 'bg-[#EDE8DC] text-transparent'} ${!selected && !canSelect ? 'cursor-not-allowed opacity-40' : ''}`}
+                    aria-label={selected ? 'Quitar del LineUp' : 'Añadir al LineUp'}
+                  >
+                    <CheckIcon />
+                  </button>
                 </div>
               </div>
 
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm text-[#6B5C4A]">@{candidate.instagram ?? 'sin_instagram'}</p>
-                <p className="truncate text-sm text-[#6B5C4A]">{candidate.contacto ?? candidate.telefono ?? 'sin contacto'}</p>
-                <p className="text-xs text-[#6B5C4A]">Estado: {candidate.estado ?? 'sin_estado'}</p>
+              {/* Fila 2: info contacto — full width, centrado, fuente grande */}
+              <div className="border-t border-dashed border-[#1a1a1a]/20 pt-3 text-center">
+                <p className="text-base font-bold tracking-wide text-[#3D2A1A]">
+                  @{candidate.instagram ?? 'sin_instagram'}
+                </p>
+                <p className="mt-1 text-base font-semibold text-[#3D2A1A]">
+                  {candidate.contacto ?? candidate.telefono ?? 'sin contacto'}
+                </p>
+                <p className="mt-1 text-sm font-medium uppercase tracking-widest text-[#6B5C4A]">
+                  {candidate.estado ?? 'sin_estado'}
+                </p>
                 {hasPendingEdit && (
-                  <span className="mt-1 inline-block rounded-full bg-[#f59e0b]/25 px-2 py-0.5 text-xs font-bold text-[#7c2d12]">
+                  <span className="mt-2 inline-block rounded-full bg-[#f59e0b]/25 px-3 py-0.5 text-xs font-bold text-[#7c2d12]">
                     Editado
                   </span>
                 )}
               </div>
 
-              <div className="flex flex-col items-center gap-1">
-                <span className="text-xs text-[#6B5C4A]">LineUp</span>
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); if (!selected && !canSelect) return; onToggleSelected(); }}
-                  disabled={!selected && !canSelect}
-                  className={`flex h-8 w-8 cursor-pointer items-center justify-center rounded-none border-[3px] border-[#0D0D0D] transition-all duration-150 ${selected ? 'bg-[#5E7260] text-[#F5F5F0]' : 'bg-[#EDE8DC] text-transparent'} ${!selected && !canSelect ? 'cursor-not-allowed opacity-40' : ''}`}
-                  aria-label={selected ? 'Quitar del LineUp' : 'Añadir al LineUp'}
-                >
-                  <CheckIcon />
-                </button>
-              </div>
             </div>
           </div>
         )}

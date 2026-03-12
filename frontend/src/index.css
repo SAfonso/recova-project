@@ -227,10 +227,11 @@ h1, h2, h3 {
    ══════════════════════════════════════════════════════ */
 
 .paint-bg {
-  background-color: var(--c-bg);
+  /* Sin background-color — el body ya pone el rojo con gradiente.
+     Solo añadimos la textura semi-transparente encima. */
   background-image:
     var(--paper-noise),
-    radial-gradient(circle, rgba(44,74,82,0.05) 1px, transparent 1px);
+    radial-gradient(circle, rgba(255,220,180,0.06) 1px, transparent 1px);
   background-size: 400px 400px, 32px 32px;
   background-repeat: repeat, repeat;
 }
