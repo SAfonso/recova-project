@@ -23,6 +23,12 @@ class DummyFlask:
 
         return decorator
 
+    def before_request(self, func):
+        return func
+
+    def after_request(self, func):
+        return func
+
 
 def load_webhook_module(monkeypatch, api_key: str = "test-key"):
     monkeypatch.setenv("WEBHOOK_API_KEY", api_key)
@@ -49,6 +55,36 @@ def load_webhook_module(monkeypatch, api_key: str = "test-key"):
     fake_gb_mod = types.ModuleType("backend.src.core.google_form_builder")
     fake_gb_mod.GoogleFormBuilder = object
     monkeypatch.setitem(sys.modules, "backend.src.core.google_form_builder", fake_gb_mod)
+
+    # Mock sheet_ingestor
+    fake_si_mod = types.ModuleType("backend.src.core.sheet_ingestor")
+    fake_si_mod.SheetIngestor = object
+    monkeypatch.setitem(sys.modules, "backend.src.core.sheet_ingestor", fake_si_mod)
+
+    # Mock form_ingestor
+    fake_fi_mod = types.ModuleType("backend.src.core.form_ingestor")
+    fake_fi_mod.FormIngestor = object
+    monkeypatch.setitem(sys.modules, "backend.src.core.form_ingestor", fake_fi_mod)
+
+    # Mock form_analyzer
+    fake_fa_mod = types.ModuleType("backend.src.core.form_analyzer")
+    fake_fa_mod.FormAnalyzer = object
+    monkeypatch.setitem(sys.modules, "backend.src.core.form_analyzer", fake_fa_mod)
+
+    # Mock custom_scoring_proposer
+    fake_csp_mod = types.ModuleType("backend.src.core.custom_scoring_proposer")
+    fake_csp_mod.CustomScoringProposer = object
+    monkeypatch.setitem(sys.modules, "backend.src.core.custom_scoring_proposer", fake_csp_mod)
+
+    # Mock poster_composer
+    fake_pc_mod = types.ModuleType("backend.src.core.poster_composer")
+    fake_pc_mod.PosterComposer = object
+    monkeypatch.setitem(sys.modules, "backend.src.core.poster_composer", fake_pc_mod)
+
+    # Mock dev_users_pool
+    fake_dup_mod = types.ModuleType("backend.src.core.dev_users_pool")
+    fake_dup_mod.get_random_users = lambda n: []
+    monkeypatch.setitem(sys.modules, "backend.src.core.dev_users_pool", fake_dup_mod)
 
     # Mock scoring_engine
     fake_se_mod = types.ModuleType("backend.src.scoring_engine")
