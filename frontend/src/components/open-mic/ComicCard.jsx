@@ -42,6 +42,7 @@ export function ComicCard({
   onExpand, onToggleSelected, onUpdateCategory, onUpdateGenero, hasPendingEdit,
   lastMinuteMode, isLastMinute,
   singleDateMode, isSingleDate,
+  tutorialTarget,
 }) {
   const borderClass = CARD_BORDER[draft.categoria] ?? CARD_BORDER.default;
   const shadow = DROP_SHADOW[draft.categoria] ?? DROP_SHADOW.default;
@@ -61,6 +62,7 @@ export function ComicCard({
     <div
       style={{ filter: shadow }}
       className={showLastMinute ? 'last-minute-glow' : ''}
+      {...(tutorialTarget ? { 'data-tutorial': tutorialTarget } : {})}
     >
       <article className={`paper-rough paper-note relative overflow-hidden border-[3px] transition-all duration-200 ${borderClass}`}>
         <button
@@ -74,12 +76,12 @@ export function ComicCard({
               {candidate.nombre ?? candidate.instagram ?? 'Sin nombre'}
             </span>
             {showLastMinute && (
-              <span className="shrink-0 rounded-none border-[2px] border-[#0D0D0D] bg-[#EAB308] px-2 py-0.5 font-['Bangers'] text-xs tracking-wide text-[#0D0D0D]">
+              <span data-tutorial="puede-hoy-badge" className="shrink-0 rounded-none border-[2px] border-[#0D0D0D] bg-[#EAB308] px-2 py-0.5 font-['Bangers'] text-xs tracking-wide text-[#0D0D0D]">
                 Puede hoy
               </span>
             )}
             {showSingleDate && (
-              <span className="shrink-0 rounded-none border-[2px] border-[#0D0D0D] bg-[#DC2626] px-2 py-0.5 font-['Bangers'] text-xs tracking-wide text-[#FEFDF8]">
+              <span data-tutorial="single-date-badge" className="shrink-0 rounded-none border-[2px] border-[#0D0D0D] bg-[#DC2626] px-2 py-0.5 font-['Bangers'] text-xs tracking-wide text-[#FEFDF8]">
                 Solo puede hoy
               </span>
             )}

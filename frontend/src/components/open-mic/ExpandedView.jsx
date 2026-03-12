@@ -77,10 +77,11 @@ export function ExpandedView({
 
         <div className="cartoon-scroll flex-1 overflow-y-auto pb-20 pl-14 pr-4 pt-3">
           <div className="flex flex-col gap-2.5">
-            {candidates.map((candidate) => (
+            {candidates.map((candidate, index) => (
               <ComicCard
                 key={candidate.row_key}
                 candidate={candidate}
+                tutorialTarget={index === 0 ? 'comic-card' : undefined}
                 draft={getDraft(candidate)}
                 selected={selectedIds.includes(candidate.row_key)}
                 expanded={activeId === candidate.row_key}

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import { BgIcons } from './components/BgIcons';
+import { OnboardingTutorial } from './components/OnboardingTutorial';
 import { LoginScreen } from './components/LoginScreen';
 import { OnboardingScreen } from './components/OnboardingScreen';
 import { OpenMicDetail } from './components/OpenMicDetail';
@@ -77,6 +78,7 @@ function Root() {
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
+    <OnboardingTutorial />
     <Root />
   </React.StrictMode>,
 );

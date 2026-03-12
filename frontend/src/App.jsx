@@ -378,7 +378,7 @@ function App({ session, openMicId, onBack }) {
   };
 
   return (
-    <main className="paint-bg min-h-screen px-4 pb-8 md:px-8">
+    <main data-tutorial="lineup-view" className="paint-bg min-h-screen px-4 pb-8 md:px-8">
       <div className="mx-auto flex max-w-xl flex-col gap-4 md:max-w-3xl lg:max-w-5xl xl:max-w-6xl">
         <Header
           eventDate={eventDate}
@@ -461,7 +461,7 @@ function App({ session, openMicId, onBack }) {
           </div>
         )}
 
-        <div className="flex justify-center gap-4 pt-2">
+        <div className="flex justify-center gap-4 pt-2" data-tutorial="validate-button">
           <ValidateButton
             disabled={saving || selectedIds.length !== 5 || isValidated}
             saving={saving}
