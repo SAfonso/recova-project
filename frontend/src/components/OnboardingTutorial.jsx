@@ -121,13 +121,28 @@ const STEPS = [
   },
 ];
 
+// Hint shown when the tour is paused waiting for navigation
+const PAUSE_HINTS = {
+  2: 'Abre un open mic para continuar el tour →',
+  3: 'Abre un open mic para continuar el tour →',
+  4: 'Ve al lineup para continuar el tour →',
+  5: 'Ve al lineup para continuar el tour →',
+  6: 'Ve al lineup para continuar el tour →',
+  7: 'Ve al lineup para continuar el tour →',
+  8: 'Ve al lineup para continuar el tour →',
+  9: 'Vuelve a tus open mics para continuar el tour →',
+};
+
 export function OnboardingTutorial() {
   const [run, setRun] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
+  const [done, setDone] = useState(
+    () => localStorage.getItem(STORAGE_KEY) === 'true',
+  );
 
   // Start: poll until the first target appears in the DOM
   useEffect(() => {
-    if (localStorage.getItem(STORAGE_KEY) === 'true') return;
+    if (done) return;
     const poll = setInterval(() => {
       if (document.querySelector('[data-tutorial="open-mic-selector"]')) {
         clearInterval(poll);
@@ -137,40 +152,75 @@ export function OnboardingTutorial() {
     }, 150);
     const maxWait = setTimeout(() => { clearInterval(poll); setRun(true); }, 8000);
     return () => { clearInterval(poll); clearTimeout(maxWait); };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Paused: poll until current step's target appears, then resume
+  useEffect(() => {
+    if (run || done) return;
+    if (stepIndex === 0) return;
+
+    const target = STEPS[stepIndex]?.target;
+    if (!target) return;
+
+    const poll = setInterval(() => {
+      if (document.querySelector(target)) {
+        clearInterval(poll);
+        setRun(true);
+      }
+    }, 300);
+
+    return () => clearInterval(poll);
+  }, [run, stepIndex, done]);
 
   function handleCallback({ status, type, index, action }) {
-    // Target not found → skip to next step (so tour always completes)
     if (type === EVENTS.TARGET_NOT_FOUND) {
-      setStepIndex(index + 1);
+      setRun(false); // pause — the effect above will resume when target appears
       return;
     }
-    // Advance step index after each step
     if (type === EVENTS.STEP_AFTER) {
       setStepIndex(index + (action === ACTIONS.PREV ? -1 : 1));
       return;
     }
-    // Tour done
     if ([STATUS.FINISHED, STATUS.SKIPPED].includes(status)) {
       localStorage.setItem(STORAGE_KEY, 'true');
+      setDone(true);
       setRun(false);
       setStepIndex(0);
     }
   }
 
+  if (done) return null;
+
   return (
-    <Joyride
-      steps={STEPS}
-      run={run}
-      stepIndex={stepIndex}
-      continuous
-      showSkipButton
-      scrollToFirstStep
-      scrollOffset={80}
-      disableOverlayClose={false}
-      styles={joyrideStyles}
-      locale={LOCALE_ES}
-      callback={handleCallback}
-    />
+    <>
+      <Joyride
+        steps={STEPS}
+        run={run}
+        stepIndex={stepIndex}
+        continuous
+        showSkipButton
+        scrollToFirstStep
+        scrollOffset={80}
+        disableOverlayClose={false}
+        styles={joyrideStyles}
+        locale={LOCALE_ES}
+        callback={handleCallback}
+      />
+      {/* Badge visible when tour is paused waiting for navigation */}
+      {!run && stepIndex > 0 && PAUSE_HINTS[stepIndex] && (
+        <div className="fixed bottom-6 left-6 z-[9999] flex items-center gap-2 rounded border-2 border-[#1a1a1a] bg-[#fff8e7] px-3 py-2 text-xs font-bold shadow-[3px_3px_0_#000]">
+          <span>📍</span>
+          <span>{PAUSE_HINTS[stepIndex]}</span>
+          <button
+            type="button"
+            onClick={() => { localStorage.setItem(STORAGE_KEY, 'true'); setDone(true); }}
+            className="ml-1 text-[#6B5C4A] hover:text-[#DC2626]"
+            aria-label="Cerrar tour"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+    </>
   );
 }
