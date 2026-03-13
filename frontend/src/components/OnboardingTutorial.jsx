@@ -46,6 +46,9 @@ const joyrideStyles = {
     color: '#666',
     fontFamily: 'Space Grotesk, sans-serif',
   },
+  buttonClose: {
+    display: 'none',
+  },
 };
 
 const STEPS = [
@@ -186,7 +189,8 @@ export function OnboardingTutorial() {
         showSkipButton
         scrollToFirstStep
         scrollOffset={80}
-        disableOverlayClose={false}
+        disableOverlayClose
+        disableCloseOnEsc
         styles={joyrideStyles}
         locale={LOCALE_ES}
         callback={handleCallback}
