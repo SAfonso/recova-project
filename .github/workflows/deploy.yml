@@ -24,7 +24,8 @@ jobs:
               # Forzamos la URL de origen a HTTPS usando el Token para no depender de SSH ni de contraseñas
               git remote set-url origin https://${{ secrets.GH_TOKEN }}@github.com/SAfonso/recova-project.git
               
-              git pull origin dev
+              git fetch origin dev
+              git reset --hard origin/dev
               ./venv/bin/pip install -r requirements.txt
               
               # 1. Ejecutamos la suite real del backend antes de reiniciar servicios.
