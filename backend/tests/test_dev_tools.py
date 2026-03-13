@@ -153,7 +153,10 @@ def test_seed_already_seeded():
 def test_seed_happy_path():
     """200: inserta 10 bronze, lanza Popen, marca seed_used."""
     sb = _make_sb({
-        "silver": {"open_mics": _chain([OM_WITH_CONFIG])},
+        "silver": {
+            "open_mics": _chain([OM_WITH_CONFIG]),
+            "organization_members": _chain([{"user_id": VALID_USER_PAYLOAD["sub"]}]),
+        },
         "bronze": {"solicitudes": _chain([{"id": "new"}])},
     })
 

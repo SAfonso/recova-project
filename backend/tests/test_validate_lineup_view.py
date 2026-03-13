@@ -31,6 +31,7 @@ PAST = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
 
 OPEN_MIC_CONFIG = {
     "id": OPEN_MIC_ID,
+    "proveedor_id": "prov-001",
     "config": {"info": {"dia_semana": "Lunes", "hora": "21:00"}},
 }
 
@@ -107,6 +108,7 @@ def test_prepare_validation_happy_path():
     sb = _make_sb({
         "silver": {
             "open_mics": _chain([OPEN_MIC_CONFIG]),
+            "organization_members": _chain([{"user_id": HOST_ID}]),
             "validation_tokens": _chain([{"token": TOKEN}]),
         },
         "gold": {
@@ -136,7 +138,10 @@ def test_prepare_validation_happy_path():
 def test_prepare_validation_no_upcoming_show():
     """409 si el show ya empezo esta semana."""
     sb = _make_sb({
-        "silver": {"open_mics": _chain([OPEN_MIC_CONFIG])},
+        "silver": {
+            "open_mics": _chain([OPEN_MIC_CONFIG]),
+            "organization_members": _chain([{"user_id": HOST_ID}]),
+        },
     })
 
     with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb), \
@@ -151,8 +156,11 @@ def test_prepare_validation_no_upcoming_show():
 
 def test_prepare_validation_missing_config():
     """404 si el open mic no tiene dia_semana u hora configurados."""
-    no_config = {"id": OPEN_MIC_ID, "config": {"info": {}}}
-    sb = _make_sb({"silver": {"open_mics": _chain([no_config])}})
+    no_config = {"id": OPEN_MIC_ID, "proveedor_id": "prov-001", "config": {"info": {}}}
+    sb = _make_sb({"silver": {
+        "open_mics": _chain([no_config]),
+        "organization_members": _chain([{"user_id": HOST_ID}]),
+    }})
 
     with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb):
         with app.test_client() as c:
