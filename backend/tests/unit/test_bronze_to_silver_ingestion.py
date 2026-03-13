@@ -310,3 +310,53 @@ def test_run_pipeline_fatal_error(monkeypatch):
     assert result["status"] == "error"
     assert result["filas_procesadas"] == 0
     assert any("Error fatal" in message for message in result["errores"])
+
+
+# ---------------------------------------------------------------------------
+# Tests: infer_gender
+# ---------------------------------------------------------------------------
+
+class TestInferGender:
+    """Tests para la detección de género por nombre e instagram."""
+
+    def test_nombre_femenino_claro(self):
+        assert ingestion.infer_gender("Maria García", None) == "f"
+
+    def test_nombre_masculino_claro(self):
+        assert ingestion.infer_gender("Carlos Ruiz", None) == "m"
+
+    def test_nombre_femenino_con_tilde(self):
+        assert ingestion.infer_gender("Sofía López", None) == "f"
+
+    def test_nombre_masculino_con_tilde(self):
+        assert ingestion.infer_gender("Andrés Martín", None) == "m"
+
+    def test_nombre_femenino_comun(self):
+        assert ingestion.infer_gender("Ana", None) == "f"
+
+    def test_nombre_masculino_comun(self):
+        assert ingestion.infer_gender("Pepe", None) == "m"
+
+    def test_fallback_instagram_femenino(self):
+        # nombre ambiguo, instagram contiene nombre femenino
+        assert ingestion.infer_gender("J.", "mariacomica") == "f"
+
+    def test_fallback_instagram_masculino(self):
+        assert ingestion.infer_gender("X", "carlosstand") == "m"
+
+    def test_instagram_sin_nombre_femenino(self):
+        assert ingestion.infer_gender(None, "luciacomedy") == "f"
+
+    def test_instagram_sin_nombre_masculino(self):
+        assert ingestion.infer_gender(None, "juanhumorista") == "m"
+
+    def test_nombre_none_instagram_none(self):
+        assert ingestion.infer_gender(None, None) is None
+
+    def test_nombre_ambiguo_instagram_sin_pista(self):
+        # 'Alex' es mayormente masculino para gender_guesser, pero si no, debe ser m o None
+        result = ingestion.infer_gender("Alex", "xyz123")
+        assert result in ("m", "f", None)
+
+    def test_nombre_desconocido_instagram_sin_palabras(self):
+        assert ingestion.infer_gender("Xzqrt", "123456") is None

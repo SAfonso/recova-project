@@ -18,3 +18,4 @@ mcp[http]>=1.0.0
 # Poster detector (visión IA — Gemini Flash)
 google-genai>=1.0.0
 PyJWT>=2.8.0
+gender-guesser>=0.4.0

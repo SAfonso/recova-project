@@ -18,6 +18,12 @@ import psycopg2
 from pathlib import Path
 from dotenv import load_dotenv
 
+try:
+    import gender_guesser.detector as _gender_detector
+    _GENDER_DETECTOR = _gender_detector.Detector()
+except ImportError:
+    _GENDER_DETECTOR = None
+
 _ROOT_ENV = Path(__file__).resolve().parents[2] / ".env"
 
 LOGGER = logging.getLogger("bronze_to_silver_ingestion")
@@ -309,11 +315,57 @@ def resolve_error_metadata_column(conn) -> str | None:
     return row[0] if row else None
 
 
+_INSTAGRAM_WORD_RE = re.compile(r"[a-zA-Z]{3,}")
+
+def infer_gender(nombre: str | None, instagram: str | None) -> str | None:
+    """Infiere género ('m'/'f') a partir del nombre y, si no, del handle de instagram.
+
+    Devuelve 'm', 'f', o None si no se puede determinar con suficiente confianza.
+    Nunca devuelve 'nb' — ese valor se asigna en el frontend para los no clasificados.
+    """
+    if _GENDER_DETECTOR is None:
+        return None
+
+    def _detect_from_word(word: str) -> str | None:
+        normalized = unicodedata.normalize("NFKD", word).encode("ascii", "ignore").decode()
+        if not normalized:
+            return None
+        result = _GENDER_DETECTOR.get_gender(normalized.capitalize())
+        if result in ("male", "mostly_male"):
+            return "m"
+        if result in ("female", "mostly_female"):
+            return "f"
+        return None
+
+    # 1. Intentar con el primer nombre
+    if nombre:
+        first = nombre.strip().split()[0] if nombre.strip() else ""
+        detected = _detect_from_word(first)
+        if detected:
+            return detected
+
+    # 2. Fallback: segmentos del handle de instagram (divididos por números/guiones bajos)
+    if instagram:
+        handle = re.sub(r"^@+", "", instagram).lower()
+        segments = re.split(r"[0-9_\-\.]+", handle)
+        for seg in segments:
+            if len(seg) < 3:
+                continue
+            # Probar prefijos del segmento (4..len) — los nombres suelen ir al inicio
+            for end in range(4, len(seg) + 1):
+                detected = _detect_from_word(seg[:end])
+                if detected:
+                    return detected
+
+    return None
+
+
 def upsert_comico_silver(
     conn,
     instagram: str,
     nombre: str | None,
     telefono: str | None,
+    genero: str | None = None,
 ) -> UUID:
     with conn.cursor() as cursor:
         cursor.execute(
@@ -321,13 +373,17 @@ def upsert_comico_silver(
             INSERT INTO silver.comicos (
                 instagram,
                 nombre,
-                telefono
+                telefono,
+                genero
             )
-            VALUES (%s, %s, %s)
-            ON CONFLICT (instagram) DO NOTHING
+            VALUES (%s, %s, %s, %s)
+            ON CONFLICT (instagram) DO UPDATE
+                SET nombre    = COALESCE(EXCLUDED.nombre, silver.comicos.nombre),
+                    telefono  = COALESCE(EXCLUDED.telefono, silver.comicos.telefono),
+                    genero    = COALESCE(silver.comicos.genero, EXCLUDED.genero)
             RETURNING id
             """,
-            (instagram, nombre, telefono),
+            (instagram, nombre, telefono, genero),
         )
         row = cursor.fetchone()
 
@@ -546,11 +602,13 @@ def process_single_solicitud(
             return 0
 
         phase = "upsert_comico_silver"
+        genero = infer_gender(nombre, instagram)
         comico_id = upsert_comico_silver(
             conn,
             instagram=instagram,
             nombre=nombre,
             telefono=telefono,
+            genero=genero,
         )
 
         phase = "insert_silver"
