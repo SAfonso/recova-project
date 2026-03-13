@@ -25,6 +25,10 @@ def test_n8n_workflows_do_not_contain_known_hardcoded_secrets_or_hosts():
         "sb_publishable_",
         "46.225.120.243:5000",
         "cggciltvpffitognpnae.supabase.co/rest/v1",
+        # Tokens expuestos — deben estar rotados y nunca volver al código
+        "94obEDseUUlOSVOdKyUWuwINiRpOPIWyhy7yOin7v1k=",
+        # Prefijo JWT service_role del proyecto (común a cualquier rotation de este proyecto)
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNnZ2NpbHR2cGZmaXRvZ25wbmFlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSI",
     ]
 
     for path in sorted(WORKFLOWS_DIR.glob("*.json")):
@@ -37,6 +41,7 @@ def test_n8n_workflows_use_env_references_for_sensitive_values():
     ingesta = _workflow_text("Ingesta-Solicitudes.json")
     scoring = _workflow_text("Scoring & Draft.json")
     lineup = _workflow_text("LineUp.json")
+    test_bot = _workflow_text("Test BOT.json")
 
     assert "$env.N8N_BACKEND_INGEST_URL" in ingesta
     assert "$env.WEBHOOK_API_KEY" in ingesta
@@ -53,3 +58,9 @@ def test_n8n_workflows_use_env_references_for_sensitive_values():
     assert "$env.SUPABASE_KEY" in lineup
     assert "'Bearer ' + $env.SUPABASE_KEY" in lineup
     assert "$env.RECOVA_RENDERER_URL" in lineup  # render va a recova-renderer:5050
+
+    # Test BOT.json debe usar env vars para todas las keys sensibles
+    assert "$env.WEBHOOK_API_KEY" in test_bot
+    assert "$env.SUPABASE_SERVICE_KEY" in test_bot
+    assert "$env.RECOVA_BACKEND_URL" in test_bot
+    assert "$env.SUPABASE_URL" in test_bot

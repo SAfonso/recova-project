@@ -48,10 +48,11 @@ def _add_cors(response):
     return response
 
 from pathlib import Path
-_ROOT_ENV = Path(__file__).resolve().parents[3] / ".env"
+_PROJECT_ROOT = Path(__file__).resolve().parents[3]
+_ROOT_ENV = _PROJECT_ROOT / ".env"
 load_dotenv(dotenv_path=_ROOT_ENV, override=False)
-INGEST_SCRIPT_PATH = "/root/RECOVA/backend/src/bronze_to_silver_ingestion.py"
-SCORING_SCRIPT_PATH = "/root/RECOVA/backend/src/scoring_engine.py"
+INGEST_SCRIPT_PATH = str(_PROJECT_ROOT / "backend" / "src" / "bronze_to_silver_ingestion.py")
+SCORING_SCRIPT_PATH = str(_PROJECT_ROOT / "backend" / "src" / "scoring_engine.py")
 API_KEY_HEADER = "X-API-KEY"
 EXPECTED_API_KEY = os.getenv("WEBHOOK_API_KEY", "")
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
@@ -193,8 +194,8 @@ def create_form() -> tuple:
     try:
         builder = GoogleFormBuilder()
         result = builder.create_form_for_open_mic(open_mic_id=open_mic_id, nombre=nombre, info=info)
-    except Exception as exc:
-        return jsonify({"status": "error", "message": str(exc)}), 500
+    except Exception:
+        return jsonify({"status": "error", "message": "Error al crear el formulario"}), 500
 
     # Calcular last_date (última fecha de las opciones del form)
     dates = builder._build_date_options(info)
@@ -323,7 +324,10 @@ def mcp_get_candidates():
         return jsonify({"status": "error", "message": "unauthorized"}), 401
 
     open_mic_id = request.args.get("open_mic_id", "").strip()
-    limit       = int(request.args.get("limit", 10))
+    try:
+        limit = int(request.args.get("limit", 10))
+    except (ValueError, TypeError):
+        limit = 10
     if not open_mic_id:
         return jsonify({"status": "error", "message": "open_mic_id es obligatorio"}), 400
 
@@ -365,8 +369,8 @@ def mcp_run_scoring():
 
     try:
         result = execute_scoring(open_mic_id)
-    except Exception as exc:
-        return jsonify({"status": "error", "message": str(exc)}), 500
+    except Exception:
+        return jsonify({"status": "error", "message": "Error al ejecutar el scoring"}), 500
 
     return jsonify(result), 200
 
@@ -447,9 +451,20 @@ def lineup_prepare_validation():
     sb = _sb_client()
 
     # 1. Leer config del open mic
-    rows = sb.schema("silver").from_("open_mics").select("id,config").eq("id", open_mic_id).execute()
+    rows = sb.schema("silver").from_("open_mics").select("id,config,proveedor_id").eq("id", open_mic_id).execute()
     if not rows.data:
         return jsonify({"status": "error", "message": "open mic no encontrado"}), 404
+    proveedor_id = rows.data[0].get("proveedor_id", "")
+    member_check = (
+        sb.schema("silver")
+        .from_("organization_members")
+        .select("user_id")
+        .eq("user_id", host_id)
+        .eq("proveedor_id", proveedor_id)
+        .execute()
+    )
+    if not member_check.data:
+        return jsonify({"status": "error", "message": "forbidden"}), 403
     config = (rows.data[0] or {}).get("config") or {}
     info = config.get("info") or {}
     dia_semana = info.get("dia_semana", "").strip()
@@ -869,8 +884,8 @@ def ingest_from_forms():
 
     try:
         ingestor = FormIngestor()
-    except ValueError as exc:
-        return jsonify({"error": str(exc)}), 500
+    except ValueError:
+        return jsonify({"error": "Error al inicializar el ingestor de formularios"}), 500
 
     bronze = sb.schema("bronze")
     open_mics_processed = 0
@@ -1018,7 +1033,8 @@ def propose_custom_rules() -> tuple:
 @app.route("/api/dev/seed-open-mic", methods=["POST"])
 def dev_seed_open_mic():
     """Siembra 10 usuarios de prueba en un open mic. Protegido por Supabase JWT."""
-    if not _is_authenticated_user():
+    user = _is_authenticated_user()
+    if not user:
         return jsonify({"error": "unauthorized"}), 401
 
     data = request.get_json(force=True) or {}
@@ -1039,6 +1055,15 @@ def dev_seed_open_mic():
         return jsonify({"error": "este open mic ya fue sembrado"}), 409
 
     proveedor_id = om["proveedor_id"]
+    member_check = (
+        silver.from_("organization_members")
+        .select("user_id")
+        .eq("user_id", user["sub"])
+        .eq("proveedor_id", proveedor_id)
+        .execute()
+    )
+    if not member_check.data:
+        return jsonify({"error": "forbidden"}), 403
     bronze = sb.schema("bronze")
     users = get_random_users(10)
 
@@ -1096,13 +1121,29 @@ def dev_trigger_ingest():
 @app.route("/api/dev/trigger-scoring", methods=["POST"])
 def dev_trigger_scoring():
     """Ejecuta scoring para un open mic. Protegido por Supabase JWT."""
-    if not _is_authenticated_user():
+    user = _is_authenticated_user()
+    if not user:
         return jsonify({"error": "unauthorized"}), 401
 
     data = request.get_json(force=True) or {}
     open_mic_id = data.get("open_mic_id")
     if not open_mic_id:
         return jsonify({"error": "open_mic_id requerido"}), 400
+
+    sb = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+    om = sb.schema("silver").from_("open_mics").select("proveedor_id").eq("id", open_mic_id).execute()
+    if not om.data:
+        return jsonify({"error": "open mic no encontrado"}), 404
+    member_check = (
+        sb.schema("silver")
+        .from_("organization_members")
+        .select("user_id")
+        .eq("user_id", user["sub"])
+        .eq("proveedor_id", om.data[0]["proveedor_id"])
+        .execute()
+    )
+    if not member_check.data:
+        return jsonify({"error": "forbidden"}), 403
 
     result = execute_scoring(open_mic_id)
     return jsonify({"status": "ok", "result": result}), 200
@@ -1136,8 +1177,8 @@ def render_poster() -> tuple:
 
     try:
         result = _asyncio.run(_orchestrate_render(payload))
-    except Exception as exc:
-        return jsonify({"error": str(exc)}), 500
+    except Exception:
+        return jsonify({"error": "Error al renderizar el poster"}), 500
 
     if result.get("status") != "success":
         return jsonify({"error": result.get("output", {}).get("message", "render error")}), 500
