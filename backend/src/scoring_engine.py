@@ -35,8 +35,8 @@ _ROOT_ENV = Path(__file__).resolve().parents[2] / ".env"
 from backend.src.core.scoring_config import ScoringConfig
 
 LOGGER = logging.getLogger("scoring_engine")
-LOG_DIRECTORY = "/root/RECOVA/backend/logs"
-LOG_FILE_PATH  = "/root/RECOVA/backend/logs/scoring_engine.log"
+LOG_DIRECTORY = str(Path(__file__).resolve().parents[1] / "logs")
+LOG_FILE_PATH  = str(Path(__file__).resolve().parents[1] / "logs" / "scoring_engine.log")
 
 # Mapeo Silver → Gold para el campo categoria de gold.comicos.
 # Silver usa 'general'; Gold usa 'standard' como nombre del enum.

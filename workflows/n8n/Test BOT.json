@@ -54,7 +54,7 @@
           "parameters": [
             {
               "name": "X-API-KEY",
-              "value": "WEBHOOK_API_KEY_REDACTED"
+              "value": "={{ $env.WEBHOOK_API_KEY }}"
             },
             {
               "name": "Content-Type",
@@ -302,11 +302,11 @@
           "parameters": [
             {
               "name": "apikey",
-              "value": "SUPABASE_SERVICE_KEY_REDACTED"
+              "value": "={{ $env.SUPABASE_SERVICE_KEY }}"
             },
             {
               "name": "Authorization",
-              "value": "Bearer SUPABASE_SERVICE_KEY_REDACTED"
+              "value": "={{ 'Bearer ' + $env.SUPABASE_SERVICE_KEY }}"
             },
             {
               "name": "Accept-Profile",
@@ -342,7 +342,7 @@
             {
               "name": "X-API-KEY",
               "valueProvider": "fieldValue",
-              "value": "WEBHOOK_API_KEY_REDACTED"
+              "value": "={{ $env.WEBHOOK_API_KEY }}"
             }
           ]
         }
@@ -376,7 +376,7 @@
             {
               "name": "X-API-KEY",
               "valueProvider": "fieldValue",
-              "value": "WEBHOOK_API_KEY_REDACTED"
+              "value": "={{ $env.WEBHOOK_API_KEY }}"
             }
           ]
         }
@@ -410,7 +410,7 @@
             {
               "name": "X-API-KEY",
               "valueProvider": "fieldValue",
-              "value": "WEBHOOK_API_KEY_REDACTED"
+              "value": "={{ $env.WEBHOOK_API_KEY }}"
             }
           ]
         }
@@ -434,7 +434,7 @@
             {
               "name": "X-API-KEY",
               "valueProvider": "fieldValue",
-              "value": "WEBHOOK_API_KEY_REDACTED"
+              "value": "={{ $env.WEBHOOK_API_KEY }}"
             },
             {
               "name": "Content-Type"
@@ -469,7 +469,7 @@
             {
               "name": "X-API-KEY",
               "valueProvider": "fieldValue",
-              "value": "WEBHOOK_API_KEY_REDACTED"
+              "value": "={{ $env.WEBHOOK_API_KEY }}"
             },
             {
               "name": "Content-Type"

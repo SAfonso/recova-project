@@ -21,8 +21,8 @@ from dotenv import load_dotenv
 _ROOT_ENV = Path(__file__).resolve().parents[2] / ".env"
 
 LOGGER = logging.getLogger("bronze_to_silver_ingestion")
-LOG_DIRECTORY = "/root/RECOVA/backend/logs"
-LOG_FILE_PATH = "/root/RECOVA/backend/logs/ingestion.log"
+LOG_DIRECTORY = str(Path(__file__).resolve().parents[1] / "logs")
+LOG_FILE_PATH = str(Path(__file__).resolve().parents[1] / "logs" / "ingestion.log")
 
 INSTAGRAM_SANITIZER = re.compile(r"^@+")
 PHONE_E164_PATTERN = re.compile(r"^\+[1-9][0-9]{7,14}$")
