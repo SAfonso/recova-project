@@ -136,7 +136,7 @@
     },
     {
       "parameters": {
-        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "chatId": "={{ $('Telegram Trigger').first().json.message.chat.id }}",
         "text": "Tu cuenta ya estaba conectada.",
         "additionalFields": {}
       },
@@ -157,7 +157,7 @@
     },
     {
       "parameters": {
-        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "chatId": "={{ $('Telegram Trigger').first().json.message.chat.id }}",
         "text": "Cuenta conectada. Ya puedes gestionar tu lineup desde aqui.",
         "additionalFields": {}
       },
@@ -178,7 +178,7 @@
     },
     {
       "parameters": {
-        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "chatId": "={{ $('Telegram Trigger').first().json.message.chat.id }}",
         "text": "={{ $json.message === 'codigo no encontrado' ? 'Codigo no encontrado.' : $json.message === 'codigo ya usado' ? 'Este codigo ya fue usado.' : $json.message === 'codigo expirado' ? 'El codigo ha expirado. Genera uno nuevo desde la app.' : 'Error inesperado. Intentalo de nuevo.' }}",
         "additionalFields": {}
       },
@@ -219,7 +219,7 @@
     },
     {
       "parameters": {
-        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "chatId": "={{ $('Telegram Trigger').first().json.message.chat.id }}",
         "text": "=Acceso denegado. Tu ID de Telegram ({{ $('Telegram Trigger').item.json.message.from.id }}) no está vinculado a ninguna cuenta de organización en Recova. Contacta con soporte.",
         "additionalFields": {}
       },
@@ -268,7 +268,7 @@
     },
     {
       "parameters": {
-        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "chatId": "={{ $('Telegram Trigger').first().json.message.chat.id }}",
         "text": "={{ $json.output }}",
         "additionalFields": {}
       },
@@ -586,7 +586,7 @@
         80
       ],
       "parameters": {
-        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "chatId": "={{ $('Telegram Trigger').first().json.message.chat.id }}",
         "text": "👋 ¡Hola! Soy *AIline*, tu asistente de gestión de Open Mics 🎤\n\nEstoy aquí para ayudarte a organizar tus noches de comedia de forma sencilla. Esto es lo que puedo hacer por ti:\n\n📋 *Ver tu lineup* — consulta quién está apuntado al próximo open mic\n🏆 *Gestionar candidatos* — revisa la lista de cómicos con su puntuación\n🧮 *Ejecutar scoring* — calcula y actualiza las puntuaciones automáticamente\n🎨 *Generar el cartel* — crea el poster del evento listo para compartir\n📲 *Enviar el lineup* — manda el cartel directamente a este chat\n\n⚠️ *Antes de empezar*, necesitas conectar tu cuenta:\n\n1️⃣ Entra en la web y crea tu Open Mic\n2️⃣ Configúralo a tu gusto (scoring, formulario, poster…)\n3️⃣ En la sección de Telegram, genera tu código de conexión y envíamelo aquí\n\n¡Cuando estés listo, escríbeme! 🚀",
         "additionalFields": {
           "parse_mode": "Markdown"
