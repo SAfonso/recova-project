@@ -67,6 +67,13 @@ const STEPS = [
     disableBeacon: true,
   },
   {
+    target: '[data-tutorial="telegram-button"]',
+    title: '⚠️ Conecta Telegram primero',
+    content: 'Antes de validar tu primer lineup, conecta el bot de Telegram. Es imprescindible para recibir el lineup confirmado en tu móvil. ¡Solo tienes que hacerlo una vez!',
+    placement: 'bottom',
+    disableBeacon: true,
+  },
+  {
     target: '[data-tutorial="open-mic-detail-info"]',
     title: 'Pestaña Info',
     content: 'Configura los datos de tu open mic: cadencia, fecha de inicio y descripción.',
@@ -115,24 +122,16 @@ const STEPS = [
     placement: 'top',
     disableBeacon: true,
   },
-  {
-    target: '[data-tutorial="telegram-button"]',
-    title: 'Notificaciones en el móvil',
-    content: 'Conecta el bot de Telegram para recibir el lineup confirmado directamente en tu móvil. ¡Solo tienes que hacerlo una vez!',
-    placement: 'bottom',
-    disableBeacon: true,
-  },
 ];
 
 const PAUSE_HINTS = {
-  2: 'Abre un open mic para continuar el tour →',
   3: 'Abre un open mic para continuar el tour →',
-  4: 'Ve al lineup para continuar el tour →',
+  4: 'Abre un open mic para continuar el tour →',
   5: 'Ve al lineup para continuar el tour →',
   6: 'Ve al lineup para continuar el tour →',
   7: 'Ve al lineup para continuar el tour →',
   8: 'Ve al lineup para continuar el tour →',
-  9: 'Vuelve a tus open mics para continuar el tour →',
+  9: 'Ve al lineup para continuar el tour →',
 };
 
 export function OnboardingTutorial() {
