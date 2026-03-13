@@ -33,9 +33,4 @@ jobs:
               ./venv/bin/python3 -m pytest -q backend/tests && \
               
               # 2. Solo si el comando anterior (pytest) es exitoso, se ejecuta lo siguiente:
-              (
-                pm2 restart webhook-ingesta || \
-                pm2 start /root/RECOVA/backend/src/triggers/webhook_listener.py \
-                --name "webhook-ingesta" \
-                --interpreter /root/RECOVA/venv/bin/python3
-              )
+              pm2 startOrReload /root/RECOVA/ecosystem.config.js --only webhook-ingesta --update-env
