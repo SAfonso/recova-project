@@ -95,3 +95,41 @@ cd frontend && npm test                                        # 40 tests fronte
 | [`docs/setup.md`](docs/setup.md) | Setup local y producción |
 | [`docs/sprints.md`](docs/sprints.md) | Historial de sprints y roadmap |
 | [`CHANGELOG.md`](CHANGELOG.md) | Historial de versiones |
+
+---
+
+## Deuda técnica — Sprints de mejora
+
+Revisión técnica exhaustiva (2026-03-16). Puntuación actual: **7/10** → objetivo **9/10**.
+
+### 🔴 Sprint A — Bugs funcionales (crítico)
+
+| ID | Archivo | Descripción |
+|----|---------|-------------|
+| A1 | `scoring_engine.py:465` | `gender_parity_enabled` flag ignorado en `build_ranking()` — la alternancia f/nb ↔ m se aplica siempre |
+| A2 | `scoring_config.py:21` | `_SINGLE_DATE_BONUS = 40` hardcodeado — no configurable por el host, rompe jerarquía de categorías |
+
+### 🟠 Sprint B — Seguridad
+
+| ID | Archivo | Descripción |
+|----|---------|-------------|
+| B1 | `.env` / git history | Rotar `WEBHOOK_API_KEY` y `SUPABASE_SERVICE_KEY` antes de publicar el repo |
+| B2 | `webhook_listener.py:34` | `Access-Control-Allow-Origin: *` → restringir al dominio de Vercel |
+| B3 | `webhook_listener.py:76` | `create_client` instanciado en cada request → singleton a nivel de módulo |
+
+### 🟡 Sprint C — Arquitectura
+
+| ID | Archivo | Descripción |
+|----|---------|-------------|
+| C1 | `webhook_listener.py` | God File 1.194 líneas → dividir en blueprints Flask por dominio |
+| C2 | `webhook_listener.py:92` | `subprocess.run()` síncrono para scoring/ingest → llamada directa a función |
+| C3 | `docs/architecture.md` | Documentar decisión Flask (WSGI) vs FastAPI (ASGI/MCP) |
+
+### 🔵 Sprint D — Calidad y argumentación
+
+| ID | Archivo | Descripción |
+|----|---------|-------------|
+| D1 | `bronze_to_silver_ingestion.py` | Documentar limitaciones de `gender-guesser` (accuracy, casos None, corrección manual) |
+| D2 | `App.jsx` | `isValidated` desde `localStorage` → verificar contra `silver.lineup_slots` al cargar |
+| D3 | `OnboardingTutorial.jsx` | Tutorial UX bloqueante → modal de confirmación en lugar de bloqueo total |
+| D4 | `ecosystem.config.js` | Rutas absolutas hardcodeadas → variables de entorno / separar config local y producción |
