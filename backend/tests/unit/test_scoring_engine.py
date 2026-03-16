@@ -48,6 +48,12 @@ def _default_config() -> ScoringConfig:
     return ScoringConfig.default(OM_ID)
 
 
+def _parity_config() -> ScoringConfig:
+    """Config con gender_parity_enabled=True."""
+    cfg = ScoringConfig.default(OM_ID)
+    return ScoringConfig(**{**vars(cfg), "gender_parity_enabled": True})
+
+
 def _make_request(**kwargs) -> engine.SilverRequest:
     defaults = dict(
         comico_id="id-x",
@@ -144,7 +150,7 @@ def test_build_ranking_deduplicates_comico_id(monkeypatch):
     monkeypatch.setattr(engine, "upsert_comico", _fake_upsert)
     monkeypatch.setattr(engine, "has_recent_acceptance_penalty", _fake_no_penalty)
 
-    ranking, skipped = engine.build_ranking(conn=None, requests=requests, config=_default_config())
+    ranking, skipped = engine.build_ranking(conn=None, requests=requests, config=_parity_config())
 
     assert skipped == 0
     assert [c.comico_id for c in ranking] == ["dup-id", "m-1"]
@@ -167,7 +173,7 @@ def test_build_ranking_continues_when_a_gender_bucket_is_exhausted(monkeypatch):
     monkeypatch.setattr(engine, "upsert_comico", _fake_upsert)
     monkeypatch.setattr(engine, "has_recent_acceptance_penalty", _fake_no_penalty)
 
-    ranking, skipped = engine.build_ranking(conn=None, requests=requests, config=_default_config())
+    ranking, skipped = engine.build_ranking(conn=None, requests=requests, config=_parity_config())
 
     assert skipped == 0
     assert [c.comico_id for c in ranking] == ["f-1", "m-1", "m-2", "u-1", "u-2"]
@@ -192,10 +198,35 @@ def test_build_ranking_alternates_gender_buckets(monkeypatch):
     monkeypatch.setattr(engine, "upsert_comico", _fake_upsert)
     monkeypatch.setattr(engine, "has_recent_acceptance_penalty", _fake_no_penalty)
 
-    ranking, skipped = engine.build_ranking(conn=None, requests=requests, config=_default_config())
+    ranking, skipped = engine.build_ranking(conn=None, requests=requests, config=_parity_config())
 
     assert skipped == 0
     assert [c.comico_id for c in ranking] == ["f-1", "m-1", "f-2", "m-2", "m-3", "u-1"]
+
+
+def test_build_ranking_no_interleave_when_parity_disabled(monkeypatch):
+    """Con gender_parity_enabled=False, el orden es puro por score (sin alternancia)."""
+    requests = [
+        _make_request(comico_id="f-1", instagram="f1", genero="f",
+                      marca_temporal=datetime(2026, 2, 1, tzinfo=timezone.utc)),
+        _make_request(comico_id="f-2", instagram="f2", genero="f",
+                      marca_temporal=datetime(2026, 2, 2, tzinfo=timezone.utc)),
+        _make_request(comico_id="m-1", instagram="m1", genero="m",
+                      marca_temporal=datetime(2026, 2, 1, 10, 30, tzinfo=timezone.utc)),
+        _make_request(comico_id="m-2", instagram="m2", genero="m",
+                      marca_temporal=datetime(2026, 2, 2, 10, 30, tzinfo=timezone.utc)),
+        _make_request(comico_id="u-1", instagram="u1", genero="unknown",
+                      marca_temporal=datetime(2026, 2, 3, tzinfo=timezone.utc)),
+    ]
+
+    monkeypatch.setattr(engine, "upsert_comico", _fake_upsert)
+    monkeypatch.setattr(engine, "has_recent_acceptance_penalty", _fake_no_penalty)
+
+    ranking, skipped = engine.build_ranking(conn=None, requests=requests, config=_default_config())
+
+    assert skipped == 0
+    # Todos tienen el mismo score (priority=70), orden por marca_temporal ascendente
+    assert [c.comico_id for c in ranking] == ["f-1", "m-1", "f-2", "m-2", "u-1"]
 
 
 def test_build_ranking_skips_restricted_category(monkeypatch):

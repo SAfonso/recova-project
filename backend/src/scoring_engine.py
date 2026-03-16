@@ -404,8 +404,8 @@ def build_ranking(
 ) -> tuple[list[CandidateScore], int]:
     """Puntúa y ordena candidatos según las reglas del ScoringConfig.
 
-    Devuelve (ranking_balanceado, n_descartados_por_restricción).
-    El ranking balancea géneros f/nb con m en alternancia.
+    Devuelve (ranking, n_descartados_por_restricción).
+    Si gender_parity_enabled=True, alterna f/nb ↔ m; si no, orden puro por score.
     """
     scored: list[CandidateScore] = []
     skipped_restricted = 0
@@ -462,13 +462,23 @@ def build_ranking(
     def sort_key(c: CandidateScore):
         return (-c.score_final, c.marca_temporal or datetime.max.replace(tzinfo=timezone.utc))
 
+    # Deduplicar por comico_id (quedarse con el de mayor score)
+    seen: set[str] = set()
+
+    if not config.gender_parity_enabled:
+        # Sin paridad: orden puro por score
+        ranked: list[CandidateScore] = []
+        for c in sorted(scored, key=sort_key):
+            if c.comico_id not in seen:
+                ranked.append(c); seen.add(c.comico_id)
+        return ranked, skipped_restricted
+
+    # Con paridad: alternancia f/nb ↔ m
     f_nb = sorted([c for c in scored if c.genero in {"f", "nb"}], key=sort_key)
     m    = sorted([c for c in scored if c.genero == "m"],          key=sort_key)
     unk  = sorted([c for c in scored if c.genero not in {"m", "f", "nb"}], key=sort_key)
 
-    # Alternancia f/nb ↔ m para paridad de género
     balanced: list[CandidateScore] = []
-    seen: set[str] = set()
     idx_f = idx_m = 0
 
     while idx_f < len(f_nb) or idx_m < len(m):

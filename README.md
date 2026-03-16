@@ -1,6 +1,6 @@
 # AI LineUp Architect
 
-**Versión:** `0.21.0` · **Estado:** Desarrollo activo · **Metodología:** SDD + TDD
+**Versión:** `0.21.1` · **Estado:** Desarrollo activo · **Metodología:** SDD + TDD
 
 SaaS multi-tenant para gestión de open mics de comedia. Automatiza la recogida de solicitudes (Google Forms), el scoring con IA y la notificación del lineup por Telegram.
 
@@ -106,7 +106,7 @@ Revisión técnica exhaustiva (2026-03-16). Puntuación actual: **7/10** → obj
 
 | ID | Archivo | Descripción |
 |----|---------|-------------|
-| A1 | `scoring_engine.py:465` | `gender_parity_enabled` flag ignorado en `build_ranking()` — la alternancia f/nb ↔ m se aplica siempre |
+| ~~A1~~ | ~~`scoring_engine.py:465`~~ | ~~`gender_parity_enabled` flag ignorado en `build_ranking()` — la alternancia f/nb ↔ m se aplica siempre~~ ✅ |
 | A2 | `scoring_config.py:21` | `_SINGLE_DATE_BONUS = 40` hardcodeado — no configurable por el host, rompe jerarquía de categorías |
 
 ### 🟠 Sprint B — Seguridad

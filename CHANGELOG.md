@@ -1,3 +1,16 @@
+## [0.21.1] - 2026-03-16
+
+### Fixed — Sprint A1: gender_parity_enabled flag
+
+- **`scoring_engine.py`** — `build_ranking()` ahora respeta `gender_parity_enabled`: cuando está desactivado (default), el ranking se ordena puramente por score sin alternancia de género; cuando está activado, alterna f/nb ↔ m como antes
+- **Tests** — 3 tests existentes actualizados para usar `_parity_config()` (flag `True`); 1 test nuevo `test_build_ranking_no_interleave_when_parity_disabled` que verifica orden puro por score
+
+### Tests
+
+- **Total acumulado**: 397 tests verdes (353 backend + 44 frontend)
+
+---
+
 ## [0.21.0] - 2026-03-13
 
 ### Added — Tutorial onboarding + fixes CORS y scripts
