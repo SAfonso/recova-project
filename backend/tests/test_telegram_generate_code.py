@@ -50,7 +50,7 @@ def _sb_insert_mock():
 
 def test_generate_code_returns_code_and_qr_url():
     sb = _sb_insert_mock()
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb):
+    with patch("backend.src.triggers.shared.create_client", return_value=sb):
         with app.test_client() as client:
             resp = client.post(
                 ENDPOINT,
@@ -72,7 +72,7 @@ def test_generate_code_returns_code_and_qr_url():
 
 def test_generate_code_format():
     sb = _sb_insert_mock()
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb):
+    with patch("backend.src.triggers.shared.create_client", return_value=sb):
         with app.test_client() as client:
             resp = client.post(
                 ENDPOINT,
@@ -90,7 +90,7 @@ def test_generate_code_format():
 
 def test_generate_code_inserts_into_db():
     sb = _sb_insert_mock()
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb):
+    with patch("backend.src.triggers.shared.create_client", return_value=sb):
         with app.test_client() as client:
             resp = client.post(
                 ENDPOINT,
@@ -130,7 +130,7 @@ def test_generate_code_requires_api_key():
 
 def test_generate_code_requires_host_id():
     sb = _sb_insert_mock()
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb):
+    with patch("backend.src.triggers.shared.create_client", return_value=sb):
         with app.test_client() as client:
             resp = client.post(
                 ENDPOINT,

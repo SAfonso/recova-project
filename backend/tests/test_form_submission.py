@@ -82,8 +82,8 @@ def test_form_submission_happy_path():
         "bronze": {"solicitudes": _chain([{"id": "new-id"}])},
     })
 
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb), \
-         patch("backend.src.triggers.webhook_listener.subprocess.Popen") as mock_popen:
+    with patch("backend.src.triggers.blueprints.ingestion.create_client", return_value=sb), \
+         patch("backend.src.triggers.blueprints.ingestion.run_ingestion_async") as mock_popen:
         with app.test_client() as c:
             resp = c.post("/api/form-submission",
                           json=VALID_PAYLOAD,
@@ -122,7 +122,7 @@ def test_form_submission_open_mic_not_found():
         "silver": {"open_mics": _chain([])},  # no rows
     })
 
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb):
+    with patch("backend.src.triggers.blueprints.ingestion.create_client", return_value=sb):
         with app.test_client() as c:
             resp = c.post("/api/form-submission",
                           json={**VALID_PAYLOAD, "open_mic_id": "nonexistent-uuid"},
@@ -139,8 +139,8 @@ def test_form_submission_inserts_correct_proveedor_id():
         "bronze": {"solicitudes": bronze_chain},
     })
 
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb), \
-         patch("backend.src.triggers.webhook_listener.subprocess.Popen"):
+    with patch("backend.src.triggers.blueprints.ingestion.create_client", return_value=sb), \
+         patch("backend.src.triggers.blueprints.ingestion.run_ingestion_async"):
         with app.test_client() as c:
             c.post("/api/form-submission",
                    json=VALID_PAYLOAD,
@@ -162,8 +162,8 @@ def test_form_submission_maps_form_fields():
         "bronze": {"solicitudes": bronze_chain},
     })
 
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb), \
-         patch("backend.src.triggers.webhook_listener.subprocess.Popen"):
+    with patch("backend.src.triggers.blueprints.ingestion.create_client", return_value=sb), \
+         patch("backend.src.triggers.blueprints.ingestion.run_ingestion_async"):
         with app.test_client() as c:
             c.post("/api/form-submission",
                    json=VALID_PAYLOAD,
@@ -191,8 +191,8 @@ def test_form_submission_optional_fields_default_none():
         "bronze": {"solicitudes": bronze_chain},
     })
 
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb), \
-         patch("backend.src.triggers.webhook_listener.subprocess.Popen"):
+    with patch("backend.src.triggers.blueprints.ingestion.create_client", return_value=sb), \
+         patch("backend.src.triggers.blueprints.ingestion.run_ingestion_async"):
         with app.test_client() as c:
             resp = c.post("/api/form-submission",
                           json=payload_minimal,
@@ -211,18 +211,17 @@ def test_form_submission_optional_fields_default_none():
 
 
 def test_form_submission_ingesta_launched_with_ingest_script():
-    """subprocess.Popen se llama con el path del script de ingesta."""
+    """run_ingestion_async se llama tras insertar en bronze."""
     sb = _make_sb({
         "silver": {"open_mics": _chain([OPEN_MIC_ROW])},
         "bronze": {"solicitudes": _chain([{"id": "new-id"}])},
     })
 
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb), \
-         patch("backend.src.triggers.webhook_listener.subprocess.Popen") as mock_popen:
+    with patch("backend.src.triggers.blueprints.ingestion.create_client", return_value=sb), \
+         patch("backend.src.triggers.blueprints.ingestion.run_ingestion_async") as mock_ingest:
         with app.test_client() as c:
             c.post("/api/form-submission",
                    json=VALID_PAYLOAD,
                    headers={"Content-Type": "application/json", "X-API-Key": "test-key"})
 
-    args = mock_popen.call_args[0][0]  # primer argumento posicional (lista del comando)
-    assert any("ingestion" in str(a) or "ingest" in str(a) for a in args)
+    mock_ingest.assert_called_once()

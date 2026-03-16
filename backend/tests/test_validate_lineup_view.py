@@ -117,9 +117,9 @@ def test_prepare_validation_happy_path():
     })
     future_dt = datetime.now(timezone.utc) + timedelta(days=3)
 
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb), \
-         patch("backend.src.triggers.webhook_listener.execute_scoring", return_value={"status": "ok"}), \
-         patch("backend.src.triggers.webhook_listener._next_event_datetime", return_value=future_dt):
+    with patch("backend.src.triggers.shared.create_client", return_value=sb), \
+         patch("backend.src.triggers.blueprints.lineup.execute_scoring", return_value={"status": "ok"}), \
+         patch("backend.src.triggers.blueprints.lineup._next_event_datetime", return_value=future_dt):
         with app.test_client() as c:
             resp = c.post("/api/lineup/prepare-validation",
                           json={"host_id": HOST_ID, "open_mic_id": OPEN_MIC_ID},
@@ -144,8 +144,8 @@ def test_prepare_validation_no_upcoming_show():
         },
     })
 
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb), \
-         patch("backend.src.triggers.webhook_listener._next_event_datetime", return_value=None):
+    with patch("backend.src.triggers.shared.create_client", return_value=sb), \
+         patch("backend.src.triggers.blueprints.lineup._next_event_datetime", return_value=None):
         with app.test_client() as c:
             resp = c.post("/api/lineup/prepare-validation",
                           json={"host_id": HOST_ID, "open_mic_id": OPEN_MIC_ID},
@@ -162,7 +162,7 @@ def test_prepare_validation_missing_config():
         "organization_members": _chain([{"user_id": HOST_ID}]),
     }})
 
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb):
+    with patch("backend.src.triggers.shared.create_client", return_value=sb):
         with app.test_client() as c:
             resp = c.post("/api/lineup/prepare-validation",
                           json={"host_id": HOST_ID, "open_mic_id": OPEN_MIC_ID},
@@ -203,7 +203,7 @@ def test_lineup_view_happy_path():
         },
     })
 
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb):
+    with patch("backend.src.triggers.shared.create_client", return_value=sb):
         with app.test_client() as c:
             resp = c.get(f"/api/validate-view/lineup?token={TOKEN}")
 
@@ -227,7 +227,7 @@ def test_lineup_view_already_validated():
         },
     })
 
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb):
+    with patch("backend.src.triggers.shared.create_client", return_value=sb):
         with app.test_client() as c:
             resp = c.get(f"/api/validate-view/lineup?token={TOKEN}")
 
@@ -238,7 +238,7 @@ def test_lineup_view_already_validated():
 def test_lineup_view_token_not_found():
     sb = _make_sb({"silver": {"validation_tokens": _chain([])}})
 
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb):
+    with patch("backend.src.triggers.shared.create_client", return_value=sb):
         with app.test_client() as c:
             resp = c.get(f"/api/validate-view/lineup?token=nonexistent")
 
@@ -249,7 +249,7 @@ def test_lineup_view_token_expired():
     expired_row = {**TOKEN_ROW, "expires_at": PAST}
     sb = _make_sb({"silver": {"validation_tokens": _chain([expired_row])}})
 
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb):
+    with patch("backend.src.triggers.shared.create_client", return_value=sb):
         with app.test_client() as c:
             resp = c.get(f"/api/validate-view/lineup?token={TOKEN}")
 
@@ -271,7 +271,7 @@ def test_validate_view_happy_path():
         "silver_rpc": {"upsert_confirmed_lineup": 3},
     })
 
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb):
+    with patch("backend.src.triggers.shared.create_client", return_value=sb):
         with app.test_client() as c:
             resp = c.post("/api/validate-view/validate",
                           json={"token": TOKEN, "solicitud_ids": ["sol-1", "sol-2"]},
@@ -285,7 +285,7 @@ def test_validate_view_happy_path():
 def test_validate_view_invalid_token():
     sb = _make_sb({"silver": {"validation_tokens": _chain([])}})
 
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb):
+    with patch("backend.src.triggers.shared.create_client", return_value=sb):
         with app.test_client() as c:
             resp = c.post("/api/validate-view/validate",
                           json={"token": "bad-token", "solicitud_ids": ["sol-1"]},

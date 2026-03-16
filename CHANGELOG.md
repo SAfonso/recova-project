@@ -1,3 +1,31 @@
+## [0.22.0] - 2026-03-16
+
+### Changed — Sprint C1+C2: Refactorizar webhook_listener.py + Unificar framework
+
+- **`webhook_listener.py`** — God File de 1.194 líneas refactorizado a app factory de 36 líneas que registra 8 Flask Blueprints + CORS
+- **`shared.py`** — nuevo módulo con auth (`_is_authorized`, `_is_authenticated_user`), constantes, helpers (`_next_event_datetime`, `_CANONICAL_TO_BRONZE`) y `run_ingestion_async()` (threading)
+- **8 blueprints** en `backend/src/triggers/blueprints/`: `n8n`, `ingestion`, `form`, `lineup`, `mcp_agent`, `telegram`, `dev`, `poster`
+- **`/ingest`** — `subprocess.run()` reemplazado por llamada directa a `run_pipeline()`
+- **`/scoring`** — `subprocess.run()` reemplazado por llamada directa a `execute_scoring()`
+- **`subprocess.Popen`** (ingesta background) — reemplazado por `run_ingestion_async()` con `threading.Thread(daemon=True)`
+- **`poster.py`** — absorbe lógica de render de `mcp_server.py`, convertida de async a sync
+
+### Removed
+
+- **`backend/src/mcp_server.py`** — 564 líneas eliminadas (FastAPI renderer, desactivado)
+- **`backend/tests/mcp/test_mcp_server_http.py`** y **`test_server_integration.py`** — 9 tests del servidor FastAPI eliminados
+- **Dependencias**: `fastapi`, `uvicorn`, `mcp[http]` eliminadas de `requirements.txt` y `pyproject.toml`
+- **`ecosystem.config.js`** — app `recova-mcp-http` eliminada (solo queda `webhook-ingesta`)
+
+### Tests
+
+- 14 ficheros de test actualizados (mock paths → blueprints)
+- `test_webhook_listener.py` reescrito para testear `/ingest` y `/scoring` con llamadas directas
+- **Total acumulado**: 322 backend + 44 frontend = 366 tests verdes
+- 22 rutas registradas, 0 cambios de URL (frontend y n8n no se tocan)
+
+---
+
 ## [0.21.1] - 2026-03-16
 
 ### Fixed — Sprint A: bugs funcionales

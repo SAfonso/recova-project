@@ -35,7 +35,7 @@ VALID_AUTH = {"Authorization": "Bearer valid.jwt.token", "Content-Type": "applic
 def _patch_auth_valid():
     """Contexto que hace que _is_authenticated_user devuelva un payload válido."""
     return patch(
-        "backend.src.triggers.webhook_listener._is_authenticated_user",
+        "backend.src.triggers.blueprints.dev._is_authenticated_user",
         return_value=VALID_USER_PAYLOAD,
     )
 
@@ -43,7 +43,7 @@ def _patch_auth_valid():
 def _patch_auth_invalid():
     """Contexto que hace que _is_authenticated_user devuelva None (token inválido)."""
     return patch(
-        "backend.src.triggers.webhook_listener._is_authenticated_user",
+        "backend.src.triggers.blueprints.dev._is_authenticated_user",
         return_value=None,
     )
 
@@ -129,7 +129,7 @@ def test_seed_open_mic_not_found():
     sb = _make_sb({"silver": {"open_mics": _chain([])}})
 
     with _patch_auth_valid(), \
-         patch("backend.src.triggers.webhook_listener.create_client", return_value=sb):
+         patch("backend.src.triggers.blueprints.dev.create_client", return_value=sb):
         with app.test_client() as c:
             resp = c.post("/api/dev/seed-open-mic",
                           json={"open_mic_id": "om-999"},
@@ -142,7 +142,7 @@ def test_seed_already_seeded():
     sb = _make_sb({"silver": {"open_mics": _chain([OM_ALREADY_SEEDED])}})
 
     with _patch_auth_valid(), \
-         patch("backend.src.triggers.webhook_listener.create_client", return_value=sb):
+         patch("backend.src.triggers.blueprints.dev.create_client", return_value=sb):
         with app.test_client() as c:
             resp = c.post("/api/dev/seed-open-mic",
                           json={"open_mic_id": "om-001"},
@@ -161,8 +161,8 @@ def test_seed_happy_path():
     })
 
     with _patch_auth_valid(), \
-         patch("backend.src.triggers.webhook_listener.create_client", return_value=sb), \
-         patch("backend.src.triggers.webhook_listener.subprocess.Popen") as mock_popen:
+         patch("backend.src.triggers.blueprints.dev.create_client", return_value=sb), \
+         patch("backend.src.triggers.blueprints.dev.run_ingestion_async") as mock_popen:
 
         with app.test_client() as c:
             resp = c.post("/api/dev/seed-open-mic",
@@ -204,7 +204,7 @@ def test_trigger_ingest_requires_jwt():
 def test_trigger_ingest_happy_path():
     """200 y lanza los dos Popen de ingesta."""
     with _patch_auth_valid(), \
-         patch("backend.src.triggers.webhook_listener.subprocess.Popen") as mock_popen:
+         patch("backend.src.triggers.blueprints.dev.run_ingestion_async") as mock_popen:
 
         with app.test_client() as c:
             resp = c.post("/api/dev/trigger-ingest",
@@ -232,9 +232,16 @@ def test_trigger_scoring_requires_jwt():
 def test_trigger_scoring_happy_path():
     """200 y devuelve resultado de execute_scoring."""
     fake_result = {"status": "ok", "scored": 10}
+    sb = _make_sb({
+        "silver": {
+            "open_mics": _chain([{"proveedor_id": "prov-001"}]),
+            "organization_members": _chain([{"user_id": VALID_USER_PAYLOAD["sub"]}]),
+        },
+    })
 
     with _patch_auth_valid(), \
-         patch("backend.src.triggers.webhook_listener.execute_scoring",
+         patch("backend.src.triggers.blueprints.dev.create_client", return_value=sb), \
+         patch("backend.src.triggers.blueprints.dev.execute_scoring",
                return_value=fake_result):
 
         with app.test_client() as c:

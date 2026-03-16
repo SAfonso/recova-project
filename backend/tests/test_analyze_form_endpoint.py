@@ -79,9 +79,9 @@ def test_analyze_form_returns_200_with_mapping():
     """Happy path: 200 con field_mapping en la respuesta."""
     sb = _make_sb()
 
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb), \
-         patch("backend.src.triggers.webhook_listener.FormIngestor") as MockIngestor, \
-         patch("backend.src.triggers.webhook_listener.FormAnalyzer") as MockAnalyzer:
+    with patch("backend.src.triggers.blueprints.form.create_client", return_value=sb), \
+         patch("backend.src.triggers.blueprints.form.FormIngestor") as MockIngestor, \
+         patch("backend.src.triggers.blueprints.form.FormAnalyzer") as MockAnalyzer:
 
         MockIngestor.return_value.get_form_questions.return_value = QUESTIONS
         MockAnalyzer.return_value.analyze.return_value = FIELD_MAPPING
@@ -104,9 +104,9 @@ def test_analyze_form_saves_to_config():
     """Llama a la RPC update_open_mic_config_keys con field_mapping y external_form_id."""
     sb = _make_sb()
 
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb), \
-         patch("backend.src.triggers.webhook_listener.FormIngestor") as MockIngestor, \
-         patch("backend.src.triggers.webhook_listener.FormAnalyzer") as MockAnalyzer:
+    with patch("backend.src.triggers.blueprints.form.create_client", return_value=sb), \
+         patch("backend.src.triggers.blueprints.form.FormIngestor") as MockIngestor, \
+         patch("backend.src.triggers.blueprints.form.FormAnalyzer") as MockAnalyzer:
 
         MockIngestor.return_value.get_form_questions.return_value = QUESTIONS
         MockAnalyzer.return_value.analyze.return_value = FIELD_MAPPING
@@ -155,9 +155,9 @@ def test_analyze_form_gemini_invalid_422():
     """422 si FormAnalyzer lanza ValueError (Gemini devuelve JSON inválido)."""
     sb = _make_sb()
 
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb), \
-         patch("backend.src.triggers.webhook_listener.FormIngestor") as MockIngestor, \
-         patch("backend.src.triggers.webhook_listener.FormAnalyzer") as MockAnalyzer:
+    with patch("backend.src.triggers.blueprints.form.create_client", return_value=sb), \
+         patch("backend.src.triggers.blueprints.form.FormIngestor") as MockIngestor, \
+         patch("backend.src.triggers.blueprints.form.FormAnalyzer") as MockAnalyzer:
 
         MockIngestor.return_value.get_form_questions.return_value = QUESTIONS
         MockAnalyzer.return_value.analyze.side_effect = ValueError("Gemini devolvió JSON inválido: {{{")
@@ -179,9 +179,9 @@ def test_analyze_form_includes_coverage_metrics():
     """La respuesta incluye canonical_coverage, total_questions y unmapped_fields."""
     sb = _make_sb()
 
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb), \
-         patch("backend.src.triggers.webhook_listener.FormIngestor") as MockIngestor, \
-         patch("backend.src.triggers.webhook_listener.FormAnalyzer") as MockAnalyzer:
+    with patch("backend.src.triggers.blueprints.form.create_client", return_value=sb), \
+         patch("backend.src.triggers.blueprints.form.FormIngestor") as MockIngestor, \
+         patch("backend.src.triggers.blueprints.form.FormAnalyzer") as MockAnalyzer:
 
         MockIngestor.return_value.get_form_questions.return_value = QUESTIONS
         MockAnalyzer.return_value.analyze.return_value = FIELD_MAPPING

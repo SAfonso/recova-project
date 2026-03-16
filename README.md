@@ -1,6 +1,6 @@
 # AI LineUp Architect
 
-**Versión:** `0.21.1` · **Estado:** Desarrollo activo · **Metodología:** SDD + TDD
+**Versión:** `0.22.0` · **Estado:** Desarrollo activo · **Metodología:** SDD + TDD
 
 SaaS multi-tenant para gestión de open mics de comedia. Automatiza la recogida de solicitudes (Google Forms), el scoring con IA y la notificación del lineup por Telegram.
 
@@ -19,8 +19,7 @@ SaaS multi-tenant para gestión de open mics de comedia. Automatiza la recogida 
 | Capa | Tecnología |
 |------|-----------|
 | Frontend | React + Vite + Tailwind |
-| Backend | Python / Flask :5000 |
-| Renderer | mcp_server.py — FastAPI :5050 (Gemini Vision + Pillow) · *desactivado temporalmente* |
+| Backend | Python / Flask :5000 (8 blueprints) |
 | Base de datos | Supabase (PostgreSQL — Bronze / Silver / Gold) |
 | Auth | Supabase (Google OAuth) |
 | Orquestación | n8n |
@@ -39,13 +38,23 @@ recova-project/
 │   ├── scripts/              # OAuth2, seed, reset
 │   ├── src/
 │   │   ├── core/             # Módulos: scoring, render, forms, security
-│   │   ├── triggers/         # webhook_listener.py (Flask :5000)
+│   │   ├── triggers/
+│   │   │   ├── webhook_listener.py   # App factory (~36 líneas)
+│   │   │   ├── shared.py             # Auth, constantes, helpers
+│   │   │   └── blueprints/           # 8 blueprints por dominio
+│   │   │       ├── n8n.py            # /ingest, /scoring
+│   │   │       ├── ingestion.py      # /api/form-submission, ingest-from-*
+│   │   │       ├── form.py           # /api/open-mic/create-form, analyze, propose
+│   │   │       ├── lineup.py         # /api/lineup/*, validate-view/*
+│   │   │       ├── mcp_agent.py      # /mcp/* (Telegram Agent)
+│   │   │       ├── telegram.py       # /api/telegram/*
+│   │   │       ├── dev.py            # /api/dev/*
+│   │   │       └── poster.py         # /api/render-poster
 │   │   ├── bronze_to_silver_ingestion.py
-│   │   ├── scoring_engine.py
-│   │   └── mcp_server.py     # Renderer API (FastAPI :5050)
+│   │   └── scoring_engine.py
 │   └── tests/
 │       ├── core/             # Tests módulos core
-│       ├── mcp/              # Tests renderer
+│       ├── mcp/              # Tests MCP agent endpoints
 │       ├── scripts/          # Tests scripts utilidad
 │       └── unit/             # Tests unitarios generales
 ├── frontend/
@@ -67,7 +76,6 @@ recova-project/
 # Backend
 pip install -r requirements.txt
 PYTHONPATH=. python backend/src/triggers/webhook_listener.py   # Flask :5000
-PYTHONPATH=. python -m backend.src.mcp_server                  # Renderer :5050
 
 # Frontend
 cd frontend && npm install && npm run dev
@@ -121,8 +129,8 @@ Revisión técnica exhaustiva (2026-03-16). Puntuación actual: **7/10** → obj
 
 | ID | Archivo | Descripción |
 |----|---------|-------------|
-| C1 | `webhook_listener.py` | God File 1.194 líneas → dividir en blueprints Flask por dominio |
-| C2 | `webhook_listener.py:92` | `subprocess.run()` síncrono para scoring/ingest → llamada directa a función |
+| ~~C1~~ | ~~`webhook_listener.py`~~ | ~~God File 1.194 líneas → dividir en blueprints Flask por dominio~~ ✅ (1194 → 36 líneas, 8 blueprints) |
+| ~~C2~~ | ~~`webhook_listener.py:92`~~ | ~~`subprocess.run()` síncrono para scoring/ingest → llamada directa a función~~ ✅ (`run_pipeline()` / `execute_scoring()` directos + `run_ingestion_async()` threading) |
 | C3 | `docs/architecture.md` | Documentar decisión Flask (WSGI) vs FastAPI (ASGI/MCP) |
 
 ### 🔵 Sprint D — Calidad y argumentación

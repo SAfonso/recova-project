@@ -1,171 +1,78 @@
+"""Unit tests for /ingest and /scoring endpoints (n8n blueprint).
+
+These tests validate the direct-call pipeline (no subprocess).
+"""
+
 from __future__ import annotations
 
-import importlib.util
-import json
-from pathlib import Path
-import subprocess
-import sys
-import types
+import os
+from unittest.mock import MagicMock, patch
 
-MODULE_PATH = Path(__file__).resolve().parents[2] / "src" / "triggers" / "webhook_listener.py"
+os.environ.setdefault("WEBHOOK_API_KEY", "test-key")
+os.environ.setdefault("SUPABASE_URL", "http://fake-supabase")
+os.environ.setdefault("SUPABASE_SERVICE_KEY", "fake-service-key")
 
+from backend.src.triggers.webhook_listener import app  # noqa: E402
 
-class DummyFlask:
-    def __init__(self, _name: str):
-        self.routes: dict[tuple[str, tuple[str, ...]], object] = {}
-
-    def route(self, path: str, methods: list[str] | None = None):
-        methods_tuple = tuple(methods or ["GET"])
-
-        def decorator(func):
-            self.routes[(path, methods_tuple)] = func
-            return func
-
-        return decorator
-
-    def before_request(self, func):
-        return func
-
-    def after_request(self, func):
-        return func
+API_KEY = "test-key"
+AUTH = {"X-API-KEY": API_KEY, "Content-Type": "application/json"}
 
 
-def load_webhook_module(monkeypatch, api_key: str = "test-key"):
-    monkeypatch.setenv("WEBHOOK_API_KEY", api_key)
-
-    # Mock flask
-    fake_flask = types.ModuleType("flask")
-    fake_flask.Flask = DummyFlask
-    fake_flask.jsonify = lambda payload: payload
-    fake_flask.request = types.SimpleNamespace(headers={})
-    fake_flask.send_file = lambda path, **kw: (path, 200)
-    monkeypatch.setitem(sys.modules, "flask", fake_flask)
-
-    # Mock supabase
-    fake_supabase = types.ModuleType("supabase")
-    fake_supabase.create_client = lambda url, key: None
-    monkeypatch.setitem(sys.modules, "supabase", fake_supabase)
-
-    # Mock google_form_builder
-    fake_gb_mod = types.ModuleType("backend.src.core.google_form_builder")
-    fake_gb_mod.GoogleFormBuilder = object
-    monkeypatch.setitem(sys.modules, "backend.src.core.google_form_builder", fake_gb_mod)
-
-    # Mock sheet_ingestor
-    fake_si_mod = types.ModuleType("backend.src.core.sheet_ingestor")
-    fake_si_mod.SheetIngestor = object
-    monkeypatch.setitem(sys.modules, "backend.src.core.sheet_ingestor", fake_si_mod)
-
-    # Mock form_ingestor
-    fake_fi_mod = types.ModuleType("backend.src.core.form_ingestor")
-    fake_fi_mod.FormIngestor = object
-    monkeypatch.setitem(sys.modules, "backend.src.core.form_ingestor", fake_fi_mod)
-
-    # Mock form_analyzer
-    fake_fa_mod = types.ModuleType("backend.src.core.form_analyzer")
-    fake_fa_mod.FormAnalyzer = object
-    monkeypatch.setitem(sys.modules, "backend.src.core.form_analyzer", fake_fa_mod)
-
-    # Mock custom_scoring_proposer
-    fake_csp_mod = types.ModuleType("backend.src.core.custom_scoring_proposer")
-    fake_csp_mod.CustomScoringProposer = object
-    monkeypatch.setitem(sys.modules, "backend.src.core.custom_scoring_proposer", fake_csp_mod)
-
-    # Mock poster_composer
-    fake_pc_mod = types.ModuleType("backend.src.core.poster_composer")
-    fake_pc_mod.PosterComposer = object
-    monkeypatch.setitem(sys.modules, "backend.src.core.poster_composer", fake_pc_mod)
-
-    # Mock dev_users_pool
-    fake_dup_mod = types.ModuleType("backend.src.core.dev_users_pool")
-    fake_dup_mod.get_random_users = lambda n: []
-    monkeypatch.setitem(sys.modules, "backend.src.core.dev_users_pool", fake_dup_mod)
-
-    # Mock scoring_engine
-    fake_se_mod = types.ModuleType("backend.src.scoring_engine")
-    fake_se_mod.execute_scoring = lambda open_mic_id: {}
-    monkeypatch.setitem(sys.modules, "backend.src.scoring_engine", fake_se_mod)
-
-    module_name = "test_webhook_listener_module"
-    spec = importlib.util.spec_from_file_location(module_name, MODULE_PATH)
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[module_name] = module
-    assert spec.loader is not None
-    spec.loader.exec_module(module)
-    return module
+def test_ingest_requires_api_key():
+    with app.test_client() as c:
+        resp = c.post("/ingest", headers={"Content-Type": "application/json"})
+    assert resp.status_code == 401
 
 
-def test_ingest_requires_api_key(monkeypatch):
-    module = load_webhook_module(monkeypatch)
+def test_ingest_happy_path():
+    """200 cuando run_pipeline devuelve resultado."""
+    fake_result = {"inserted": 5, "processed": 10}
 
-    module.request.headers = {}
-    response = module.ingest()
+    with patch("backend.src.triggers.blueprints.n8n.run_pipeline", return_value=fake_result):
+        with app.test_client() as c:
+            resp = c.post("/ingest", headers=AUTH)
 
-    assert response == ({"status": "error", "message": "unauthorized"}, 401)
-
-
-def test_scoring_returns_script_json_stdout(monkeypatch):
-    module = load_webhook_module(monkeypatch)
-    expected_payload = {"status": "ok", "lineup": ["ana", "luis"]}
-
-    def fake_run(*_args, **_kwargs):
-        return subprocess.CompletedProcess(
-            args=[],
-            returncode=0,
-            stdout=json.dumps(expected_payload),
-            stderr="",
-        )
-
-    monkeypatch.setattr(module.subprocess, "run", fake_run)
-    module.request.headers = {module.API_KEY_HEADER: "test-key"}
-    response = module.scoring()
-
-    assert response == (expected_payload, 200)
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data["status"] == "success"
+    assert data["output"] == fake_result
 
 
-def test_scoring_returns_500_when_script_fails(monkeypatch):
-    module = load_webhook_module(monkeypatch)
+def test_ingest_returns_500_on_error():
+    """500 cuando run_pipeline lanza excepción."""
+    with patch("backend.src.triggers.blueprints.n8n.run_pipeline", side_effect=Exception("boom")):
+        with app.test_client() as c:
+            resp = c.post("/ingest", headers=AUTH)
 
-    def fake_run(*_args, **_kwargs):
-        return subprocess.CompletedProcess(
-            args=[],
-            returncode=1,
-            stdout="partial output",
-            stderr="boom",
-        )
-
-    monkeypatch.setattr(module.subprocess, "run", fake_run)
-    module.request.headers = {module.API_KEY_HEADER: "test-key"}
-    response = module.scoring()
-
-    assert response == (
-        {
-            "status": "error",
-            "message": "scoring script execution failed",
-            "stdout": "partial output",
-            "stderr": "boom",
-        },
-        500,
-    )
+    assert resp.status_code == 500
+    data = resp.get_json()
+    assert data["status"] == "error"
 
 
-def test_scoring_returns_500_when_stdout_is_not_json(monkeypatch):
-    module = load_webhook_module(monkeypatch)
+def test_scoring_requires_api_key():
+    with app.test_client() as c:
+        resp = c.post("/scoring", headers={"Content-Type": "application/json"})
+    assert resp.status_code == 401
 
-    def fake_run(*_args, **_kwargs):
-        return subprocess.CompletedProcess(
-            args=[],
-            returncode=0,
-            stdout="not-json",
-            stderr="",
-        )
 
-    monkeypatch.setattr(module.subprocess, "run", fake_run)
-    module.request.headers = {module.API_KEY_HEADER: "test-key"}
-    body, status = module.scoring()
+def test_scoring_happy_path():
+    """200 cuando execute_scoring devuelve resultado."""
+    expected = {"status": "ok", "lineup": ["ana", "luis"]}
 
-    assert status == 500
-    assert body["status"] == "error"
-    assert body["message"] == "invalid JSON output from scoring script"
-    assert body["stdout"] == "not-json"
-    assert "Expecting value" in body["details"]
+    with patch("backend.src.triggers.blueprints.n8n.execute_scoring", return_value=expected):
+        with app.test_client() as c:
+            resp = c.post("/scoring", headers=AUTH)
+
+    assert resp.status_code == 200
+    assert resp.get_json() == expected
+
+
+def test_scoring_returns_500_on_error():
+    """500 cuando execute_scoring lanza excepción."""
+    with patch("backend.src.triggers.blueprints.n8n.execute_scoring", side_effect=Exception("boom")):
+        with app.test_client() as c:
+            resp = c.post("/scoring", headers=AUTH)
+
+    assert resp.status_code == 500
+    data = resp.get_json()
+    assert data["status"] == "error"
