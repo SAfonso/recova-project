@@ -1,8 +1,9 @@
 ## [0.21.1] - 2026-03-16
 
-### Fixed — Sprint A1: gender_parity_enabled flag
+### Fixed — Sprint A: bugs funcionales
 
-- **`scoring_engine.py`** — `build_ranking()` ahora respeta `gender_parity_enabled`: cuando está desactivado (default), el ranking se ordena puramente por score sin alternancia de género; cuando está activado, alterna f/nb ↔ m como antes
+- **A1 `scoring_engine.py`** — `build_ranking()` ahora respeta `gender_parity_enabled`: cuando está desactivado (default), el ranking se ordena puramente por score sin alternancia de género; cuando está activado, alterna f/nb ↔ m como antes
+- **A2 `scoring_config.py`** — falso positivo: `_SINGLE_DATE_BONUS=40` ya estaba protegido por `single_date_priority_enabled`. Documentada la decisión de diseño de no hacerlo configurable (evitar que cómicos exploten el hack)
 - **Tests** — 3 tests existentes actualizados para usar `_parity_config()` (flag `True`); 1 test nuevo `test_build_ranking_no_interleave_when_parity_disabled` que verifica orden puro por score
 
 ### Tests

@@ -107,7 +107,7 @@ Revisión técnica exhaustiva (2026-03-16). Puntuación actual: **7/10** → obj
 | ID | Archivo | Descripción |
 |----|---------|-------------|
 | ~~A1~~ | ~~`scoring_engine.py:465`~~ | ~~`gender_parity_enabled` flag ignorado en `build_ranking()` — la alternancia f/nb ↔ m se aplica siempre~~ ✅ |
-| A2 | `scoring_config.py:21` | `_SINGLE_DATE_BONUS = 40` hardcodeado — no configurable por el host, rompe jerarquía de categorías |
+| ~~A2~~ | ~~`scoring_config.py:21`~~ | ~~`_SINGLE_DATE_BONUS = 40` hardcodeado~~ — falso positivo: el bonus solo se aplica si `single_date_priority_enabled=True` (L216). Se deja intencionalmente no configurable para que el host no pueda inflar el peso y que los cómicos se aprovechen del hack marcando siempre una sola fecha ✅ |
 
 ### 🟠 Sprint B — Seguridad
 
