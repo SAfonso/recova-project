@@ -8,6 +8,7 @@ from flask import Blueprint, jsonify, request
 from backend.src.triggers.shared import (
     FRONTEND_URL,
     api_error,
+    rate_limit,
     require_api_key,
     _next_event_datetime,
     _sb_client,
@@ -127,6 +128,7 @@ def lineup_prepare_validation():
 
 
 @bp.route("/api/validate-view/lineup", methods=["GET"])
+@rate_limit(max_requests=30, window_seconds=60)
 def validate_view_lineup():
     """Devuelve el lineup para la vista standalone de validacion."""
     token = request.args.get("token", "").strip()
@@ -197,6 +199,7 @@ def validate_view_lineup():
 
 
 @bp.route("/api/validate-view/validate", methods=["POST"])
+@rate_limit(max_requests=30, window_seconds=60)
 @validate_json({"token": str, "solicitud_ids": list})
 def validate_view_validate():
     """Valida el lineup desde la vista standalone."""

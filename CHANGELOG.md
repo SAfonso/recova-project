@@ -1,3 +1,26 @@
+## [0.26.0] - 2026-03-17
+
+### Added — Sprint F3: Rate limiting in-memory por IP
+
+#### Decorador `@rate_limit(max_requests, window_seconds)`
+- Ventana deslizante in-memory con `{endpoint:ip: [timestamps]}`, thread-safe (`threading.Lock`)
+- Devuelve **429** con `Retry-After` header si se excede el límite
+- Headers informativos en cada respuesta: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`
+- No requiere Redis — el proceso PM2 es único
+
+#### Endpoints protegidos
+- `/api/form-submission` — **5 req/min** (dispara pipeline completo)
+- `/api/telegram/register` — **10 req/min**
+- `/api/validate-view/lineup` — **30 req/min**
+- `/api/validate-view/validate` — **30 req/min**
+
+### Tests
+- 9 tests nuevos en `test_rate_limit_decorator.py`: límite, 429, headers, ventana, endpoints independientes, expiración
+- Fixture `_reset_rate_limit_store` en `conftest.py` (autouse)
+- **Total acumulado**: 365 backend + 70 frontend = 435 tests verdes
+
+---
+
 ## [0.25.0] - 2026-03-17
 
 ### Changed — Sprint F2: Descomponer App.jsx (534 → 120 líneas)

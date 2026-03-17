@@ -10,6 +10,7 @@ from backend.src.triggers.shared import (
     INGEST_SCRIPT_PATH,
     _CANONICAL_TO_BRONZE,
     api_error,
+    rate_limit,
     require_api_key,
     _sb_client,
     run_ingestion_async,
@@ -22,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 @bp.route("/api/form-submission", methods=["POST"])
+@rate_limit(max_requests=5, window_seconds=60)
 @validate_json({"open_mic_id": str})
 def form_submission():
     """Recibe datos de Google Form via Apps Script y los ingesta en bronze."""

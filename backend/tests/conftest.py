@@ -21,3 +21,12 @@ def _reset_sb_singleton():
     shared._SB_SINGLETON = None
     yield
     shared._SB_SINGLETON = None
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limit_store():
+    """Reset rate limit store between tests to prevent cross-test leaks."""
+    import backend.src.triggers.shared as shared
+    shared._rate_limit_store.clear()
+    yield
+    shared._rate_limit_store.clear()

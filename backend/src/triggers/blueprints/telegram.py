@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 
 from flask import Blueprint, jsonify, request
 
-from backend.src.triggers.shared import api_error, require_api_key, _sb_client, validate_json
+from backend.src.triggers.shared import api_error, rate_limit, require_api_key, _sb_client, validate_json
 
 bp = Blueprint("telegram", __name__)
 
@@ -48,6 +48,7 @@ def telegram_generate_code():
 
 
 @bp.route("/api/telegram/register", methods=["POST"])
+@rate_limit(max_requests=10, window_seconds=60)
 @validate_json({"code": str})
 def telegram_register():
     """Procesa /start RCV-XXXX: valida codigo y registra host en telegram_users."""

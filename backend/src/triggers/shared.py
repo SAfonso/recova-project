@@ -2,6 +2,7 @@
 
 import functools
 import os
+import time
 import threading
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -55,6 +56,70 @@ def api_error(code: str, message: str, status: int, details: str | None = None) 
     if details is not None:
         body["error"]["details"] = details
     return jsonify(body), status
+
+
+# ---------------------------------------------------------------------------
+# Rate limiting — in-memory por IP
+# ---------------------------------------------------------------------------
+
+_rate_limit_store: dict[str, list[float]] = {}
+_rate_limit_lock = threading.Lock()
+
+
+def _cleanup_timestamps(timestamps: list[float], window: float, now: float) -> list[float]:
+    """Purga timestamps fuera de la ventana."""
+    cutoff = now - window
+    return [t for t in timestamps if t > cutoff]
+
+
+def rate_limit(max_requests: int = 10, window_seconds: int = 60):
+    """Decorador que limita requests por IP con ventana deslizante.
+
+    Devuelve 429 si se excede el límite. Añade headers X-RateLimit-* a cada respuesta.
+    """
+    def decorator(fn):
+        @functools.wraps(fn)
+        def wrapper(*args, **kwargs):
+            ip = request.remote_addr or "unknown"
+            key = f"{fn.__name__}:{ip}"
+            now = time.monotonic()
+
+            with _rate_limit_lock:
+                timestamps = _rate_limit_store.get(key, [])
+                timestamps = _cleanup_timestamps(timestamps, window_seconds, now)
+
+                remaining = max(0, max_requests - len(timestamps))
+
+                if len(timestamps) >= max_requests:
+                    _rate_limit_store[key] = timestamps
+                    resp = api_error("RATE_LIMITED", "Too many requests", 429)
+                    response = resp[0]  # jsonify object
+                    response.headers["Retry-After"] = str(window_seconds)
+                    response.headers["X-RateLimit-Limit"] = str(max_requests)
+                    response.headers["X-RateLimit-Remaining"] = "0"
+                    response.headers["X-RateLimit-Reset"] = str(window_seconds)
+                    return response, resp[1]
+
+                timestamps.append(now)
+                _rate_limit_store[key] = timestamps
+                remaining = max(0, max_requests - len(timestamps))
+
+            response = fn(*args, **kwargs)
+
+            # Inyectar headers en la respuesta
+            if isinstance(response, tuple):
+                resp_obj, status = response[0], response[1]
+            else:
+                resp_obj, status = response, 200
+
+            resp_obj.headers["X-RateLimit-Limit"] = str(max_requests)
+            resp_obj.headers["X-RateLimit-Remaining"] = str(remaining)
+            resp_obj.headers["X-RateLimit-Reset"] = str(window_seconds)
+
+            return resp_obj, status
+
+        return wrapper
+    return decorator
 
 
 def validate_json(required: dict[str, type] | None = None):

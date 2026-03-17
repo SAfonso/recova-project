@@ -14,6 +14,7 @@ SaaS multi-tenant para gestión de open mics de comedia. Stack: React+Vite (fron
 ### Python — patches en tests
 - **NUNCA parchear `backend.src.triggers.shared._sb_client` directamente en tests de blueprints.** Cuando un blueprint hace `from shared import _sb_client`, Python vincula el nombre localmente. El patch debe apuntar al módulo del blueprint: `backend.src.triggers.blueprints.ingestion._sb_client`, NO `backend.src.triggers.shared._sb_client`.
 - **Singleton `_SB_SINGLETON` se filtra entre tests.** Siempre usar la fixture `_reset_sb_singleton` de `conftest.py` (ya es `autouse=True`). Si se crea un nuevo singleton en `shared.py`, añadir su reset a la misma fixture.
+- **`_rate_limit_store` también se filtra entre tests.** La fixture `_reset_rate_limit_store` en `conftest.py` (autouse) lo limpia. Si se añade otro store global, añadir su reset.
 
 ### Python — mocking psycopg2
 - **psycopg2 devuelve JSONB como `dict`, NO como `str`.** En mocks de cursor, `fetchone()` para columnas JSONB debe devolver `({"key": "value"},)`, no `('{"key": "value"}',)`.
@@ -37,6 +38,11 @@ SaaS multi-tenant para gestión de open mics de comedia. Stack: React+Vite (fron
 ### Frontend — tests con happy-dom
 - **`alert()`, `confirm()`, `prompt()` no existen en happy-dom.** Si un hook los usa, el test debe hacer `globalThis.alert = vi.fn()` en `beforeEach`, o mejor reemplazar por callback/setError.
 - **Cuidado con `?.prop !== false`**: `undefined !== false` es `true`. Al escribir tests, trazar el valor real con los datos mock antes de asumir defaults.
+
+### Flask — Rate limiting
+- Usar `@rate_limit(max_requests, window_seconds)` de `shared.py` en endpoints públicos o sensibles. El decorador va **antes** de `@validate_json` en el stack de decoradores.
+- Límites actuales: form-submission 5/min, telegram/register 10/min, validate-view/* 30/min.
+- No usar Redis — PM2 corre un solo worker; el store in-memory es suficiente.
 
 ### Flask — CORS
 - NO usar `flask-cors` (la v6.x está rota silenciosamente). Usar handlers manuales `@before_request`/`@after_request` con `_cors_headers()` dinámico en `shared.py`.
@@ -69,6 +75,6 @@ frontend/src/
 
 ## Tests
 ```bash
-PYTHONPATH=. pytest backend/tests/   # 356 tests
+PYTHONPATH=. pytest backend/tests/   # 365 tests
 cd frontend && npm test              # 70 tests
 ```

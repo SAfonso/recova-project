@@ -1,6 +1,6 @@
 # AI LineUp Architect
 
-**Versión:** `0.25.0` · **Estado:** Desarrollo activo · **Metodología:** SDD + TDD
+**Versión:** `0.26.0` · **Estado:** Desarrollo activo · **Metodología:** SDD + TDD
 
 SaaS multi-tenant para gestión de open mics de comedia. Automatiza la recogida de solicitudes (Google Forms), el scoring con IA y la notificación del lineup por Telegram.
 
@@ -90,7 +90,7 @@ Variables de entorno: [`docs/setup.md`](docs/setup.md)
 
 ```bash
 source backend/venv/bin/activate
-PYTHONPATH=. pytest backend/tests/   # 356 tests backend
+PYTHONPATH=. pytest backend/tests/   # 365 tests backend
 cd frontend && npm test              # 70 tests frontend
 ```
 
@@ -122,6 +122,7 @@ Revisión técnica (2026-03-16): Sprints A–D completados. Revisión 2 (2026-03
 | ~~D~~ | ~~Calidad~~ — D1 cascada INE + D2 BD source of truth + D3 tutorial UX + D4 paths portables ✅ |
 | ~~E~~ | ~~Red flags defensa~~ — E1 test e2e smoke + E2 `@validate_json` 13 endpoints + E3 score_breakdown JSONB ✅ |
 | ~~F2~~ | ~~Descomponer App.jsx~~ — 534→120 líneas, 3 custom hooks + 4 componentes presentacionales ✅ |
+| ~~F3~~ | ~~Rate limiting~~ — `@rate_limit` decorador in-memory por IP, headers `X-RateLimit-*`, 9 tests ✅ |
 
 </details>
 
@@ -130,7 +131,6 @@ Revisión técnica (2026-03-16): Sprints A–D completados. Revisión 2 (2026-03
 | ID | Archivo(s) | Descripción | Detalle |
 |----|------------|-------------|---------|
 | F1 | `shared.py` + blueprints | **Error response unificado** | Crear helper `_error(message, code, status)` que devuelva siempre `{"status": "error", "message": "...", "code": "..."}`. Reemplazar los 3 formatos distintos (`{"error": "..."}`, `{"status": "error", "message": "..."}`, con/sin code) por uno solo. El frontend solo parsea un formato |
-| F3 | `shared.py` | **Rate limiting básico** | Implementar rate limit in-memory por IP con diccionario `{ip: [timestamps]}` y decorador `@rate_limit(max_requests, window_seconds)`. Aplicar en endpoints públicos (`/api/form-submission`, `/api/telegram/register`). No necesita Redis — el proceso PM2 es único. Devolver 429 si excede |
 
 ### 🔵 Sprint G — Documentación y observabilidad
 
