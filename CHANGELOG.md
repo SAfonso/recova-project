@@ -1,5 +1,15 @@
 ## [0.26.0] - 2026-03-17
 
+### Added — Sprint G1: OpenAPI spec
+
+- `docs/openapi.yaml` — Especificación OpenAPI 3.0.3 con las 22 rutas de la API
+- Organizada en 8 tags: Ingesta, Lineup, Formularios, Telegram, Poster, MCP Agent, Orquestación, Desarrollo
+- Documenta ambos mecanismos de auth (API Key + Bearer JWT), rate limiting y formato de errores unificado
+- Schemas reutilizables: `Error`, `CandidateItem`, `SlotItem`
+- Respuestas comunes: `Unauthorized`, `ValidationError`, `RateLimited`, `ExternalServiceError`
+
+---
+
 ### Added — Sprint F3: Rate limiting in-memory por IP
 
 #### Decorador `@rate_limit(max_requests, window_seconds)`

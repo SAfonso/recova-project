@@ -103,6 +103,7 @@ cd frontend && npm test              # 70 tests frontend
 | [`docs/architecture.md`](docs/architecture.md) | Variables de entorno y capas |
 | [`docs/setup.md`](docs/setup.md) | Setup local y producción |
 | [`docs/sprints.md`](docs/sprints.md) | Historial de sprints y roadmap |
+| [`docs/openapi.yaml`](docs/openapi.yaml) | Especificación OpenAPI 3.0 (22 rutas) |
 | [`CHANGELOG.md`](CHANGELOG.md) | Historial de versiones |
 
 ---
@@ -123,17 +124,6 @@ Revisión técnica (2026-03-16): Sprints A–D completados. Revisión 2 (2026-03
 | ~~E~~ | ~~Red flags defensa~~ — E1 test e2e smoke + E2 `@validate_json` 13 endpoints + E3 score_breakdown JSONB ✅ |
 | ~~F2~~ | ~~Descomponer App.jsx~~ — 534→120 líneas, 3 custom hooks + 4 componentes presentacionales ✅ |
 | ~~F3~~ | ~~Rate limiting~~ — `@rate_limit` decorador in-memory por IP, headers `X-RateLimit-*`, 9 tests ✅ |
+| ~~G1~~ | ~~OpenAPI spec~~ — `docs/openapi.yaml` con 22 rutas, schemas, auth y rate limiting ✅ |
 
 </details>
-
-### 🟠 Sprint F — Calidad de código (parcial)
-
-| ID | Archivo(s) | Descripción | Detalle |
-|----|------------|-------------|---------|
-| F1 | `shared.py` + blueprints | **Error response unificado** | Crear helper `_error(message, code, status)` que devuelva siempre `{"status": "error", "message": "...", "code": "..."}`. Reemplazar los 3 formatos distintos (`{"error": "..."}`, `{"status": "error", "message": "..."}`, con/sin code) por uno solo. El frontend solo parsea un formato |
-
-### 🔵 Sprint G — Documentación y observabilidad
-
-| ID | Archivo(s) | Descripción | Detalle |
-|----|------------|-------------|---------|
-| G1 | `docs/openapi.yaml` | **OpenAPI spec** | Documentar las 22 rutas registradas con request/response schemas, códigos de error, y auth requirements. Opcional: montar Swagger UI en `/api/docs` con flask-swagger-ui. El tribunal valorará que exista contrato formal de API |
