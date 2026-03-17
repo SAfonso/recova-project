@@ -147,7 +147,14 @@ function App({ session, openMicId, onBack }) {
       .eq('open_mic_id', openMicId)
       .eq('status', 'confirmed')
       .limit(1);
-    if (slots?.length > 0) setIsValidated(true);
+    const confirmed = slots?.length > 0;
+    setIsValidated(confirmed);
+    // Sync localStorage cache with DB truth
+    if (confirmed) {
+      localStorage.setItem(`validated_${openMicId}`, '1');
+    } else {
+      localStorage.removeItem(`validated_${openMicId}`);
+    }
 
     setLoading(false);
   };

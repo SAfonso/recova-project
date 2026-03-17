@@ -4,23 +4,23 @@ import subprocess
 import sys
 
 from flask import Blueprint, jsonify, request
-from supabase import create_client
 
 from backend.src.core.form_ingestor import FormIngestor
 from backend.src.core.sheet_ingestor import SheetIngestor
 from backend.src.triggers.shared import (
     INGEST_SCRIPT_PATH,
-    SUPABASE_SERVICE_KEY,
-    SUPABASE_URL,
     _CANONICAL_TO_BRONZE,
     _is_authorized,
+    _sb_client,
     run_ingestion_async,
+    validate_json,
 )
 
 bp = Blueprint("ingestion", __name__)
 
 
 @bp.route("/api/form-submission", methods=["POST"])
+@validate_json({"open_mic_id": str})
 def form_submission():
     """Recibe datos de Google Form via Apps Script y los ingesta en bronze."""
     if not _is_authorized():
@@ -28,10 +28,8 @@ def form_submission():
     data = request.get_json(force=True) or {}
 
     open_mic_id = data.get("open_mic_id")
-    if not open_mic_id:
-        return jsonify({"error": "open_mic_id required"}), 400
 
-    sb = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+    sb = _sb_client()
     silver = sb.schema("silver")
 
     # 1. Lookup proveedor_id desde silver.open_mics
@@ -67,7 +65,7 @@ def ingest_from_sheets():
     if not _is_authorized():
         return jsonify({"error": "unauthorized"}), 401
 
-    sb = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+    sb = _sb_client()
     open_mics = (
         sb.schema("silver")
         .from_("open_mics")
@@ -135,7 +133,7 @@ def ingest_from_forms():
     if not _is_authorized():
         return jsonify({"error": "unauthorized"}), 401
 
-    sb = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+    sb = _sb_client()
     silver = sb.schema("silver")
 
     open_mics = (

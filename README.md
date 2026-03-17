@@ -1,6 +1,6 @@
 # AI LineUp Architect
 
-**Versión:** `0.22.0` · **Estado:** Desarrollo activo · **Metodología:** SDD + TDD
+**Versión:** `0.24.0` · **Estado:** Desarrollo activo · **Metodología:** SDD + TDD
 
 SaaS multi-tenant para gestión de open mics de comedia. Automatiza la recogida de solicitudes (Google Forms), el scoring con IA y la notificación del lineup por Telegram.
 
@@ -89,8 +89,8 @@ Variables de entorno: [`docs/setup.md`](docs/setup.md)
 
 ```bash
 source backend/venv/bin/activate
-PYTHONPATH=. pytest backend/tests/unit/ backend/tests/core/   # 189 tests backend
-cd frontend && npm test                                        # 40 tests frontend
+PYTHONPATH=. pytest backend/tests/   # 356 tests backend
+cd frontend && npm test              # 44 tests frontend
 ```
 
 ---
@@ -108,36 +108,31 @@ cd frontend && npm test                                        # 40 tests fronte
 
 ## Deuda técnica — Sprints de mejora
 
-Revisión técnica exhaustiva (2026-03-16). Puntuación actual: **7/10** → objetivo **9/10**.
+Revisión técnica (2026-03-16): Sprints A–D completados. Revisión 2 (2026-03-17): 3 red flags → Sprints E–G.
 
-### 🔴 Sprint A — Bugs funcionales (crítico)
+<details>
+<summary>Sprints A–D (completados) ✅</summary>
 
-| ID | Archivo | Descripción |
-|----|---------|-------------|
-| ~~A1~~ | ~~`scoring_engine.py:465`~~ | ~~`gender_parity_enabled` flag ignorado en `build_ranking()` — la alternancia f/nb ↔ m se aplica siempre~~ ✅ |
-| ~~A2~~ | ~~`scoring_config.py:21`~~ | ~~`_SINGLE_DATE_BONUS = 40` hardcodeado~~ — falso positivo: el bonus solo se aplica si `single_date_priority_enabled=True` (L216). Se deja intencionalmente no configurable para que el host no pueda inflar el peso y que los cómicos se aprovechen del hack marcando siempre una sola fecha ✅ |
+| Sprint | Descripción |
+|--------|-------------|
+| ~~A~~ | ~~Bugs funcionales~~ — A1 gender_parity fix + A2 falso positivo documentado ✅ |
+| ~~B~~ | ~~Seguridad~~ — B2 CORS restringido + B3 singleton Supabase ✅ |
+| ~~C~~ | ~~Arquitectura~~ — C1+C2 God File → 8 blueprints ✅ |
+| ~~D~~ | ~~Calidad~~ — D1 cascada INE + D2 BD source of truth + D3 tutorial UX + D4 paths portables ✅ |
+| ~~E~~ | ~~Red flags defensa~~ — E1 test e2e smoke + E2 `@validate_json` 13 endpoints + E3 score_breakdown JSONB ✅ |
 
-### 🟠 Sprint B — Seguridad
+</details>
 
-| ID | Archivo | Descripción |
-|----|---------|-------------|
-| B1 | `.env` / git history | Rotar `WEBHOOK_API_KEY` y `SUPABASE_SERVICE_KEY` antes de publicar el repo |
-| B2 | `webhook_listener.py:34` | `Access-Control-Allow-Origin: *` → restringir al dominio de Vercel |
-| B3 | `webhook_listener.py:76` | `create_client` instanciado en cada request → singleton a nivel de módulo |
+### 🟠 Sprint F — Calidad de código
 
-### 🟡 Sprint C — Arquitectura
+| ID | Archivo(s) | Descripción | Detalle |
+|----|------------|-------------|---------|
+| F1 | `shared.py` + blueprints | **Error response unificado** | Crear helper `_error(message, code, status)` que devuelva siempre `{"status": "error", "message": "...", "code": "..."}`. Reemplazar los 3 formatos distintos (`{"error": "..."}`, `{"status": "error", "message": "..."}`, con/sin code) por uno solo. El frontend solo parsea un formato |
+| F2 | `frontend/src/App.jsx` | **Descomponer App.jsx (350 líneas)** | Extraer: (1) `useLineupData()` — custom hook con fetch, candidatos, edits, (2) `useValidation()` — lógica de validar + n8n webhook + upsert, (3) `RecoveryNotes` — componente para textarea de notas, (4) `ValidationStamp` — componente del sello "VALIDADO" + botón cambiar. App.jsx queda como compositor de ~80 líneas |
+| F3 | `shared.py` | **Rate limiting básico** | Implementar rate limit in-memory por IP con diccionario `{ip: [timestamps]}` y decorador `@rate_limit(max_requests, window_seconds)`. Aplicar en endpoints públicos (`/api/form-submission`, `/api/telegram/register`). No necesita Redis — el proceso PM2 es único. Devolver 429 si excede |
 
-| ID | Archivo | Descripción |
-|----|---------|-------------|
-| ~~C1~~ | ~~`webhook_listener.py`~~ | ~~God File 1.194 líneas → dividir en blueprints Flask por dominio~~ ✅ (1194 → 36 líneas, 8 blueprints) |
-| ~~C2~~ | ~~`webhook_listener.py:92`~~ | ~~`subprocess.run()` síncrono para scoring/ingest → llamada directa a función~~ ✅ (`run_pipeline()` / `execute_scoring()` directos + `run_ingestion_async()` threading) |
-| C3 | `docs/architecture.md` | Documentar decisión Flask (WSGI) vs FastAPI (ASGI/MCP) |
+### 🔵 Sprint G — Documentación y observabilidad
 
-### 🔵 Sprint D — Calidad y argumentación
-
-| ID | Archivo | Descripción |
-|----|---------|-------------|
-| D1 | `bronze_to_silver_ingestion.py` | Documentar limitaciones de `gender-guesser` (accuracy, casos None, corrección manual) |
-| D2 | `App.jsx` | `isValidated` desde `localStorage` → verificar contra `silver.lineup_slots` al cargar |
-| D3 | `OnboardingTutorial.jsx` | Tutorial UX bloqueante → modal de confirmación en lugar de bloqueo total |
-| D4 | `ecosystem.config.js` | Rutas absolutas hardcodeadas → variables de entorno / separar config local y producción |
+| ID | Archivo(s) | Descripción | Detalle |
+|----|------------|-------------|---------|
+| G1 | `docs/openapi.yaml` | **OpenAPI spec** | Documentar las 22 rutas registradas con request/response schemas, códigos de error, y auth requirements. Opcional: montar Swagger UI en `/api/docs` con flask-swagger-ui. El tribunal valorará que exista contrato formal de API |

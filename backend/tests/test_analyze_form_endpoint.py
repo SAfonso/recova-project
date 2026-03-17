@@ -79,7 +79,7 @@ def test_analyze_form_returns_200_with_mapping():
     """Happy path: 200 con field_mapping en la respuesta."""
     sb = _make_sb()
 
-    with patch("backend.src.triggers.blueprints.form.create_client", return_value=sb), \
+    with patch("backend.src.triggers.blueprints.form._sb_client", return_value=sb), \
          patch("backend.src.triggers.blueprints.form.FormIngestor") as MockIngestor, \
          patch("backend.src.triggers.blueprints.form.FormAnalyzer") as MockAnalyzer:
 
@@ -104,7 +104,7 @@ def test_analyze_form_saves_to_config():
     """Llama a la RPC update_open_mic_config_keys con field_mapping y external_form_id."""
     sb = _make_sb()
 
-    with patch("backend.src.triggers.blueprints.form.create_client", return_value=sb), \
+    with patch("backend.src.triggers.blueprints.form._sb_client", return_value=sb), \
          patch("backend.src.triggers.blueprints.form.FormIngestor") as MockIngestor, \
          patch("backend.src.triggers.blueprints.form.FormAnalyzer") as MockAnalyzer:
 
@@ -137,7 +137,7 @@ def test_analyze_form_missing_params_400():
             headers=AUTH,
         )
     assert resp.status_code == 400
-    assert "obligatorios" in resp.get_json()["message"]
+    assert "form_id" in resp.get_json()["message"]
 
 
 def test_analyze_form_unauthorized_401():
@@ -155,7 +155,7 @@ def test_analyze_form_gemini_invalid_422():
     """422 si FormAnalyzer lanza ValueError (Gemini devuelve JSON inválido)."""
     sb = _make_sb()
 
-    with patch("backend.src.triggers.blueprints.form.create_client", return_value=sb), \
+    with patch("backend.src.triggers.blueprints.form._sb_client", return_value=sb), \
          patch("backend.src.triggers.blueprints.form.FormIngestor") as MockIngestor, \
          patch("backend.src.triggers.blueprints.form.FormAnalyzer") as MockAnalyzer:
 
@@ -179,7 +179,7 @@ def test_analyze_form_includes_coverage_metrics():
     """La respuesta incluye canonical_coverage, total_questions y unmapped_fields."""
     sb = _make_sb()
 
-    with patch("backend.src.triggers.blueprints.form.create_client", return_value=sb), \
+    with patch("backend.src.triggers.blueprints.form._sb_client", return_value=sb), \
          patch("backend.src.triggers.blueprints.form.FormIngestor") as MockIngestor, \
          patch("backend.src.triggers.blueprints.form.FormAnalyzer") as MockAnalyzer:
 

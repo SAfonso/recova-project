@@ -10,12 +10,14 @@ from backend.src.triggers.shared import (
     _next_event_datetime,
     _sb_client,
     execute_scoring,
+    validate_json,
 )
 
 bp = Blueprint("lineup", __name__)
 
 
 @bp.route("/api/lineup/prepare-validation", methods=["POST"])
+@validate_json({"host_id": str, "open_mic_id": str})
 def lineup_prepare_validation():
     """Calcula el proximo show, ejecuta scoring, genera token y devuelve lineup + link."""
     if not _is_authorized():
@@ -177,6 +179,7 @@ def validate_view_lineup():
 
 
 @bp.route("/api/validate-view/validate", methods=["POST"])
+@validate_json({"token": str, "solicitud_ids": list})
 def validate_view_validate():
     """Valida el lineup desde la vista standalone."""
     body = request.get_json(silent=True) or {}

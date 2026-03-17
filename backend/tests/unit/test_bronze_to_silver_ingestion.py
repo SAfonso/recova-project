@@ -360,3 +360,51 @@ class TestInferGender:
 
     def test_nombre_desconocido_instagram_sin_palabras(self):
         assert ingestion.infer_gender("Xzqrt", "123456") is None
+
+    # --- Tests INE: nombres que gender-guesser no reconoce bien ---
+
+    def test_ine_iker(self):
+        """Iker: nombre vasco que gender-guesser clasifica como 'andy'."""
+        assert ingestion.infer_gender("Iker", None) == "m"
+
+    def test_ine_naiara(self):
+        """Naiara: nombre vasco/navarro femenino."""
+        assert ingestion.infer_gender("Naiara", None) == "f"
+
+    def test_ine_maite(self):
+        """Maite: hipocorístico vasco femenino."""
+        assert ingestion.infer_gender("Maite", None) == "f"
+
+    def test_ine_yurena(self):
+        """Yurena: nombre canario femenino."""
+        assert ingestion.infer_gender("Yurena", None) == "f"
+
+    def test_ine_pepa(self):
+        """Pepa: diminutivo femenino de Josefa."""
+        assert ingestion.infer_gender("Pepa", None) == "f"
+
+    def test_ine_amaia(self):
+        """Amaia: nombre vasco femenino."""
+        assert ingestion.infer_gender("Amaia", None) == "f"
+
+    def test_ine_unai(self):
+        """Unai: nombre vasco masculino."""
+        assert ingestion.infer_gender("Unai", None) == "m"
+
+    def test_ine_ainhoa(self):
+        """Ainhoa: nombre vasco femenino."""
+        assert ingestion.infer_gender("Ainhoa", None) == "f"
+
+    # --- Tests cascada: verificar que las capas se complementan ---
+
+    def test_cascade_ine_has_priority(self):
+        """El diccionario INE debe resolver antes de llamar a gender-guesser."""
+        result = ingestion._ine_lookup("iker")
+        assert result == "m"
+
+    def test_cascade_gender_guesser_fallback(self):
+        """Nombres internacionales no-INE deben resolverse por gender-guesser."""
+        # 'Bartholomew' no está en el INE pero sí en gender-guesser
+        assert ingestion._ine_lookup("bartholomew") is None
+        assert ingestion._gender_guesser_lookup("bartholomew") == "m"
+        assert ingestion.infer_gender("Bartholomew", None) == "m"

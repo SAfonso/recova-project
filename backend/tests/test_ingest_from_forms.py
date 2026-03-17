@@ -150,7 +150,7 @@ def test_ingest_from_forms_skips_open_mics_without_form():
     """200 con 0 filas si ningún open mic tiene external_form_id configurado."""
     sb = _make_sb({"silver": {"open_mics": _chain([OPEN_MIC_NO_FORM])}})
 
-    with patch("backend.src.triggers.blueprints.ingestion.create_client", return_value=sb), \
+    with patch("backend.src.triggers.blueprints.ingestion._sb_client", return_value=sb), \
          patch("backend.src.triggers.blueprints.ingestion.run_ingestion_async"):
         with app.test_client() as c:
             resp = c.post("/api/ingest-from-forms", headers=AUTH)
@@ -168,7 +168,7 @@ def test_ingest_from_forms_happy_path():
         "bronze": {"solicitudes": _chain([{"id": "new"}])},
     })
 
-    with patch("backend.src.triggers.blueprints.ingestion.create_client", return_value=sb), \
+    with patch("backend.src.triggers.blueprints.ingestion._sb_client", return_value=sb), \
          patch("backend.src.triggers.blueprints.ingestion.FormIngestor") as MockIngestor, \
          patch("backend.src.triggers.blueprints.ingestion.run_ingestion_async") as mock_popen:
 
@@ -193,7 +193,7 @@ def test_ingest_from_forms_maps_canonical_fields_to_bronze():
         "bronze": {"solicitudes": _chain([{"id": "new"}])},
     })
 
-    with patch("backend.src.triggers.blueprints.ingestion.create_client", return_value=sb), \
+    with patch("backend.src.triggers.blueprints.ingestion._sb_client", return_value=sb), \
          patch("backend.src.triggers.blueprints.ingestion.FormIngestor") as MockIngestor, \
          patch("backend.src.triggers.blueprints.ingestion.run_ingestion_async"):
 
@@ -229,7 +229,7 @@ def test_ingest_from_forms_deduplication_skips_old_responses():
         "bronze": {"solicitudes": _chain([])},
     })
 
-    with patch("backend.src.triggers.blueprints.ingestion.create_client", return_value=sb), \
+    with patch("backend.src.triggers.blueprints.ingestion._sb_client", return_value=sb), \
          patch("backend.src.triggers.blueprints.ingestion.FormIngestor") as MockIngestor, \
          patch("backend.src.triggers.blueprints.ingestion.run_ingestion_async"):
 
@@ -255,7 +255,7 @@ def test_ingest_from_forms_updates_last_ingestion_timestamp():
         "bronze": {"solicitudes": _chain([{"id": "new"}])},
     })
 
-    with patch("backend.src.triggers.blueprints.ingestion.create_client", return_value=sb), \
+    with patch("backend.src.triggers.blueprints.ingestion._sb_client", return_value=sb), \
          patch("backend.src.triggers.blueprints.ingestion.FormIngestor") as MockIngestor, \
          patch("backend.src.triggers.blueprints.ingestion.run_ingestion_async"):
 
@@ -288,7 +288,7 @@ def test_ingest_from_forms_continues_on_form_error():
             raise Exception("Google API error")
         return [RESPONSE_NEW]
 
-    with patch("backend.src.triggers.blueprints.ingestion.create_client", return_value=sb), \
+    with patch("backend.src.triggers.blueprints.ingestion._sb_client", return_value=sb), \
          patch("backend.src.triggers.blueprints.ingestion.FormIngestor") as MockIngestor, \
          patch("backend.src.triggers.blueprints.ingestion.run_ingestion_async"):
 

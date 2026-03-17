@@ -129,7 +129,7 @@ def test_seed_open_mic_not_found():
     sb = _make_sb({"silver": {"open_mics": _chain([])}})
 
     with _patch_auth_valid(), \
-         patch("backend.src.triggers.blueprints.dev.create_client", return_value=sb):
+         patch("backend.src.triggers.blueprints.dev._sb_client", return_value=sb):
         with app.test_client() as c:
             resp = c.post("/api/dev/seed-open-mic",
                           json={"open_mic_id": "om-999"},
@@ -142,7 +142,7 @@ def test_seed_already_seeded():
     sb = _make_sb({"silver": {"open_mics": _chain([OM_ALREADY_SEEDED])}})
 
     with _patch_auth_valid(), \
-         patch("backend.src.triggers.blueprints.dev.create_client", return_value=sb):
+         patch("backend.src.triggers.blueprints.dev._sb_client", return_value=sb):
         with app.test_client() as c:
             resp = c.post("/api/dev/seed-open-mic",
                           json={"open_mic_id": "om-001"},
@@ -161,7 +161,7 @@ def test_seed_happy_path():
     })
 
     with _patch_auth_valid(), \
-         patch("backend.src.triggers.blueprints.dev.create_client", return_value=sb), \
+         patch("backend.src.triggers.blueprints.dev._sb_client", return_value=sb), \
          patch("backend.src.triggers.blueprints.dev.run_ingestion_async") as mock_popen:
 
         with app.test_client() as c:
@@ -240,7 +240,7 @@ def test_trigger_scoring_happy_path():
     })
 
     with _patch_auth_valid(), \
-         patch("backend.src.triggers.blueprints.dev.create_client", return_value=sb), \
+         patch("backend.src.triggers.blueprints.dev._sb_client", return_value=sb), \
          patch("backend.src.triggers.blueprints.dev.execute_scoring",
                return_value=fake_result):
 

@@ -7,12 +7,13 @@ from datetime import datetime, timezone
 
 from flask import Blueprint, jsonify, request
 
-from backend.src.triggers.shared import _is_authorized, _sb_client
+from backend.src.triggers.shared import _is_authorized, _sb_client, validate_json
 
 bp = Blueprint("telegram", __name__)
 
 
 @bp.route("/api/telegram/generate-code", methods=["POST"])
+@validate_json({"host_id": str})
 def telegram_generate_code():
     """Genera un código temporal para self-registration del bot de Telegram."""
     if not _is_authorized():
@@ -39,6 +40,7 @@ def telegram_generate_code():
 
 
 @bp.route("/api/telegram/register", methods=["POST"])
+@validate_json({"code": str})
 def telegram_register():
     """Procesa /start RCV-XXXX: valida codigo y registra host en telegram_users."""
     if not _is_authorized():

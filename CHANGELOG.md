@@ -1,3 +1,57 @@
+## [0.24.0] - 2026-03-17
+
+### Changed — Sprint E: Red flags defensa (E1 + E2 + E3)
+
+#### E1 — Test E2E smoke (happy path)
+- Nuevo test `test_e2e_happy_path.py` que simula el flujo completo sin red: POST `/api/form-submission` → `run_pipeline()` (bronze→silver) → `execute_scoring()` (silver→gold). Mock de Supabase + psycopg2 cursor con pattern matching SQL
+- 4 tests: happy path completo, detección de género, score positivo, categoría restricted excluida
+
+#### E2 — Validación de entrada centralizada
+- Nuevo decorador `@validate_json(required)` en `shared.py`: valida JSON body, campos obligatorios, tipos. Devuelve 400 con mensaje claro
+- Aplicado en **13 endpoints POST** de 6 blueprints: ingestion, form, telegram, dev, lineup, mcp_agent
+- Eliminadas validaciones manuales redundantes en `dev.py`
+- 11 tests dedicados en `test_validate_json_decorator.py`
+
+#### E3 — Auditoría del scoring (score breakdown)
+- Nuevo campo `score_breakdown: dict` en `CandidateScore` dataclass
+- `build_ranking()` construye desglose: `{base_score, categoria, recency_penalty, single_date_bonus, custom_rules_bonus, total}`
+- `persist_pending_score()` escribe `score_breakdown` como JSONB en `gold.solicitudes`
+- `execute_scoring()` incluye `score_breakdown` en respuesta API (`top_sugeridos`)
+- Migración SQL: `20260317_add_score_breakdown_to_gold.sql`
+- 9 tests dedicados en `test_score_breakdown.py`
+
+### Tests
+- **Total acumulado**: 356 backend + 44 frontend = 400 tests verdes
+
+---
+
+## [0.23.0] - 2026-03-16
+
+### Changed — Sprint B+D: Seguridad, calidad y UX
+
+#### Sprint B — Seguridad
+- **B2 CORS restringido** — `Access-Control-Allow-Origin: *` reemplazado por origin dinámico: solo acepta `FRONTEND_URL` (Vercel) y `localhost:5173/3000` (dev). Implementado en `shared.py` con `_cors_headers()` y `_cors_origin()`
+- **B3 Supabase singleton** — `create_client()` eliminado de todos los blueprints (`form.py`, `ingestion.py`, `dev.py`, `poster.py`). Nueva función `_sb_client()` en `shared.py` con lazy-init singleton. Fixture `_reset_sb_singleton` en `conftest.py` previene leaks entre tests
+
+#### Sprint D — Calidad y argumentación
+- **D1 Cascada de género 3 capas** — `infer_gender()` ahora usa: (1) diccionario INE con 54.977 nombres españoles del Padrón Continuo, (2) `gender-guesser` como fallback internacional, (3) `genderize.io` API (100 calls/día, `country_id=ES`, umbral ≥0.7). Resuelve correctamente Iker, Naiara, Maite, Yurena, Pepa, Amaia, Unai, Ainhoa y miles más
+- **D2 BD source of truth** — `App.jsx`: `isValidated` se inicializa desde localStorage (caché optimista) pero se reconcilia con `silver.lineup_slots` al montar. Si la BD dice "no confirmado", se limpia localStorage
+- **D3 Tutorial UX** — `OnboardingTutorial.jsx`: reactivado botón X, `disableOverlayClose` eliminado, `disableCloseOnEsc={false}`. Al cerrar/skip se muestra modal de confirmación: "El paso de Telegram es obligatorio para usar el bot" con opciones Salir/Continuar
+- **D4 Paths portables** — `ecosystem.config.js`: rutas hardcodeadas `/root/RECOVA` reemplazadas por `path.resolve(__dirname)` con soporte para `$PROJECT_ROOT` env var
+
+### Added
+- `backend/data/ine_nombres.json` — 54.977 nombres españoles (961 KB) extraídos del INE Padrón Continuo 2022
+- `_ine_lookup()`, `_gender_guesser_lookup()`, `_genderize_lookup()` — funciones de capa individual en `bronze_to_silver_ingestion.py`
+- `_cors_headers()`, `_cors_origin()`, `_ALLOWED_ORIGINS` — CORS dinámico en `shared.py`
+
+### Tests
+- 10 tests nuevos de género (INE + cascada) en `test_bronze_to_silver_ingestion.py`
+- 1 test actualizado en `OnboardingTutorial.test.jsx` (modal de confirmación al skip)
+- Todos los test patches migrados de `create_client` → `_sb_client` en los módulos correctos
+- **Total acumulado**: 332 backend + 44 frontend = 376 tests verdes
+
+---
+
 ## [0.22.0] - 2026-03-16
 
 ### Changed — Sprint C1+C2: Refactorizar webhook_listener.py + Unificar framework

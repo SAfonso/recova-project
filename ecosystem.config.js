@@ -1,12 +1,16 @@
+const path = require('path');
+
+const PROJECT_ROOT = process.env.PROJECT_ROOT || path.resolve(__dirname);
+
 module.exports = {
   apps: [
     {
       name: "webhook-ingesta",
-      cwd: "/root/RECOVA",
-      script: "/root/RECOVA/backend/src/triggers/webhook_listener.py",
-      interpreter: "/root/RECOVA/venv/bin/python3",
+      cwd: PROJECT_ROOT,
+      script: path.join(PROJECT_ROOT, "backend/src/triggers/webhook_listener.py"),
+      interpreter: path.join(PROJECT_ROOT, "venv/bin/python3"),
       env: {
-        PYTHONPATH: "/root/RECOVA",
+        PYTHONPATH: PROJECT_ROOT,
         PYTHONUNBUFFERED: "1"
       },
       autorestart: true,

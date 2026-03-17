@@ -95,7 +95,7 @@ def test_propose_returns_200_with_rules():
     """Happy path: 200 con lista de reglas propuestas."""
     sb = _make_sb(CONFIG_WITH_UNMAPPED)
 
-    with patch("backend.src.triggers.blueprints.form.create_client", return_value=sb), \
+    with patch("backend.src.triggers.blueprints.form._sb_client", return_value=sb), \
          patch("backend.src.triggers.blueprints.form.CustomScoringProposer") as MockProposer:
 
         MockProposer.return_value.propose.return_value = PROPOSED_RULES
@@ -123,14 +123,14 @@ def test_propose_missing_open_mic_id_400():
             headers=AUTH,
         )
     assert resp.status_code == 400
-    assert "obligatorio" in resp.get_json()["message"]
+    assert "open_mic_id" in resp.get_json()["message"]
 
 
 def test_propose_no_field_mapping_422():
     """422 si config del open mic no tiene field_mapping."""
     sb = _make_sb({})  # config sin field_mapping
 
-    with patch("backend.src.triggers.blueprints.form.create_client", return_value=sb):
+    with patch("backend.src.triggers.blueprints.form._sb_client", return_value=sb):
         with app.test_client() as c:
             resp = c.post(
                 "/api/open-mic/propose-custom-rules",
@@ -148,7 +148,7 @@ def test_propose_no_unmapped_fields_200_empty():
     """200 con rules:[] si todos los campos del form son canónicos."""
     sb = _make_sb(CONFIG_ALL_CANONICAL)
 
-    with patch("backend.src.triggers.blueprints.form.create_client", return_value=sb), \
+    with patch("backend.src.triggers.blueprints.form._sb_client", return_value=sb), \
          patch("backend.src.triggers.blueprints.form.CustomScoringProposer") as MockProposer:
 
         MockProposer.return_value.propose.return_value = []
@@ -170,7 +170,7 @@ def test_propose_gemini_invalid_422():
     """422 si CustomScoringProposer lanza ValueError."""
     sb = _make_sb(CONFIG_WITH_UNMAPPED)
 
-    with patch("backend.src.triggers.blueprints.form.create_client", return_value=sb), \
+    with patch("backend.src.triggers.blueprints.form._sb_client", return_value=sb), \
          patch("backend.src.triggers.blueprints.form.CustomScoringProposer") as MockProposer:
 
         MockProposer.return_value.propose.side_effect = ValueError("Gemini devolvió JSON inválido: {{{")
@@ -192,7 +192,7 @@ def test_propose_saves_rules_to_config():
     """Llama a RPC update_open_mic_config_keys con custom_scoring_rules."""
     sb = _make_sb(CONFIG_WITH_UNMAPPED)
 
-    with patch("backend.src.triggers.blueprints.form.create_client", return_value=sb), \
+    with patch("backend.src.triggers.blueprints.form._sb_client", return_value=sb), \
          patch("backend.src.triggers.blueprints.form.CustomScoringProposer") as MockProposer:
 
         MockProposer.return_value.propose.return_value = PROPOSED_RULES
@@ -229,7 +229,7 @@ def test_propose_response_includes_metadata():
     """La respuesta incluye unmapped_fields y proposed_count."""
     sb = _make_sb(CONFIG_WITH_UNMAPPED)
 
-    with patch("backend.src.triggers.blueprints.form.create_client", return_value=sb), \
+    with patch("backend.src.triggers.blueprints.form._sb_client", return_value=sb), \
          patch("backend.src.triggers.blueprints.form.CustomScoringProposer") as MockProposer:
 
         MockProposer.return_value.propose.return_value = PROPOSED_RULES

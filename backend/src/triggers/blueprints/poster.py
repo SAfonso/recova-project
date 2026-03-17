@@ -179,11 +179,8 @@ def execute_render(*, payload: dict[str, Any]) -> dict[str, Any]:
     open_mic_id = payload.get("open_mic_id")
     if open_mic_id:
         try:
-            from supabase import create_client as _create_client
-            _sb = _create_client(
-                os.getenv("SUPABASE_URL", ""),
-                os.getenv("SUPABASE_SERVICE_KEY", ""),
-            )
+            from backend.src.triggers.shared import _sb_client
+            _sb = _sb_client()
             row = _sb.schema("silver").from_("open_mics").select("config").eq("id", open_mic_id).single().execute()
             cfg = (row.data or {}).get("config") or {}
             poster_cfg = cfg.get("poster") or {}

@@ -3,33 +3,31 @@
 from datetime import date, timedelta
 
 from flask import Blueprint, jsonify, request
-from supabase import create_client
 
 from backend.src.core.dev_users_pool import get_random_users
 from backend.src.triggers.shared import (
-    SUPABASE_SERVICE_KEY,
-    SUPABASE_URL,
     _is_authenticated_user,
+    _sb_client,
     execute_scoring,
     run_ingestion_async,
+    validate_json,
 )
 
 bp = Blueprint("dev", __name__)
 
 
 @bp.route("/api/dev/seed-open-mic", methods=["POST"])
+@validate_json({"open_mic_id": str})
 def dev_seed_open_mic():
     """Siembra 10 usuarios de prueba en un open mic. Protegido por Supabase JWT."""
     user = _is_authenticated_user()
     if not user:
         return jsonify({"error": "unauthorized"}), 401
 
-    data = request.get_json(force=True) or {}
+    data = request.get_json(silent=True) or {}
     open_mic_id = data.get("open_mic_id")
-    if not open_mic_id:
-        return jsonify({"error": "open_mic_id requerido"}), 400
 
-    sb = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+    sb = _sb_client()
     silver = sb.schema("silver")
 
     result = silver.from_("open_mics").select("id, proveedor_id, config").eq("id", open_mic_id).execute()
@@ -104,18 +102,17 @@ def dev_trigger_ingest():
 
 
 @bp.route("/api/dev/trigger-scoring", methods=["POST"])
+@validate_json({"open_mic_id": str})
 def dev_trigger_scoring():
     """Ejecuta scoring para un open mic. Protegido por Supabase JWT."""
     user = _is_authenticated_user()
     if not user:
         return jsonify({"error": "unauthorized"}), 401
 
-    data = request.get_json(force=True) or {}
+    data = request.get_json(silent=True) or {}
     open_mic_id = data.get("open_mic_id")
-    if not open_mic_id:
-        return jsonify({"error": "open_mic_id requerido"}), 400
 
-    sb = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+    sb = _sb_client()
     om = sb.schema("silver").from_("open_mics").select("proveedor_id").eq("id", open_mic_id).execute()
     if not om.data:
         return jsonify({"error": "open mic no encontrado"}), 404

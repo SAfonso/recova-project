@@ -1,12 +1,13 @@
 """Shared helpers, constants and auth for all webhook blueprints."""
 
+import functools
 import os
 import threading
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from dotenv import load_dotenv
-from flask import request
+from flask import jsonify, request
 from supabase import create_client
 
 from backend.src.scoring_engine import execute_scoring  # noqa: F401 — re-export
@@ -25,11 +26,62 @@ SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
 SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "https://recova-project-z5zp.vercel.app")
 
-_CORS_HEADERS = {
-    "Access-Control-Allow-Origin": "*",
+_ALLOWED_ORIGINS = [
+    FRONTEND_URL,
+    "http://localhost:5173",
+    "http://localhost:3000",
+]
+
+def _cors_origin() -> str:
+    """Devuelve el origin permitido si coincide con la request, o el FRONTEND_URL por defecto."""
+    origin = request.headers.get("Origin", "")
+    if origin in _ALLOWED_ORIGINS:
+        return origin
+    return FRONTEND_URL
+
+_CORS_HEADERS_BASE = {
     "Access-Control-Allow-Headers": "Content-Type, Authorization, X-API-KEY, Accept",
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
 }
+
+def _cors_headers() -> dict:
+    """CORS headers con origin dinámico basado en la request."""
+    return {**_CORS_HEADERS_BASE, "Access-Control-Allow-Origin": _cors_origin()}
+
+
+def validate_json(required: dict[str, type] | None = None):
+    """Decorador que valida JSON body: parseo + campos obligatorios + tipos.
+
+    Uso: @validate_json({"open_mic_id": str, "nombre": str})
+    Devuelve 400 con mensaje claro si falla.
+    Si required es None, solo valida que el body sea JSON válido.
+    """
+    def decorator(fn):
+        @functools.wraps(fn)
+        def wrapper(*args, **kwargs):
+            body = request.get_json(silent=True)
+            if body is None:
+                return jsonify({"status": "error", "message": "Body must be valid JSON"}), 400
+            if required:
+                missing = [k for k in required if k not in body or body[k] is None]
+                if missing:
+                    return jsonify({
+                        "status": "error",
+                        "message": f"Missing required fields: {', '.join(missing)}",
+                    }), 400
+                wrong_type = [
+                    k for k, t in required.items()
+                    if k in body and body[k] is not None and not isinstance(body[k], t)
+                ]
+                if wrong_type:
+                    expected = {k: required[k].__name__ for k in wrong_type}
+                    return jsonify({
+                        "status": "error",
+                        "message": f"Wrong field types: {expected}",
+                    }), 400
+            return fn(*args, **kwargs)
+        return wrapper
+    return decorator
 
 
 def _is_authorized() -> bool:
@@ -45,8 +97,7 @@ def _is_authenticated_user() -> dict | None:
         return None
     token = auth[7:]
     try:
-        sb = create_client(os.getenv("SUPABASE_URL", ""), os.getenv("SUPABASE_SERVICE_KEY", ""))
-        response = sb.auth.get_user(token)
+        response = _sb_client().auth.get_user(token)
         user = response.user
         if not user:
             return None
@@ -55,8 +106,14 @@ def _is_authenticated_user() -> dict | None:
         return None
 
 
+_SB_SINGLETON = None
+
 def _sb_client():
-    return create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+    """Singleton Supabase client — reutiliza la misma instancia en todo el proceso."""
+    global _SB_SINGLETON
+    if _SB_SINGLETON is None:
+        _SB_SINGLETON = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+    return _SB_SINGLETON
 
 
 # ---------------------------------------------------------------------------

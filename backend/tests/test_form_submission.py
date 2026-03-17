@@ -82,7 +82,7 @@ def test_form_submission_happy_path():
         "bronze": {"solicitudes": _chain([{"id": "new-id"}])},
     })
 
-    with patch("backend.src.triggers.blueprints.ingestion.create_client", return_value=sb), \
+    with patch("backend.src.triggers.blueprints.ingestion._sb_client", return_value=sb), \
          patch("backend.src.triggers.blueprints.ingestion.run_ingestion_async") as mock_popen:
         with app.test_client() as c:
             resp = c.post("/api/form-submission",
@@ -122,7 +122,7 @@ def test_form_submission_open_mic_not_found():
         "silver": {"open_mics": _chain([])},  # no rows
     })
 
-    with patch("backend.src.triggers.blueprints.ingestion.create_client", return_value=sb):
+    with patch("backend.src.triggers.blueprints.ingestion._sb_client", return_value=sb):
         with app.test_client() as c:
             resp = c.post("/api/form-submission",
                           json={**VALID_PAYLOAD, "open_mic_id": "nonexistent-uuid"},
@@ -139,7 +139,7 @@ def test_form_submission_inserts_correct_proveedor_id():
         "bronze": {"solicitudes": bronze_chain},
     })
 
-    with patch("backend.src.triggers.blueprints.ingestion.create_client", return_value=sb), \
+    with patch("backend.src.triggers.blueprints.ingestion._sb_client", return_value=sb), \
          patch("backend.src.triggers.blueprints.ingestion.run_ingestion_async"):
         with app.test_client() as c:
             c.post("/api/form-submission",
@@ -162,7 +162,7 @@ def test_form_submission_maps_form_fields():
         "bronze": {"solicitudes": bronze_chain},
     })
 
-    with patch("backend.src.triggers.blueprints.ingestion.create_client", return_value=sb), \
+    with patch("backend.src.triggers.blueprints.ingestion._sb_client", return_value=sb), \
          patch("backend.src.triggers.blueprints.ingestion.run_ingestion_async"):
         with app.test_client() as c:
             c.post("/api/form-submission",
@@ -191,7 +191,7 @@ def test_form_submission_optional_fields_default_none():
         "bronze": {"solicitudes": bronze_chain},
     })
 
-    with patch("backend.src.triggers.blueprints.ingestion.create_client", return_value=sb), \
+    with patch("backend.src.triggers.blueprints.ingestion._sb_client", return_value=sb), \
          patch("backend.src.triggers.blueprints.ingestion.run_ingestion_async"):
         with app.test_client() as c:
             resp = c.post("/api/form-submission",
@@ -217,7 +217,7 @@ def test_form_submission_ingesta_launched_with_ingest_script():
         "bronze": {"solicitudes": _chain([{"id": "new-id"}])},
     })
 
-    with patch("backend.src.triggers.blueprints.ingestion.create_client", return_value=sb), \
+    with patch("backend.src.triggers.blueprints.ingestion._sb_client", return_value=sb), \
          patch("backend.src.triggers.blueprints.ingestion.run_ingestion_async") as mock_ingest:
         with app.test_client() as c:
             c.post("/api/form-submission",

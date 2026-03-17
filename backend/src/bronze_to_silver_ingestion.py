@@ -24,6 +24,15 @@ try:
 except ImportError:
     _GENDER_DETECTOR = None
 
+# --- INE dictionary (54k+ Spanish names from Padrón Continuo) ---
+_INE_NAMES: dict[str, str] = {}
+_INE_PATH = Path(__file__).resolve().parents[1] / "data" / "ine_nombres.json"
+try:
+    with open(_INE_PATH, "r", encoding="utf-8") as _f:
+        _INE_NAMES = json.load(_f)
+except (FileNotFoundError, json.JSONDecodeError):
+    pass
+
 _ROOT_ENV = Path(__file__).resolve().parents[2] / ".env"
 
 LOGGER = logging.getLogger("bronze_to_silver_ingestion")
@@ -317,32 +326,83 @@ def resolve_error_metadata_column(conn) -> str | None:
 
 _INSTAGRAM_WORD_RE = re.compile(r"[a-zA-Z]{3,}")
 
+# --- Genderize.io (último recurso, 100 calls/día free) ---
+_GENDERIZE_URL = "https://api.genderize.io"
+
+
+def _normalize_name(word: str) -> str:
+    """Quita tildes y devuelve lowercase."""
+    return unicodedata.normalize("NFKD", word).encode("ascii", "ignore").decode().lower()
+
+
+def _ine_lookup(word: str) -> str | None:
+    """Capa 1: diccionario INE (~55k nombres españoles del Padrón Continuo)."""
+    if not _INE_NAMES:
+        return None
+    key = _normalize_name(word)
+    return _INE_NAMES.get(key)
+
+
+def _gender_guesser_lookup(word: str) -> str | None:
+    """Capa 2: gender-guesser (corpus internacional ~40k nombres)."""
+    if _GENDER_DETECTOR is None:
+        return None
+    normalized = _normalize_name(word)
+    if not normalized:
+        return None
+    result = _GENDER_DETECTOR.get_gender(normalized.capitalize())
+    if result in ("male", "mostly_male"):
+        return "m"
+    if result in ("female", "mostly_female"):
+        return "f"
+    return None
+
+
+def _genderize_lookup(word: str) -> str | None:
+    """Capa 3: genderize.io API (100 calls/día free, localizado a ES)."""
+    try:
+        import urllib.request
+        normalized = _normalize_name(word)
+        if not normalized or len(normalized) < 3:
+            return None
+        url = f"{_GENDERIZE_URL}?name={normalized}&country_id=ES"
+        req = urllib.request.Request(url, headers={"Accept": "application/json"})
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            data = json.loads(resp.read().decode())
+        if data.get("gender") and data.get("probability", 0) >= 0.7:
+            return "m" if data["gender"] == "male" else "f"
+    except Exception:
+        pass
+    return None
+
+
+def _detect_from_word(word: str) -> str | None:
+    """Cascada: INE → gender-guesser → genderize.io."""
+    for layer in (_ine_lookup, _gender_guesser_lookup, _genderize_lookup):
+        result = layer(word)
+        if result:
+            return result
+    return None
+
+
 def infer_gender(nombre: str | None, instagram: str | None) -> str | None:
     """Infiere género ('m'/'f') a partir del nombre y, si no, del handle de instagram.
+
+    Cascada de 3 capas:
+      1. Diccionario INE (55k nombres españoles, offline)
+      2. gender-guesser (corpus internacional, offline)
+      3. genderize.io (API, 100 calls/día free, localizado a ES)
 
     Devuelve 'm', 'f', o None si no se puede determinar con suficiente confianza.
     Nunca devuelve 'nb' — ese valor se asigna en el frontend para los no clasificados.
     """
-    if _GENDER_DETECTOR is None:
-        return None
-
-    def _detect_from_word(word: str) -> str | None:
-        normalized = unicodedata.normalize("NFKD", word).encode("ascii", "ignore").decode()
-        if not normalized:
-            return None
-        result = _GENDER_DETECTOR.get_gender(normalized.capitalize())
-        if result in ("male", "mostly_male"):
-            return "m"
-        if result in ("female", "mostly_female"):
-            return "f"
-        return None
-
     # 1. Intentar con el primer nombre
     if nombre:
         first = nombre.strip().split()[0] if nombre.strip() else ""
-        detected = _detect_from_word(first)
-        if detected:
-            return detected
+        if first:
+            detected = _detect_from_word(first)
+            if detected:
+                return detected
 
     # 2. Fallback: segmentos del handle de instagram (divididos por números/guiones bajos)
     if instagram:

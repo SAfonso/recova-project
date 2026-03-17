@@ -2,7 +2,7 @@
 
 from flask import Flask, request
 
-from backend.src.triggers.shared import _CORS_HEADERS
+from backend.src.triggers.shared import _cors_headers
 
 app = Flask(__name__)
 
@@ -10,12 +10,12 @@ app = Flask(__name__)
 @app.before_request
 def _handle_options():
     if request.method == "OPTIONS":
-        return "", 204, _CORS_HEADERS
+        return "", 204, _cors_headers()
 
 
 @app.after_request
 def _add_cors(response):
-    for k, v in _CORS_HEADERS.items():
+    for k, v in _cors_headers().items():
         response.headers[k] = v
     return response
 

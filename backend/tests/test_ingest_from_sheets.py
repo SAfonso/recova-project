@@ -235,7 +235,7 @@ def test_ingest_from_sheets_no_open_mics():
     """200 con rows_ingested=0 si no hay open mics con Sheet."""
     sb = _make_sb({"silver": {"open_mics": _chain([])}})
 
-    with patch("backend.src.triggers.blueprints.ingestion.create_client", return_value=sb):
+    with patch("backend.src.triggers.blueprints.ingestion._sb_client", return_value=sb):
         with app.test_client() as c:
             resp = c.post("/api/ingest-from-sheets", headers=AUTH)
 
@@ -261,7 +261,7 @@ def test_ingest_from_sheets_happy_path():
             ]
         return []
 
-    with patch("backend.src.triggers.blueprints.ingestion.create_client", return_value=sb), \
+    with patch("backend.src.triggers.blueprints.ingestion._sb_client", return_value=sb), \
          patch("backend.src.triggers.blueprints.ingestion.SheetIngestor") as MockIngestor, \
          patch("backend.src.triggers.blueprints.ingestion.run_ingestion_async") as mock_popen:
 
@@ -290,7 +290,7 @@ def test_ingest_from_sheets_inserts_correct_fields():
 
     pending_row = {**dict(zip(HEADERS, _make_sheet_row("Teresa Gil"))), "_row_number": 2}
 
-    with patch("backend.src.triggers.blueprints.ingestion.create_client", return_value=sb), \
+    with patch("backend.src.triggers.blueprints.ingestion._sb_client", return_value=sb), \
          patch("backend.src.triggers.blueprints.ingestion.SheetIngestor") as MockIngestor, \
          patch("backend.src.triggers.blueprints.ingestion.run_ingestion_async"):
 
@@ -321,7 +321,7 @@ def test_ingest_from_sheets_continues_on_sheet_error():
             raise Exception("Google API error")
         return [{**dict(zip(HEADERS, _make_sheet_row("Luis Pérez"))), "_row_number": 2}]
 
-    with patch("backend.src.triggers.blueprints.ingestion.create_client", return_value=sb), \
+    with patch("backend.src.triggers.blueprints.ingestion._sb_client", return_value=sb), \
          patch("backend.src.triggers.blueprints.ingestion.SheetIngestor") as MockIngestor, \
          patch("backend.src.triggers.blueprints.ingestion.run_ingestion_async"):
 

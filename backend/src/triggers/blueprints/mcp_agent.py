@@ -2,7 +2,7 @@
 
 from flask import Blueprint, jsonify, request
 
-from backend.src.triggers.shared import _is_authorized, _sb_client, execute_scoring
+from backend.src.triggers.shared import _is_authorized, _sb_client, execute_scoring, validate_json
 
 bp = Blueprint("mcp_agent", __name__)
 
@@ -132,6 +132,7 @@ def mcp_get_candidates():
 
 
 @bp.route("/mcp/run-scoring", methods=["POST"])
+@validate_json({"open_mic_id": str})
 def mcp_run_scoring():
     """Ejecuta el motor de scoring para un open mic."""
     if not _is_authorized():
@@ -151,6 +152,7 @@ def mcp_run_scoring():
 
 
 @bp.route("/mcp/reopen-lineup", methods=["POST"])
+@validate_json({"open_mic_id": str, "fecha_evento": str})
 def mcp_reopen_lineup():
     """Resetea los slots confirmados de un lineup para permitir cambios."""
     if not _is_authorized():

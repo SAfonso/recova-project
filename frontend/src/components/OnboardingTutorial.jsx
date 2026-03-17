@@ -47,7 +47,7 @@ const joyrideStyles = {
     fontFamily: 'Space Grotesk, sans-serif',
   },
   buttonClose: {
-    display: 'none',
+    color: '#666',
   },
 };
 
@@ -140,6 +140,7 @@ export function OnboardingTutorial() {
   const [done, setDone] = useState(
     () => localStorage.getItem(STORAGE_KEY) === 'true',
   );
+  const [showQuitConfirm, setShowQuitConfirm] = useState(false);
 
   // Single effect: whenever run=false and !done, poll until the current
   // step's target appears in the DOM, then resume. Works for both
@@ -159,6 +160,14 @@ export function OnboardingTutorial() {
     return () => clearInterval(poll);
   }, [run, stepIndex, done]);
 
+  function finishTutorial() {
+    localStorage.setItem(STORAGE_KEY, 'true');
+    setDone(true);
+    setRun(false);
+    setStepIndex(0);
+    setShowQuitConfirm(false);
+  }
+
   function handleCallback({ status, type, index, action }) {
     if (type === EVENTS.TARGET_NOT_FOUND) {
       setRun(false); // pause — effect above re-polls until target appears
@@ -168,11 +177,14 @@ export function OnboardingTutorial() {
       setStepIndex(index + (action === ACTIONS.PREV ? -1 : 1));
       return;
     }
-    if ([STATUS.FINISHED, STATUS.SKIPPED].includes(status)) {
-      localStorage.setItem(STORAGE_KEY, 'true');
-      setDone(true);
+    // Intercept close/skip — show confirmation modal instead of finishing
+    if (action === ACTIONS.CLOSE || status === STATUS.SKIPPED) {
       setRun(false);
-      setStepIndex(0);
+      setShowQuitConfirm(true);
+      return;
+    }
+    if (status === STATUS.FINISHED) {
+      finishTutorial();
     }
   }
 
@@ -188,24 +200,53 @@ export function OnboardingTutorial() {
         showSkipButton
         scrollToFirstStep
         scrollOffset={80}
-        disableOverlayClose
-        disableCloseOnEsc
+        disableCloseOnEsc={false}
         styles={joyrideStyles}
         locale={LOCALE_ES}
         callback={handleCallback}
       />
-      {!run && stepIndex > 0 && PAUSE_HINTS[stepIndex] && (
+      {!run && stepIndex > 0 && PAUSE_HINTS[stepIndex] && !showQuitConfirm && (
         <div className="fixed bottom-6 left-6 z-[9999] flex items-center gap-2 rounded border-2 border-[#1a1a1a] bg-[#fff8e7] px-3 py-2 text-xs font-bold shadow-[3px_3px_0_#000]">
           <span>📍</span>
           <span>{PAUSE_HINTS[stepIndex]}</span>
           <button
             type="button"
-            onClick={() => { localStorage.setItem(STORAGE_KEY, 'true'); setDone(true); }}
+            onClick={() => setShowQuitConfirm(true)}
             className="ml-1 text-[#6B5C4A] hover:text-[#DC2626]"
             aria-label="Cerrar tour"
           >
             ✕
           </button>
+        </div>
+      )}
+      {showQuitConfirm && (
+        <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-black/50">
+          <div className="paper-drop animate-pop-in max-w-sm mx-4">
+            <div className="paper-rough paper-note border-[4px] border-[#1a1a1a] bg-[#fffef5] p-6 text-center">
+              <p className="mb-2 font-['Bangers'] text-xl tracking-wide text-[#1a1a1a]">
+                ¿Seguro que quieres salir del tutorial?
+              </p>
+              <p className="mb-6 text-sm text-[#6B5C4A]">
+                El paso de Telegram es obligatorio para usar el bot.
+              </p>
+              <div className="flex justify-center gap-4">
+                <button
+                  type="button"
+                  onClick={finishTutorial}
+                  className="comic-shadow cursor-pointer rounded-lg border-[3px] border-[#1a1a1a] bg-[#DC2626] px-5 py-2 font-bold text-white transition-all duration-150 hover:bg-[#B91C1C] hover:scale-[1.03] active:scale-[0.97]"
+                >
+                  Salir
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowQuitConfirm(false); setRun(true); }}
+                  className="cursor-pointer rounded-lg border-[3px] border-[#1a1a1a] bg-[#e5e7eb] px-5 py-2 font-bold text-[#1a1a1a] transition-all duration-150 hover:bg-[#d1d5db]"
+                >
+                  Continuar tutorial
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </>
