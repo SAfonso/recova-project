@@ -15,7 +15,7 @@ from backend.src.core.poster_composer import PosterComposer
 from backend.src.core.poster_detector_base import render_on_anchors
 from backend.src.core.poster_detector_gemini import GeminiDetector
 from backend.src.core.security import validate_reference_image
-from backend.src.triggers.shared import _is_authorized
+from backend.src.triggers.shared import api_error, require_api_key
 
 bp = Blueprint("poster", __name__)
 
@@ -358,14 +358,15 @@ def orchestrate_render(payload: dict[str, Any]) -> dict[str, Any]:
 @bp.route("/api/render-poster", methods=["POST"])
 def render_poster() -> tuple:
     """Renderiza el cartel del lineup usando el pipeline Gemini+render_on_anchors."""
-    if not _is_authorized():
-        return jsonify({"error": "unauthorized"}), 401
+    err = require_api_key()
+    if err:
+        return err
 
     data = request.get_json(force=True) or {}
     lineup = data.get("lineup") or []
 
     if not lineup:
-        return jsonify({"error": "lineup requerido"}), 400
+        return api_error("VALIDATION_ERROR", "lineup requerido", 400)
 
     payload = {
         "event_id": str(data.get("event_id") or "evento"),
@@ -376,14 +377,15 @@ def render_poster() -> tuple:
 
     try:
         result = orchestrate_render(payload)
-    except Exception:
-        return jsonify({"error": "Error al renderizar el poster"}), 500
+    except Exception as exc:
+        return api_error("INTERNAL_ERROR", "error al renderizar el poster", 500, details=str(exc))
 
     if result.get("status") != "success":
-        return jsonify({"error": result.get("output", {}).get("message", "render error")}), 500
+        msg = result.get("output", {}).get("message", "render error")
+        return api_error("INTERNAL_ERROR", msg, 500)
 
     output_path = result.get("image_path") or result.get("output", {}).get("image_path", "")
     if not output_path or not Path(output_path).exists():
-        return jsonify({"error": "archivo no generado"}), 500
+        return api_error("INTERNAL_ERROR", "archivo no generado", 500)
 
     return send_file(str(output_path), mimetype="image/png")

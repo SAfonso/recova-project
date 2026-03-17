@@ -139,4 +139,4 @@ def test_generate_code_requires_host_id():
             )
 
     assert resp.status_code == 400
-    assert "host_id" in resp.get_json().get("message", "")
+    assert "host_id" in resp.get_json()["error"]["message"]

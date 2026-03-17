@@ -38,7 +38,8 @@ class TestValidateJsonDecorator:
         with app.test_client() as c:
             resp = c.post("/test-no-required", data="not json", content_type="text/plain")
         assert resp.status_code == 400
-        assert "valid JSON" in resp.get_json()["message"]
+        assert resp.get_json()["error"]["code"] == "INVALID_JSON"
+        assert "valid JSON" in resp.get_json()["error"]["message"]
 
     def test_valid_json_no_requirements_passes(self):
         with app.test_client() as c:
@@ -55,19 +56,21 @@ class TestValidateJsonDecorator:
             resp = c.post("/test-required", json={"name": "Ana"})
         assert resp.status_code == 400
         body = resp.get_json()
-        assert "age" in body["message"]
+        assert body["error"]["code"] == "MISSING_FIELDS"
+        assert "age" in body["error"]["message"]
 
     def test_null_required_field_returns_400(self):
         with app.test_client() as c:
             resp = c.post("/test-required", json={"name": "Ana", "age": None})
         assert resp.status_code == 400
-        assert "age" in resp.get_json()["message"]
+        assert "age" in resp.get_json()["error"]["message"]
 
     def test_wrong_type_returns_400(self):
         with app.test_client() as c:
             resp = c.post("/test-required", json={"name": "Ana", "age": "twenty"})
         assert resp.status_code == 400
-        assert "Wrong field types" in resp.get_json()["message"]
+        assert resp.get_json()["error"]["code"] == "INVALID_FIELD_TYPE"
+        assert "Wrong field types" in resp.get_json()["error"]["message"]
 
     def test_all_required_fields_correct_passes(self):
         with app.test_client() as c:
@@ -83,7 +86,7 @@ class TestValidateJsonDecorator:
         with app.test_client() as c:
             resp = c.post("/test-optional-type", json={"ids": "not-a-list"})
         assert resp.status_code == 400
-        assert "Wrong field types" in resp.get_json()["message"]
+        assert "Wrong field types" in resp.get_json()["error"]["message"]
 
     def test_list_type_passes(self):
         with app.test_client() as c:
@@ -94,6 +97,6 @@ class TestValidateJsonDecorator:
         with app.test_client() as c:
             resp = c.post("/test-required", json={})
         assert resp.status_code == 400
-        msg = resp.get_json()["message"]
+        msg = resp.get_json()["error"]["message"]
         assert "name" in msg
         assert "age" in msg

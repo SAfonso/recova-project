@@ -49,6 +49,14 @@ def _cors_headers() -> dict:
     return {**_CORS_HEADERS_BASE, "Access-Control-Allow-Origin": _cors_origin()}
 
 
+def api_error(code: str, message: str, status: int, details: str | None = None) -> tuple:
+    """Genera una respuesta de error con formato unificado."""
+    body: dict = {"status": "error", "error": {"code": code, "message": message}}
+    if details is not None:
+        body["error"]["details"] = details
+    return jsonify(body), status
+
+
 def validate_json(required: dict[str, type] | None = None):
     """Decorador que valida JSON body: parseo + campos obligatorios + tipos.
 
@@ -61,27 +69,37 @@ def validate_json(required: dict[str, type] | None = None):
         def wrapper(*args, **kwargs):
             body = request.get_json(silent=True)
             if body is None:
-                return jsonify({"status": "error", "message": "Body must be valid JSON"}), 400
+                return api_error("INVALID_JSON", "Body must be valid JSON", 400)
             if required:
                 missing = [k for k in required if k not in body or body[k] is None]
                 if missing:
-                    return jsonify({
-                        "status": "error",
-                        "message": f"Missing required fields: {', '.join(missing)}",
-                    }), 400
+                    return api_error(
+                        "MISSING_FIELDS",
+                        f"Missing required fields: {', '.join(missing)}",
+                        400,
+                    )
                 wrong_type = [
                     k for k, t in required.items()
                     if k in body and body[k] is not None and not isinstance(body[k], t)
                 ]
                 if wrong_type:
                     expected = {k: required[k].__name__ for k in wrong_type}
-                    return jsonify({
-                        "status": "error",
-                        "message": f"Wrong field types: {expected}",
-                    }), 400
+                    return api_error(
+                        "INVALID_FIELD_TYPE",
+                        f"Wrong field types: {expected}",
+                        400,
+                    )
             return fn(*args, **kwargs)
         return wrapper
     return decorator
+
+
+def require_api_key() -> tuple | None:
+    """Valida API key; devuelve api_error si falla, None si ok."""
+    provided = request.headers.get(API_KEY_HEADER, "")
+    if not EXPECTED_API_KEY or provided != EXPECTED_API_KEY:
+        return api_error("UNAUTHORIZED", "unauthorized", 401)
+    return None
 
 
 def _is_authorized() -> bool:

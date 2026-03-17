@@ -137,7 +137,7 @@ def test_analyze_form_missing_params_400():
             headers=AUTH,
         )
     assert resp.status_code == 400
-    assert "form_id" in resp.get_json()["message"]
+    assert "form_id" in resp.get_json()["error"]["message"]
 
 
 def test_analyze_form_unauthorized_401():
@@ -172,7 +172,8 @@ def test_analyze_form_gemini_invalid_422():
     assert resp.status_code == 422
     data = resp.get_json()
     assert data["status"] == "error"
-    assert "inválido" in data["message"]
+    assert data["error"]["code"] == "UNPROCESSABLE_ENTITY"
+    assert "inválido" in data["error"]["message"]
 
 
 def test_analyze_form_includes_coverage_metrics():

@@ -288,7 +288,7 @@ def test_register_missing_telegram_user_id():
         )
 
     assert resp.status_code == 400
-    assert "telegram_user_id" in resp.get_json().get("message", "")
+    assert "telegram_user_id" in resp.get_json()["error"]["message"]
 
 
 # ---------------------------------------------------------------------------
@@ -304,4 +304,4 @@ def test_register_missing_code():
         )
 
     assert resp.status_code == 400
-    assert "code" in resp.get_json().get("message", "")
+    assert "code" in resp.get_json()["error"]["message"]

@@ -1,7 +1,6 @@
 """Form submission and ingestion endpoints."""
 
-import subprocess
-import sys
+import logging
 
 from flask import Blueprint, jsonify, request
 
@@ -10,7 +9,8 @@ from backend.src.core.sheet_ingestor import SheetIngestor
 from backend.src.triggers.shared import (
     INGEST_SCRIPT_PATH,
     _CANONICAL_TO_BRONZE,
-    _is_authorized,
+    api_error,
+    require_api_key,
     _sb_client,
     run_ingestion_async,
     validate_json,
@@ -18,40 +18,47 @@ from backend.src.triggers.shared import (
 
 bp = Blueprint("ingestion", __name__)
 
+logger = logging.getLogger(__name__)
+
 
 @bp.route("/api/form-submission", methods=["POST"])
 @validate_json({"open_mic_id": str})
 def form_submission():
     """Recibe datos de Google Form via Apps Script y los ingesta en bronze."""
-    if not _is_authorized():
-        return jsonify({"error": "unauthorized"}), 401
+    err = require_api_key()
+    if err:
+        return err
     data = request.get_json(force=True) or {}
 
     open_mic_id = data.get("open_mic_id")
 
-    sb = _sb_client()
-    silver = sb.schema("silver")
+    try:
+        sb = _sb_client()
+        silver = sb.schema("silver")
 
-    # 1. Lookup proveedor_id desde silver.open_mics
-    result = silver.from_("open_mics").select("proveedor_id").eq("id", open_mic_id).execute()
-    if not result.data:
-        return jsonify({"error": "open_mic not found"}), 404
-    proveedor_id = result.data[0]["proveedor_id"]
+        # 1. Lookup proveedor_id desde silver.open_mics
+        result = silver.from_("open_mics").select("proveedor_id").eq("id", open_mic_id).execute()
+        if not result.data:
+            return api_error("RESOURCE_NOT_FOUND", "open_mic not found", 404)
+        proveedor_id = result.data[0]["proveedor_id"]
 
-    # 2. INSERT en bronze.solicitudes
-    bronze = sb.schema("bronze")
-    bronze.from_("solicitudes").insert({
-        "proveedor_id":                 proveedor_id,
-        "open_mic_id":                  open_mic_id,
-        "nombre_raw":                   data.get("Nombre artístico"),
-        "instagram_raw":                data.get("Instagram (sin @)"),
-        "telefono_raw":                 data.get("WhatsApp"),
-        "experiencia_raw":              data.get("¿Cuántas veces has actuado en un open mic?"),
-        "fechas_seleccionadas_raw":     data.get("¿Qué fechas te vienen bien?"),
-        "disponibilidad_ultimo_minuto": data.get("¿Estarías disponible si nos falla alguien de última hora?"),
-        "info_show_cercano":            data.get("¿Tienes algún show próximo que quieras mencionar?"),
-        "origen_conocimiento":          data.get("¿Cómo nos conociste?"),
-    }).execute()
+        # 2. INSERT en bronze.solicitudes
+        bronze = sb.schema("bronze")
+        bronze.from_("solicitudes").insert({
+            "proveedor_id":                 proveedor_id,
+            "open_mic_id":                  open_mic_id,
+            "nombre_raw":                   data.get("Nombre artístico"),
+            "instagram_raw":                data.get("Instagram (sin @)"),
+            "telefono_raw":                 data.get("WhatsApp"),
+            "experiencia_raw":              data.get("¿Cuántas veces has actuado en un open mic?"),
+            "fechas_seleccionadas_raw":     data.get("¿Qué fechas te vienen bien?"),
+            "disponibilidad_ultimo_minuto": data.get("¿Estarías disponible si nos falla alguien de última hora?"),
+            "info_show_cercano":            data.get("¿Tienes algún show próximo que quieras mencionar?"),
+            "origen_conocimiento":          data.get("¿Cómo nos conociste?"),
+        }).execute()
+    except Exception as exc:
+        logger.exception("form_submission failed")
+        return api_error("EXTERNAL_SERVICE_ERROR", "error al procesar la solicitud", 502, details=str(exc))
 
     # 3. Lanzar bronze → silver en background
     run_ingestion_async()
@@ -62,17 +69,23 @@ def form_submission():
 @bp.route("/api/ingest-from-sheets", methods=["POST"])
 def ingest_from_sheets():
     """Lee todas las Sheets de open mics activos e ingesta filas nuevas en bronze."""
-    if not _is_authorized():
-        return jsonify({"error": "unauthorized"}), 401
+    err = require_api_key()
+    if err:
+        return err
 
-    sb = _sb_client()
-    open_mics = (
-        sb.schema("silver")
-        .from_("open_mics")
-        .select("id, proveedor_id, config")
-        .execute()
-        .data or []
-    )
+    try:
+        sb = _sb_client()
+        open_mics = (
+            sb.schema("silver")
+            .from_("open_mics")
+            .select("id, proveedor_id, config")
+            .execute()
+            .data or []
+        )
+    except Exception as exc:
+        logger.exception("ingest_from_sheets: error al consultar open_mics")
+        return api_error("EXTERNAL_SERVICE_ERROR", "error al consultar open_mics", 502, details=str(exc))
+
     # Solo los que tienen sheet_id configurado
     open_mics = [
         om for om in open_mics
@@ -101,18 +114,22 @@ def ingest_from_sheets():
             continue  # Sheet inaccesible: continúa con los demás
 
         for row in pending:
-            bronze.from_("solicitudes").insert({
-                "proveedor_id":                 proveedor_id,
-                "open_mic_id":                  open_mic_id,
-                "nombre_raw":                   row.get("Nombre artístico"),
-                "instagram_raw":                row.get("Instagram (sin @)"),
-                "telefono_raw":                 row.get("WhatsApp"),
-                "experiencia_raw":              row.get("¿Cuántas veces has actuado en un open mic?"),
-                "fechas_seleccionadas_raw":     row.get("¿Qué fechas te vienen bien?"),
-                "disponibilidad_ultimo_minuto": row.get("¿Estarías disponible si nos falla alguien de última hora?"),
-                "info_show_cercano":            row.get("¿Tienes algún show próximo que quieras mencionar?"),
-                "origen_conocimiento":          row.get("¿Cómo nos conociste?"),
-            }).execute()
+            try:
+                bronze.from_("solicitudes").insert({
+                    "proveedor_id":                 proveedor_id,
+                    "open_mic_id":                  open_mic_id,
+                    "nombre_raw":                   row.get("Nombre artístico"),
+                    "instagram_raw":                row.get("Instagram (sin @)"),
+                    "telefono_raw":                 row.get("WhatsApp"),
+                    "experiencia_raw":              row.get("¿Cuántas veces has actuado en un open mic?"),
+                    "fechas_seleccionadas_raw":     row.get("¿Qué fechas te vienen bien?"),
+                    "disponibilidad_ultimo_minuto": row.get("¿Estarías disponible si nos falla alguien de última hora?"),
+                    "info_show_cercano":            row.get("¿Tienes algún show próximo que quieras mencionar?"),
+                    "origen_conocimiento":          row.get("¿Cómo nos conociste?"),
+                }).execute()
+            except Exception:
+                logger.exception("ingest_from_sheets: error insertando fila en bronze")
+                continue
 
         if pending:
             ingestor.mark_rows_processed(sheet_id, [r["_row_number"] for r in pending])
@@ -130,19 +147,25 @@ def ingest_from_sheets():
 @bp.route("/api/ingest-from-forms", methods=["POST"])
 def ingest_from_forms():
     """Lee respuestas de Google Forms de todos los open mics activos e ingesta en bronze."""
-    if not _is_authorized():
-        return jsonify({"error": "unauthorized"}), 401
+    err = require_api_key()
+    if err:
+        return err
 
-    sb = _sb_client()
-    silver = sb.schema("silver")
+    try:
+        sb = _sb_client()
+        silver = sb.schema("silver")
 
-    open_mics = (
-        silver
-        .from_("open_mics")
-        .select("id, proveedor_id, config")
-        .execute()
-        .data or []
-    )
+        open_mics = (
+            silver
+            .from_("open_mics")
+            .select("id, proveedor_id, config")
+            .execute()
+            .data or []
+        )
+    except Exception as exc:
+        logger.exception("ingest_from_forms: error al consultar open_mics")
+        return api_error("EXTERNAL_SERVICE_ERROR", "error al consultar open_mics", 502, details=str(exc))
+
     # Solo open mics con external_form_id y field_mapping configurados
     open_mics = [
         om for om in open_mics
@@ -157,7 +180,7 @@ def ingest_from_forms():
     try:
         ingestor = FormIngestor()
     except ValueError:
-        return jsonify({"error": "Error al inicializar el ingestor de formularios"}), 500
+        return api_error("INTERNAL_ERROR", "error al inicializar el ingestor de formularios", 500)
 
     bronze = sb.schema("bronze")
     open_mics_processed = 0
@@ -188,20 +211,27 @@ def ingest_from_forms():
             for canonical, bronze_field in _CANONICAL_TO_BRONZE.items():
                 if canonical in resp:
                     row[bronze_field] = resp[canonical]
-            bronze.from_("solicitudes").insert(row).execute()
+            try:
+                bronze.from_("solicitudes").insert(row).execute()
+            except Exception:
+                logger.exception("ingest_from_forms: error insertando fila en bronze")
+                continue
             submitted_at = resp.get("_submitted_at", "")
             if submitted_at > max_submitted_at:
                 max_submitted_at = submitted_at
             rows_ingested += 1
 
         if new_responses:
-            silver.rpc(
-                "update_open_mic_config_keys",
-                {
-                    "p_open_mic_id": open_mic_id,
-                    "p_keys": {"last_form_ingestion_at": max_submitted_at},
-                },
-            ).execute()
+            try:
+                silver.rpc(
+                    "update_open_mic_config_keys",
+                    {
+                        "p_open_mic_id": open_mic_id,
+                        "p_keys": {"last_form_ingestion_at": max_submitted_at},
+                    },
+                ).execute()
+            except Exception:
+                logger.exception("ingest_from_forms: error actualizando config")
 
     run_ingestion_async()
 

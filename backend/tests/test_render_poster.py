@@ -123,4 +123,6 @@ def test_render_poster_returns_500_on_render_error():
             resp = c.post("/api/render-poster", json=VALID_BODY, headers=AUTH)
 
     assert resp.status_code == 500
-    assert "error" in resp.get_json()
+    data = resp.get_json()
+    assert data["status"] == "error"
+    assert data["error"]["code"] == "INTERNAL_ERROR"

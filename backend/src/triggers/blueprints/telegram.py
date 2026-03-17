@@ -1,5 +1,6 @@
 """Telegram registration endpoints."""
 
+import logging
 import os
 import random
 import string
@@ -7,22 +8,25 @@ from datetime import datetime, timezone
 
 from flask import Blueprint, jsonify, request
 
-from backend.src.triggers.shared import _is_authorized, _sb_client, validate_json
+from backend.src.triggers.shared import api_error, require_api_key, _sb_client, validate_json
 
 bp = Blueprint("telegram", __name__)
+
+logger = logging.getLogger(__name__)
 
 
 @bp.route("/api/telegram/generate-code", methods=["POST"])
 @validate_json({"host_id": str})
 def telegram_generate_code():
     """Genera un código temporal para self-registration del bot de Telegram."""
-    if not _is_authorized():
-        return jsonify({"status": "error", "message": "unauthorized"}), 401
+    err = require_api_key()
+    if err:
+        return err
 
     body = request.get_json(silent=True) or {}
     host_id = body.get("host_id", "").strip()
     if not host_id:
-        return jsonify({"status": "error", "message": "host_id es obligatorio"}), 400
+        return api_error("VALIDATION_ERROR", "host_id es obligatorio", 400)
 
     suffix = "".join(random.choices(string.ascii_uppercase + string.digits, k=4))
     code = f"RCV-{suffix}"
@@ -30,11 +34,15 @@ def telegram_generate_code():
     bot_username = os.getenv("TELEGRAM_BOT_USERNAME", "")
     qr_url = f"https://t.me/{bot_username}?start={code}"
 
-    sb = _sb_client()
-    sb.schema("silver").from_("telegram_registration_codes").insert({
-        "code": code,
-        "host_id": host_id,
-    }).execute()
+    try:
+        sb = _sb_client()
+        sb.schema("silver").from_("telegram_registration_codes").insert({
+            "code": code,
+            "host_id": host_id,
+        }).execute()
+    except Exception as exc:
+        logger.exception("telegram_generate_code: error Supabase")
+        return api_error("EXTERNAL_SERVICE_ERROR", "error al generar código", 502, details=str(exc))
 
     return jsonify({"code": code, "qr_url": qr_url}), 200
 
@@ -43,17 +51,18 @@ def telegram_generate_code():
 @validate_json({"code": str})
 def telegram_register():
     """Procesa /start RCV-XXXX: valida codigo y registra host en telegram_users."""
-    if not _is_authorized():
-        return jsonify({"status": "error", "message": "unauthorized"}), 401
+    err = require_api_key()
+    if err:
+        return err
 
     body = request.get_json(silent=True) or {}
     telegram_user_id = body.get("telegram_user_id")
     code = body.get("code", "").strip() if body.get("code") else ""
 
     if not telegram_user_id:
-        return jsonify({"status": "error", "message": "telegram_user_id es obligatorio"}), 400
+        return api_error("VALIDATION_ERROR", "telegram_user_id es obligatorio", 400)
     if not code:
-        return jsonify({"status": "error", "message": "code es obligatorio"}), 400
+        return api_error("VALIDATION_ERROR", "code es obligatorio", 400)
 
     sb = _sb_client()
     silver = sb.schema("silver")
@@ -61,7 +70,7 @@ def telegram_register():
     # 1. Buscar el codigo
     code_res = silver.from_("telegram_registration_codes").select("code,host_id,used,expires_at").eq("code", code).execute()
     if not code_res.data:
-        return jsonify({"status": "error", "message": "codigo no encontrado"}), 404
+        return api_error("RESOURCE_NOT_FOUND", "codigo no encontrado", 404)
     code_row = code_res.data[0]
     host_id = code_row["host_id"]
 
@@ -77,13 +86,13 @@ def telegram_register():
 
     # 3. Validar estado del codigo (solo si el usuario NO estaba registrado)
     if code_row["used"]:
-        return jsonify({"status": "error", "message": "codigo ya usado"}), 409
+        return api_error("CONFLICT", "codigo ya usado", 409)
 
     expires_at = code_row["expires_at"]
     if isinstance(expires_at, str):
         expires_at = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
     if expires_at <= datetime.now(timezone.utc):
-        return jsonify({"status": "error", "message": "codigo expirado"}), 410
+        return api_error("RESOURCE_EXPIRED", "codigo expirado", 410)
 
     # 4. Registrar usuario
     silver.from_("telegram_users").insert({"telegram_user_id": telegram_user_id, "host_id": host_id}).execute()

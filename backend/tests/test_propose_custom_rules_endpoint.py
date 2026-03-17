@@ -123,7 +123,7 @@ def test_propose_missing_open_mic_id_400():
             headers=AUTH,
         )
     assert resp.status_code == 400
-    assert "open_mic_id" in resp.get_json()["message"]
+    assert "open_mic_id" in resp.get_json()["error"]["message"]
 
 
 def test_propose_no_field_mapping_422():
@@ -141,7 +141,8 @@ def test_propose_no_field_mapping_422():
     assert resp.status_code == 422
     data = resp.get_json()
     assert data["status"] == "error"
-    assert "field_mapping" in data["message"]
+    assert data["error"]["code"] == "UNPROCESSABLE_ENTITY"
+    assert "field_mapping" in data["error"]["message"]
 
 
 def test_propose_no_unmapped_fields_200_empty():
@@ -185,7 +186,8 @@ def test_propose_gemini_invalid_422():
     assert resp.status_code == 422
     data = resp.get_json()
     assert data["status"] == "error"
-    assert "inválido" in data["message"]
+    assert data["error"]["code"] == "UNPROCESSABLE_ENTITY"
+    assert "inválido" in data["error"]["message"]
 
 
 def test_propose_saves_rules_to_config():
