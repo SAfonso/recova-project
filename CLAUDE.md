@@ -29,6 +29,15 @@ SaaS multi-tenant para gestión de open mics de comedia. Stack: React+Vite (fron
 ### Frontend — Joyride targets
 - Los `data-tutorial="..."` deben estar en elementos que **siempre estén en el DOM**, no dentro de condicionales React. Si el elemento es condicional, envolver en un `<div data-tutorial="...">` siempre renderizado.
 
+### Frontend — hooks y componentes
+- `App.jsx` es orquestador puro (~120 líneas). Lógica de negocio vive en `hooks/useCandidates.js`, `hooks/useEdits.js`, `hooks/useValidation.js`.
+- Componentes presentacionales en `components/open-mic/`: `LoadingSkeleton`, `ValidadoStamp`, `CambiarConfirmModal`, `RecoveryNotes`.
+- `CATEGORY_OPTIONS` se exporta desde `hooks/useEdits.js`, no hardcodear en otros sitios.
+
+### Frontend — tests con happy-dom
+- **`alert()`, `confirm()`, `prompt()` no existen en happy-dom.** Si un hook los usa, el test debe hacer `globalThis.alert = vi.fn()` en `beforeEach`, o mejor reemplazar por callback/setError.
+- **Cuidado con `?.prop !== false`**: `undefined !== false` es `true`. Al escribir tests, trazar el valor real con los datos mock antes de asumir defaults.
+
 ### Flask — CORS
 - NO usar `flask-cors` (la v6.x está rota silenciosamente). Usar handlers manuales `@before_request`/`@after_request` con `_cors_headers()` dinámico en `shared.py`.
 - Origins permitidos: `FRONTEND_URL` (Vercel) + `localhost:5173` + `localhost:3000`.
@@ -47,6 +56,12 @@ backend/src/triggers/
 ├── webhook_listener.py   # App factory (~36 líneas)
 ├── shared.py             # Auth, CORS, _sb_client singleton, validate_json, helpers
 └── blueprints/           # 8 blueprints por dominio
+
+frontend/src/
+├── hooks/                # useCandidates, useEdits, useValidation
+├── components/open-mic/  # Header, NotebookSheet, ExpandedView, LoadingSkeleton, ValidadoStamp, CambiarConfirmModal, RecoveryNotes…
+├── App.jsx               # Orquestador puro (~120 líneas)
+└── test/                 # Vitest + happy-dom + @testing-library/react
 ```
 - `scoring_engine.py` — motor scoring con `score_breakdown` JSONB audit trail
 - `bronze_to_silver_ingestion.py` — ingesta con `infer_gender()` cascada INE→gender-guesser→genderize.io
@@ -55,5 +70,5 @@ backend/src/triggers/
 ## Tests
 ```bash
 PYTHONPATH=. pytest backend/tests/   # 356 tests
-cd frontend && npm test              # 44 tests
+cd frontend && npm test              # 70 tests
 ```
