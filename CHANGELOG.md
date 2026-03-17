@@ -1,3 +1,29 @@
+## [0.25.0] - 2026-03-17
+
+### Changed — Sprint F2: Descomponer App.jsx (534 → 120 líneas)
+
+#### Hooks extraídos
+- **`useCandidates.js`** (~148 líneas) — data fetching, selectedIds, toggleSelected, isLastMinuteMode, singleDateMode, validación contra `silver.lineup_slots`
+- **`useEdits.js`** (~96 líneas) — getDraft, hasPendingEdit, updateDraft, handleGeneroUpdate, handleCategoryUpdate, clearEdits. Exporta `CATEGORY_OPTIONS`
+- **`useValidation.js`** (~131 líneas) — validateLineup (RPC + n8n fire-and-forget), handleCambiarAccept (reset slots)
+
+#### Componentes presentacionales extraídos
+- **`LoadingSkeleton.jsx`** — skeleton shimmer de 5 filas durante carga
+- **`ValidadoStamp.jsx`** — sello animado "VALIDADO" con checkmark SVG
+- **`CambiarConfirmModal.jsx`** — modal de confirmación para cambiar lineup validado
+- **`RecoveryNotes.jsx`** — textarea de notas de recuperación para Telegram/n8n
+
+#### App.jsx resultante (~120 líneas)
+- Solo estado UI local: `activeId`, `activeTab`, `isExpanded`, `recoveryNotes`
+- 3 llamadas a hooks + 1 useMemo (`activeCandidate`) + 1 función (`openExpanded`)
+- JSX layout puro: wiring de props a componentes existentes y nuevos
+
+### Tests
+- 26 tests nuevos: `useEdits.test.js` (10), `useCandidates.test.js` (8), `useValidation.test.js` (8)
+- **Total acumulado**: 356 backend + 70 frontend = 426 tests verdes
+
+---
+
 ## [0.24.0] - 2026-03-17
 
 ### Changed — Sprint E: Red flags defensa (E1 + E2 + E3)

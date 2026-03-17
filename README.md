@@ -1,6 +1,6 @@
 # AI LineUp Architect
 
-**Versión:** `0.24.0` · **Estado:** Desarrollo activo · **Metodología:** SDD + TDD
+**Versión:** `0.25.0` · **Estado:** Desarrollo activo · **Metodología:** SDD + TDD
 
 SaaS multi-tenant para gestión de open mics de comedia. Automatiza la recogida de solicitudes (Google Forms), el scoring con IA y la notificación del lineup por Telegram.
 
@@ -60,7 +60,8 @@ recova-project/
 ├── frontend/
 │   └── src/
 │       ├── components/       # OpenMicSelector, OpenMicDetail, ScoringConfigurator…
-│       ├── App.jsx           # Lineup app (curación)
+│       ├── hooks/            # useCandidates, useEdits, useValidation
+│       ├── App.jsx           # Lineup app — orquestador (~120 líneas)
 │       └── main.jsx          # Root: Login → Selector → Detail → App
 ├── specs/                    # Specs SDD + esquemas y migraciones SQL
 ├── docs/                     # Documentación técnica
@@ -90,7 +91,7 @@ Variables de entorno: [`docs/setup.md`](docs/setup.md)
 ```bash
 source backend/venv/bin/activate
 PYTHONPATH=. pytest backend/tests/   # 356 tests backend
-cd frontend && npm test              # 44 tests frontend
+cd frontend && npm test              # 70 tests frontend
 ```
 
 ---
@@ -120,15 +121,15 @@ Revisión técnica (2026-03-16): Sprints A–D completados. Revisión 2 (2026-03
 | ~~C~~ | ~~Arquitectura~~ — C1+C2 God File → 8 blueprints ✅ |
 | ~~D~~ | ~~Calidad~~ — D1 cascada INE + D2 BD source of truth + D3 tutorial UX + D4 paths portables ✅ |
 | ~~E~~ | ~~Red flags defensa~~ — E1 test e2e smoke + E2 `@validate_json` 13 endpoints + E3 score_breakdown JSONB ✅ |
+| ~~F2~~ | ~~Descomponer App.jsx~~ — 534→120 líneas, 3 custom hooks + 4 componentes presentacionales ✅ |
 
 </details>
 
-### 🟠 Sprint F — Calidad de código
+### 🟠 Sprint F — Calidad de código (parcial)
 
 | ID | Archivo(s) | Descripción | Detalle |
 |----|------------|-------------|---------|
 | F1 | `shared.py` + blueprints | **Error response unificado** | Crear helper `_error(message, code, status)` que devuelva siempre `{"status": "error", "message": "...", "code": "..."}`. Reemplazar los 3 formatos distintos (`{"error": "..."}`, `{"status": "error", "message": "..."}`, con/sin code) por uno solo. El frontend solo parsea un formato |
-| F2 | `frontend/src/App.jsx` | **Descomponer App.jsx (350 líneas)** | Extraer: (1) `useLineupData()` — custom hook con fetch, candidatos, edits, (2) `useValidation()` — lógica de validar + n8n webhook + upsert, (3) `RecoveryNotes` — componente para textarea de notas, (4) `ValidationStamp` — componente del sello "VALIDADO" + botón cambiar. App.jsx queda como compositor de ~80 líneas |
 | F3 | `shared.py` | **Rate limiting básico** | Implementar rate limit in-memory por IP con diccionario `{ip: [timestamps]}` y decorador `@rate_limit(max_requests, window_seconds)`. Aplicar en endpoints públicos (`/api/form-submission`, `/api/telegram/register`). No necesita Redis — el proceso PM2 es único. Devolver 429 si excede |
 
 ### 🔵 Sprint G — Documentación y observabilidad
