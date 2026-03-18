@@ -1,3 +1,23 @@
+## [0.32.0] - 2026-03-18
+
+### Security — Sprint J1: Protección contra Prompt Injection en llamadas a Gemini
+
+- Nuevo módulo **`backend/src/core/prompt_guard.py`** con dos capas de defensa:
+  - `detect_injection()` — pattern matching multilingüe (ES, EN, FR, DE, PT, IT, ZH, RU, JA, KO) + delimitadores de escape + Unicode tricks
+  - `sanitize_for_prompt()` — strip invisibles, control chars, trunca a 200 chars, escapa delimitadores
+  - `validate_fields()` — integra sanitización + detección, lanza `ValueError` si detecta inyección
+  - `wrap_user_field()` — envuelve campos en `<user_field>` tags + instrucción defensiva en prompt template
+- **`FormAnalyzer.analyze()`** y **`CustomScoringProposer.propose()`** ahora sanitizan y validan inputs antes de enviar a Gemini
+- Workflow n8n **Ingesta-Solicitudes**: nodo Code sanitize entre Edit Fields → Aggregate (nombres/instagrams de cómicos)
+- Workflow n8n **Test BOT**: nodo Code sanitize + If (¿Bloqueado?) antes de AI Agent + system prompt reforzado
+
+### Tests
+- 66 tests nuevos en `test_prompt_guard.py` (patrones multilingües, falsos positivos, sanitización, truncamiento)
+- 4 tests de integración en `test_form_analyzer.py` y `test_custom_scoring_proposer.py` (rechazo de inyección + tags `<user_field>`)
+- **Total acumulado**: 443 backend + 70 frontend = 513 tests verdes
+
+---
+
 ## [0.31.0] - 2026-03-18
 
 ### Added — Sprint I5: Error Boundary React

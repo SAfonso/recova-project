@@ -13,11 +13,19 @@ import os
 
 import google.genai as genai
 
+from backend.src.core.prompt_guard import (
+    get_defensive_instruction,
+    validate_fields,
+    wrap_user_field,
+)
+
 _MODEL = "gemini-2.5-flash"
 
 _PROMPT_TEMPLATE = """\
 Tienes un formulario de inscripción para un open mic de comedia.
 Los siguientes campos del formulario NO pertenecen al schema canónico
+{defensive_instruction}
+
 y sus respuestas se guardan como texto libre:
 
 {fields_list}
@@ -76,10 +84,14 @@ class CustomScoringProposer:
         if not filtered_fields:
             return []
 
+        sanitized = validate_fields(filtered_fields)
         fields_list = "\n".join(
-            f"{i + 1}. {f}" for i, f in enumerate(filtered_fields)
+            f"{i + 1}. {wrap_user_field(f)}" for i, f in enumerate(sanitized)
         )
-        prompt = _PROMPT_TEMPLATE.format(fields_list=fields_list)
+        prompt = _PROMPT_TEMPLATE.format(
+            fields_list=fields_list,
+            defensive_instruction=get_defensive_instruction(),
+        )
 
         response = self._client.models.generate_content(
             model=_MODEL,
