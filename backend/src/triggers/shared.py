@@ -1,6 +1,7 @@
 """Shared helpers, constants and auth for all webhook blueprints."""
 
 import functools
+import logging
 import os
 import time
 import threading
@@ -12,6 +13,8 @@ from flask import jsonify, request
 from supabase import create_client
 
 from backend.src.scoring_engine import execute_scoring  # noqa: F401 — re-export
+
+logger = logging.getLogger(__name__)
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _ROOT_ENV = _PROJECT_ROOT / ".env"
@@ -186,6 +189,7 @@ def _is_authenticated_user() -> dict | None:
             return None
         return {"sub": user.id, "email": user.email}
     except Exception:
+        logger.exception("_is_authenticated_user: JWT verification failed")
         return None
 
 
@@ -252,6 +256,6 @@ def run_ingestion_async():
         try:
             run_pipeline()
         except Exception:
-            pass
+            logger.exception("run_ingestion_async: pipeline failed")
 
     threading.Thread(target=_run, daemon=True).start()

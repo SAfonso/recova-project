@@ -79,7 +79,7 @@ def lineup_prepare_validation():
     try:
         execute_scoring(open_mic_id)
     except Exception:
-        pass
+        logger.exception("prepare_validation: execute_scoring failed for open_mic %s", open_mic_id)
 
     try:
         # 4. Obtener candidatos

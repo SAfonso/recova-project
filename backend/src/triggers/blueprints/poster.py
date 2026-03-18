@@ -282,7 +282,7 @@ def execute_render(*, payload: dict[str, Any]) -> dict[str, Any]:
             try:
                 f.unlink(missing_ok=True)
             except Exception:
-                pass
+                logger.warning("execute_render: failed to clean up tmp file %s", f)
 
     return _render_success(output_path, payload)
 

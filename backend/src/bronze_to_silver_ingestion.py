@@ -373,7 +373,7 @@ def _genderize_lookup(word: str) -> str | None:
         if data.get("gender") and data.get("probability", 0) >= 0.7:
             return "m" if data["gender"] == "male" else "f"
     except Exception:
-        pass
+        LOGGER.warning("_genderize_lookup: API call failed for '%s'", normalized, exc_info=True)
     return None
 
 
@@ -701,7 +701,7 @@ def process_single_solicitud(
     phase = "inicio"
 
     with conn.cursor() as cursor:
-        cursor.execute(f"SAVEPOINT {savepoint_name}")
+        cursor.execute(sql.SQL("SAVEPOINT {}").format(sql.Identifier(savepoint_name)))
 
     try:
         phase = "normalizacion"
@@ -733,7 +733,7 @@ def process_single_solicitud(
             exc,
         )
         with conn.cursor() as cursor:
-            cursor.execute(f"ROLLBACK TO SAVEPOINT {savepoint_name}")
+            cursor.execute(sql.SQL("ROLLBACK TO SAVEPOINT {}").format(sql.Identifier(savepoint_name)))
 
         register_ingestion_error(
             conn,
