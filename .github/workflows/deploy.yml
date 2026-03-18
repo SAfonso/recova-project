@@ -32,6 +32,10 @@ jobs:
               # 1. Ejecutamos la suite real del backend antes de reiniciar servicios.
               ./venv/bin/python3 -m pytest -q backend/tests && \
 
-              # 2. Solo si pytest es exitoso, rebuild y reinicio del container.
+              # 2. Parar PM2 si sigue corriendo (migración a Docker — puerto 5000)
+              pm2 stop webhook-ingesta 2>/dev/null || true && \
+              pm2 delete webhook-ingesta 2>/dev/null || true && \
+
+              # 3. Solo si pytest es exitoso, rebuild y reinicio del container.
               docker compose down && \
               docker compose up -d --build
