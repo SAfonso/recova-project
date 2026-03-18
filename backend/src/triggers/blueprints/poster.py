@@ -362,7 +362,7 @@ def render_poster() -> tuple:
     if err:
         return err
 
-    data = request.get_json(force=True) or {}
+    data = request.get_json(silent=True) or {}
     lineup = data.get("lineup") or []
 
     if not lineup:

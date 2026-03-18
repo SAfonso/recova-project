@@ -30,7 +30,7 @@ def form_submission():
     err = require_api_key()
     if err:
         return err
-    data = request.get_json(force=True) or {}
+    data = request.get_json(silent=True) or {}
 
     open_mic_id = data.get("open_mic_id")
 
@@ -113,7 +113,8 @@ def ingest_from_sheets():
         try:
             pending = ingestor.get_pending_rows(sheet_id)
         except Exception:
-            continue  # Sheet inaccesible: continúa con los demás
+            logger.exception("ingest_from_sheets: sheet %s inaccesible", sheet_id)
+            continue
 
         for row in pending:
             try:
@@ -201,6 +202,7 @@ def ingest_from_forms():
         try:
             responses = ingestor.get_responses(form_id, field_mapping)
         except Exception:
+            logger.exception("ingest_from_forms: form %s inaccesible", form_id)
             continue
 
         new_responses = [
