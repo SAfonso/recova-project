@@ -494,10 +494,11 @@ def build_ranking(
                 ranked.append(c); seen.add(c.comico_id)
         return ranked, skipped_restricted
 
-    # Con paridad: alternancia f/nb ↔ m
-    f_nb = sorted([c for c in scored if c.genero in {"f", "nb"}], key=sort_key)
-    m    = sorted([c for c in scored if c.genero == "m"],          key=sort_key)
-    unk  = sorted([c for c in scored if c.genero not in {"m", "f", "nb"}], key=sort_key)
+    # Con paridad: alternancia f/nb/unknown ↔ m
+    _F_NB = {"f", "nb", "unknown"}
+    f_nb = sorted([c for c in scored if c.genero in _F_NB],            key=sort_key)
+    m    = sorted([c for c in scored if c.genero == "m"],              key=sort_key)
+    unk  = sorted([c for c in scored if c.genero not in (_F_NB | {"m"})], key=sort_key)
 
     balanced: list[CandidateScore] = []
     idx_f = idx_m = 0

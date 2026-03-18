@@ -1,6 +1,6 @@
 # AI LineUp Architect
 
-**Versión:** `0.27.0` · **Estado:** Desarrollo activo · **Metodología:** SDD + TDD
+**Versión:** `0.28.0` · **Estado:** Desarrollo activo · **Metodología:** SDD + TDD
 
 SaaS multi-tenant para gestión de open mics de comedia. Automatiza la recogida de solicitudes (Google Forms), el scoring con IA y la notificación del lineup por Telegram.
 
@@ -111,7 +111,7 @@ cd frontend && npm test              # 70 tests frontend
 
 ## Deuda técnica — Sprints de mejora
 
-Revisión técnica 1 (2026-03-16): 7/10. Revisión 2 (2026-03-17): 8/10. Revisión 3 (2026-03-17): 8.5/10. Todos los sprints completados.
+Revisión técnica 1 (2026-03-16): 7/10. Revisión 2 (2026-03-17): 8/10. Revisión 3 (2026-03-17): 8.5/10.
 
 <details>
 <summary>Sprints A–G (completados) ✅</summary>
@@ -130,10 +130,11 @@ Revisión técnica 1 (2026-03-16): 7/10. Revisión 2 (2026-03-17): 8/10. Revisi�
 | ~~H2-1~~ | ~~SQL injection fix~~ — Whitelist + `sql.Identifier()` en `register_ingestion_error()` ✅ |
 | ~~H2-2~~ | ~~Tests de carga~~ — 100 requests concurrentes verificando 429 thread-safe ✅ |
 | ~~H2-4~~ | ~~Diagrama secuencia~~ — 5 diagramas Mermaid del flujo completo ✅ |
+| ~~I3~~ | ~~Gender parity dead code~~ — `'unknown'` ahora alterna en bucket `f_nb` ✅ |
 
 </details>
 
 ### Limitaciones conocidas
-- Inferencia de género: si las 3 capas (INE, gender-guesser, genderize.io) fallan, se asigna `unknown` → frontend muestra `nb`.
+- Inferencia de género: si las 3 capas (INE, gender-guesser, genderize.io) fallan, se asigna `unknown`. El scoring agrupa `unknown` con `f/nb` para paridad; el frontend muestra `NB`.
 - Sin Docker ni CI/CD. PM2 en VPS sin containerización.
 - Sin versionado de API (`/api/v1/`).

@@ -1,3 +1,16 @@
+## [0.28.0] - 2026-03-18
+
+### Fixed — Sprint I3: Gender parity dead code
+
+- `'unknown'` ahora entra en el bucket `f_nb` del algoritmo de paridad de género, junto con `'f'` y `'nb'`
+- Antes: candidatos sin género inferido caían en bucket `unk` y se relegaban al final del ranking — gender parity no los incluía en la alternancia
+- Después: `unknown` alterna con `m` como parte del grupo subrepresentado
+- Constante `_F_NB = {"f", "nb", "unknown"}` centraliza la pertenencia al grupo
+- 2 tests actualizados con nuevo orden esperado de alternancia
+- **Total acumulado**: 370 backend + 70 frontend = 440 tests verdes
+
+---
+
 ## [0.27.0] - 2026-03-18
 
 ### Security — Sprint H2-1: SQL injection fix en `register_ingestion_error()`

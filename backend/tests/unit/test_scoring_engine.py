@@ -176,7 +176,8 @@ def test_build_ranking_continues_when_a_gender_bucket_is_exhausted(monkeypatch):
     ranking, skipped = engine.build_ranking(conn=None, requests=requests, config=_parity_config())
 
     assert skipped == 0
-    assert [c.comico_id for c in ranking] == ["f-1", "m-1", "m-2", "u-1", "u-2"]
+    # unknown ahora alterna con m (en bucket f_nb)
+    assert [c.comico_id for c in ranking] == ["f-1", "m-1", "u-1", "m-2", "u-2"]
 
 
 def test_build_ranking_alternates_gender_buckets(monkeypatch):
@@ -201,7 +202,8 @@ def test_build_ranking_alternates_gender_buckets(monkeypatch):
     ranking, skipped = engine.build_ranking(conn=None, requests=requests, config=_parity_config())
 
     assert skipped == 0
-    assert [c.comico_id for c in ranking] == ["f-1", "m-1", "f-2", "m-2", "m-3", "u-1"]
+    # unknown ahora alterna con m (en bucket f_nb)
+    assert [c.comico_id for c in ranking] == ["f-1", "m-1", "f-2", "m-2", "u-1", "m-3"]
 
 
 def test_build_ranking_no_interleave_when_parity_disabled(monkeypatch):
