@@ -60,7 +60,7 @@ def form_submission() -> tuple:
         }).execute()
     except Exception as exc:
         logger.exception("form_submission failed")
-        return api_error("EXTERNAL_SERVICE_ERROR", "error al procesar la solicitud", 502, details=str(exc))
+        return api_error("EXTERNAL_SERVICE_ERROR", "error al procesar la solicitud", 502)
 
     # 3. Lanzar bronze → silver en background
     run_ingestion_async()
@@ -86,7 +86,7 @@ def ingest_from_sheets() -> tuple:
         )
     except Exception as exc:
         logger.exception("ingest_from_sheets: error al consultar open_mics")
-        return api_error("EXTERNAL_SERVICE_ERROR", "error al consultar open_mics", 502, details=str(exc))
+        return api_error("EXTERNAL_SERVICE_ERROR", "error al consultar open_mics", 502)
 
     # Solo los que tienen sheet_id configurado
     open_mics = [
@@ -167,7 +167,7 @@ def ingest_from_forms() -> tuple:
         )
     except Exception as exc:
         logger.exception("ingest_from_forms: error al consultar open_mics")
-        return api_error("EXTERNAL_SERVICE_ERROR", "error al consultar open_mics", 502, details=str(exc))
+        return api_error("EXTERNAL_SERVICE_ERROR", "error al consultar open_mics", 502)
 
     # Solo open mics con external_form_id y field_mapping configurados
     open_mics = [

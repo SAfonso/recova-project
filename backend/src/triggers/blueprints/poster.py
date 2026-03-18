@@ -378,7 +378,7 @@ def render_poster() -> tuple:
     try:
         result = orchestrate_render(payload)
     except Exception as exc:
-        return api_error("INTERNAL_ERROR", "error al renderizar el poster", 500, details=str(exc))
+        return api_error("INTERNAL_ERROR", "error al renderizar el poster", 500)
 
     if result.get("status") != "success":
         msg = result.get("output", {}).get("message", "render error")

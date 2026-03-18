@@ -202,8 +202,15 @@ def test_trigger_ingest_requires_jwt():
 
 
 def test_trigger_ingest_happy_path():
-    """200 y lanza los dos Popen de ingesta."""
+    """200 y lanza ingesta en background."""
+    sb = _make_sb({
+        "silver": {
+            "organization_members": _chain([{"user_id": VALID_USER_PAYLOAD["sub"]}]),
+        },
+    })
+
     with _patch_auth_valid(), \
+         patch("backend.src.triggers.blueprints.dev._sb_client", return_value=sb), \
          patch("backend.src.triggers.blueprints.dev.run_ingestion_async") as mock_popen:
 
         with app.test_client() as c:
@@ -214,6 +221,25 @@ def test_trigger_ingest_happy_path():
     assert resp.status_code == 200
     assert resp.get_json()["status"] == "ok"
     assert mock_popen.call_count >= 1
+
+
+def test_trigger_ingest_forbidden_no_membership():
+    """403 si el usuario no pertenece a ninguna organización."""
+    sb = _make_sb({
+        "silver": {
+            "organization_members": _chain([]),
+        },
+    })
+
+    with _patch_auth_valid(), \
+         patch("backend.src.triggers.blueprints.dev._sb_client", return_value=sb):
+
+        with app.test_client() as c:
+            resp = c.post("/api/dev/trigger-ingest",
+                          json={"open_mic_id": "om-001"},
+                          headers=VALID_AUTH)
+
+    assert resp.status_code == 403
 
 
 # ---------------------------------------------------------------------------

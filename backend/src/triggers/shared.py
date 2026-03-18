@@ -193,6 +193,44 @@ def _is_authenticated_user() -> dict | None:
         return None
 
 
+def require_authenticated_user() -> tuple[dict, None] | tuple[None, tuple]:
+    """Devuelve (user_dict, None) si autenticado, o (None, error_tuple) si no."""
+    user = _is_authenticated_user()
+    if not user:
+        return None, api_error("UNAUTHORIZED", "unauthorized", 401)
+    return user, None
+
+
+def require_org_member(user_id: str, open_mic_id: str) -> tuple | None:
+    """Verifica que user_id pertenece a la org del open_mic dado. Devuelve api_error o None."""
+    try:
+        sb = _sb_client()
+        om = (
+            sb.schema("silver")
+            .from_("open_mics")
+            .select("proveedor_id")
+            .eq("id", open_mic_id)
+            .execute()
+        )
+        if not om.data:
+            return api_error("RESOURCE_NOT_FOUND", "open mic no encontrado", 404)
+        proveedor_id = om.data[0]["proveedor_id"]
+        member_check = (
+            sb.schema("silver")
+            .from_("organization_members")
+            .select("user_id")
+            .eq("user_id", user_id)
+            .eq("proveedor_id", proveedor_id)
+            .execute()
+        )
+        if not member_check.data:
+            return api_error("FORBIDDEN", "forbidden", 403)
+    except Exception:
+        logger.exception("require_org_member: error Supabase")
+        return api_error("EXTERNAL_SERVICE_ERROR", "error al verificar pertenencia", 502)
+    return None
+
+
 _SB_SINGLETON = None
 
 def _sb_client():

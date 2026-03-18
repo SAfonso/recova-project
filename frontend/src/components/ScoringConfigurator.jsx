@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
+import { authFetch } from '../utils/authFetch';
 import { ScoringTypeSelector } from './ScoringTypeSelector';
 import { CustomScoringConfigurator } from './CustomScoringConfigurator';
 import { extractFormId } from '../utils/formUtils';
@@ -199,13 +200,7 @@ export function ScoringConfigurator({ openMicId, openMicName, onSaved }) {
     setProposing(true);
     setError(null);
     try {
-      const apiKey = import.meta.env.VITE_WEBHOOK_API_KEY ?? '';
-      const apiUrl = import.meta.env.VITE_BACKEND_URL ?? '';
-      const resp = await fetch(`${apiUrl}/api/open-mic/propose-custom-rules`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-API-KEY': apiKey },
-        body: JSON.stringify({ open_mic_id: openMicId }),
-      });
+      const resp = await authFetch('/api/open-mic/propose-custom-rules', { open_mic_id: openMicId });
       const data = await resp.json();
       if (!resp.ok) {
         setError(data.message ?? 'Error al proponer reglas');
@@ -223,13 +218,7 @@ export function ScoringConfigurator({ openMicId, openMicName, onSaved }) {
     setCreatingForm(true);
     setFormCreateError('');
     try {
-      const apiKey = import.meta.env.VITE_WEBHOOK_API_KEY ?? '';
-      const apiUrl = import.meta.env.VITE_BACKEND_URL ?? '';
-      const res = await fetch(`${apiUrl}/api/open-mic/create-form`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-API-KEY': apiKey },
-        body: JSON.stringify({ open_mic_id: openMicId, nombre: openMicName }),
-      });
+      const res = await authFetch('/api/open-mic/create-form', { open_mic_id: openMicId, nombre: openMicName });
       const data = await res.json();
       if (!res.ok) {
         setFormCreateError(data.message ?? 'Error creando el form');
@@ -250,13 +239,7 @@ export function ScoringConfigurator({ openMicId, openMicName, onSaved }) {
     setAnalyzeError('');
     setAnalyzeResult(null);
     try {
-      const apiKey = import.meta.env.VITE_WEBHOOK_API_KEY ?? '';
-      const apiUrl = import.meta.env.VITE_BACKEND_URL ?? '';
-      const res = await fetch(`${apiUrl}/api/open-mic/analyze-form`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-API-KEY': apiKey },
-        body: JSON.stringify({ open_mic_id: openMicId, form_id: formId }),
-      });
+      const res = await authFetch('/api/open-mic/analyze-form', { open_mic_id: openMicId, form_id: formId });
       const data = await res.json();
       if (!res.ok) {
         setAnalyzeError(data.message ?? 'Error al analizar el formulario');

@@ -44,7 +44,7 @@ def mcp_list_open_mics() -> tuple:
         ).data or []
     except Exception as exc:
         logger.exception("mcp_list_open_mics: error Supabase")
-        return api_error("EXTERNAL_SERVICE_ERROR", "error al consultar open_mics", 502, details=str(exc))
+        return api_error("EXTERNAL_SERVICE_ERROR", "error al consultar open_mics", 502)
 
     open_mics = []
     for row in rows:
@@ -84,7 +84,7 @@ def mcp_get_lineup() -> tuple:
         ).data or []
     except Exception as exc:
         logger.exception("mcp_get_lineup: error Supabase")
-        return api_error("EXTERNAL_SERVICE_ERROR", "error al consultar lineup", 502, details=str(exc))
+        return api_error("EXTERNAL_SERVICE_ERROR", "error al consultar lineup", 502)
 
     slots = []
     for row in rows:
@@ -134,7 +134,7 @@ def mcp_get_candidates() -> tuple:
         ).data or []
     except Exception as exc:
         logger.exception("mcp_get_candidates: error Supabase")
-        return api_error("EXTERNAL_SERVICE_ERROR", "error al consultar candidatos", 502, details=str(exc))
+        return api_error("EXTERNAL_SERVICE_ERROR", "error al consultar candidatos", 502)
 
     candidates = []
     for row in rows:
@@ -166,7 +166,7 @@ def mcp_run_scoring() -> tuple:
     try:
         result = execute_scoring(open_mic_id)
     except Exception as exc:
-        return api_error("INTERNAL_ERROR", "error al ejecutar el scoring", 500, details=str(exc))
+        return api_error("INTERNAL_ERROR", "error al ejecutar el scoring", 500)
 
     return jsonify(result), 200
 
@@ -187,10 +187,10 @@ def mcp_reopen_lineup() -> tuple:
 
     try:
         sb = _sb_client()
-        sb.rpc("reset_lineup_slots", {"p_open_mic_id": open_mic_id, "p_fecha_evento": fecha_evento})
+        sb.schema("silver").rpc("reset_lineup_slots", {"p_open_mic_id": open_mic_id, "p_fecha_evento": fecha_evento}).execute()
     except Exception as exc:
         logger.exception("mcp_reopen_lineup: error Supabase")
-        return api_error("EXTERNAL_SERVICE_ERROR", "error al reabrir lineup", 502, details=str(exc))
+        return api_error("EXTERNAL_SERVICE_ERROR", "error al reabrir lineup", 502)
 
     return jsonify({
         "status":  "ok",

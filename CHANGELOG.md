@@ -1,3 +1,39 @@
+## [0.33.0] - 2026-03-18
+
+### Security — Sprint K1: Correcciones de auditoría externa
+
+#### [Crítico] API key eliminada del frontend
+- **`VITE_WEBHOOK_API_KEY`** ya no se expone en el bundle del frontend
+- Nuevos helpers en `shared.py`: `require_authenticated_user()` + `require_org_member()`
+- 3 endpoints de `form.py` (`create-form`, `analyze-form`, `propose-custom-rules`) migrados de API key a JWT + membership check
+- `telegram.py:generate-code` migrado a JWT auth; `host_id` se extrae del token, no del body
+- Nuevo `frontend/src/utils/authFetch.js` — helper centralizado para llamadas autenticadas
+- `OpenMicSelector.jsx`, `ScoringConfigurator.jsx`, `DevToolsPanel.jsx` usan `authFetch`
+- Eliminada `VITE_WEBHOOK_API_KEY` de `.env.example`
+
+#### [Alto] mcp_reopen_lineup — .execute() ausente
+- `mcp_agent.py:190`: `sb.rpc(...)` → `sb.schema("silver").rpc(...).execute()` (schema correcto + execute)
+
+#### [Medio] Exposición de detalles internos
+- Eliminadas 27 ocurrencias de `details=str(exc)` en `api_error()` de los 8 blueprints
+- El `logger.exception()` previo ya registra el traceback server-side
+
+#### [Medio] /api/dev/trigger-ingest sin control de pertenencia
+- Añadida verificación de membresía en `organization_members` antes de permitir la ingesta
+
+#### [Calidad] pytest.ini
+- Eliminada opción `asyncio_default_test_loop_scope` no soportada por la versión instalada de pytest-asyncio
+
+#### [Calidad] Tests n8n desactualizados
+- Nombres de workflows actualizados: `This.Ingesta-Solicitudes 3.json`, `This.Scoring & Draft 2.json`, `This.Render 2.json`, `This.Test BOT 3.json`
+- Assertions de env vars actualizadas: `$env.BACKEND_URL`, `$env.SUPABASE_SERVICE_KEY` en Render y Test BOT
+
+### Tests
+- Tests actualizados: `test_telegram_generate_code.py`, `test_analyze_form_endpoint.py`, `test_propose_custom_rules_endpoint.py`, `test_dev_tools.py`, `test_lineup_mcp_endpoints.py`
+- **Total acumulado**: 445 backend + 70 frontend = 515 tests verdes
+
+---
+
 ## [0.32.0] - 2026-03-18
 
 ### Security — Sprint J1: Protección contra Prompt Injection en llamadas a Gemini

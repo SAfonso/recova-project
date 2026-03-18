@@ -22,7 +22,7 @@ def ingest() -> tuple:
             "output": result,
         }), 200
     except Exception as exc:
-        return api_error("INTERNAL_ERROR", "ingestion execution failed", 500, details=str(exc))
+        return api_error("INTERNAL_ERROR", "ingestion execution failed", 500)
 
 
 @bp.route("/scoring", methods=["POST"])
@@ -36,4 +36,4 @@ def scoring() -> tuple:
         result = execute_scoring()
         return jsonify(result), 200
     except Exception as exc:
-        return api_error("INTERNAL_ERROR", "scoring execution failed", 500, details=str(exc))
+        return api_error("INTERNAL_ERROR", "scoring execution failed", 500)

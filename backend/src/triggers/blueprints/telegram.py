@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 
 from flask import Blueprint, jsonify, request
 
-from backend.src.triggers.shared import api_error, rate_limit, require_api_key, _sb_client, validate_json
+from backend.src.triggers.shared import api_error, rate_limit, require_api_key, require_authenticated_user, _sb_client, validate_json
 
 bp = Blueprint("telegram", __name__)
 
@@ -16,17 +16,35 @@ logger = logging.getLogger(__name__)
 
 
 @bp.route("/api/telegram/generate-code", methods=["POST"])
-@validate_json({"host_id": str})
+@validate_json({"proveedor_id": str})
 def telegram_generate_code() -> tuple:
     """Genera un código temporal para self-registration del bot de Telegram."""
-    err = require_api_key()
+    user, err = require_authenticated_user()
     if err:
         return err
 
     body = request.get_json(silent=True) or {}
-    host_id = body.get("host_id", "").strip()
-    if not host_id:
-        return api_error("VALIDATION_ERROR", "host_id es obligatorio", 400)
+    host_id = user["sub"]
+    proveedor_id = body.get("proveedor_id", "").strip()
+    if not proveedor_id:
+        return api_error("VALIDATION_ERROR", "proveedor_id es obligatorio", 400)
+
+    # Verificar membresía
+    try:
+        sb_check = _sb_client()
+        member_check = (
+            sb_check.schema("silver")
+            .from_("organization_members")
+            .select("user_id")
+            .eq("user_id", host_id)
+            .eq("proveedor_id", proveedor_id)
+            .execute()
+        )
+        if not member_check.data:
+            return api_error("FORBIDDEN", "forbidden", 403)
+    except Exception as exc:
+        logger.exception("telegram_generate_code: error verificando membresía")
+        return api_error("EXTERNAL_SERVICE_ERROR", "error al verificar membresía", 502)
 
     suffix = "".join(random.choices(string.ascii_uppercase + string.digits, k=4))
     code = f"RCV-{suffix}"
@@ -42,7 +60,7 @@ def telegram_generate_code() -> tuple:
         }).execute()
     except Exception as exc:
         logger.exception("telegram_generate_code: error Supabase")
-        return api_error("EXTERNAL_SERVICE_ERROR", "error al generar código", 502, details=str(exc))
+        return api_error("EXTERNAL_SERVICE_ERROR", "error al generar código", 502)
 
     return jsonify({"code": code, "qr_url": qr_url}), 200
 

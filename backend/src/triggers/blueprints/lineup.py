@@ -55,7 +55,7 @@ def lineup_prepare_validation() -> tuple:
             return api_error("FORBIDDEN", "forbidden", 403)
     except Exception as exc:
         logger.exception("prepare_validation: error al consultar Supabase")
-        return api_error("EXTERNAL_SERVICE_ERROR", "error al consultar Supabase", 502, details=str(exc))
+        return api_error("EXTERNAL_SERVICE_ERROR", "error al consultar Supabase", 502)
 
     config = (rows.data[0] or {}).get("config") or {}
     info = config.get("info") or {}
@@ -109,7 +109,7 @@ def lineup_prepare_validation() -> tuple:
         token = ((token_res.data or [{}])[0]).get("token", "")
     except Exception as exc:
         logger.exception("prepare_validation: error al obtener candidatos/token")
-        return api_error("EXTERNAL_SERVICE_ERROR", "error al preparar validación", 502, details=str(exc))
+        return api_error("EXTERNAL_SERVICE_ERROR", "error al preparar validación", 502)
 
     return jsonify({
         "fecha_evento": fecha_evento,
@@ -179,7 +179,7 @@ def validate_view_lineup() -> tuple:
         )
     except Exception as exc:
         logger.exception("validate_view_lineup: error Supabase")
-        return api_error("EXTERNAL_SERVICE_ERROR", "error al consultar lineup", 502, details=str(exc))
+        return api_error("EXTERNAL_SERVICE_ERROR", "error al consultar lineup", 502)
 
     return jsonify({
         "open_mic_id": open_mic_id,
@@ -250,6 +250,6 @@ def validate_view_validate() -> tuple:
         sb.schema("silver").from_("validation_tokens").delete().eq("token", token).execute()
     except Exception as exc:
         logger.exception("validate_view_validate: error Supabase")
-        return api_error("EXTERNAL_SERVICE_ERROR", "error al validar lineup", 502, details=str(exc))
+        return api_error("EXTERNAL_SERVICE_ERROR", "error al validar lineup", 502)
 
     return jsonify({"status": "validated", "slots_created": result.data or 0}), 200

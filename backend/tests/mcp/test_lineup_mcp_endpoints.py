@@ -54,9 +54,13 @@ def _sb_mock(data):
     schema = MagicMock()
     schema.from_.return_value = chain
 
+    rpc_chain = MagicMock()
+    rpc_chain.execute.return_value = result
+
+    schema.rpc.return_value = rpc_chain
+
     client = MagicMock()
     client.schema.return_value = schema
-    client.rpc.return_value = result
     return client
 
 
@@ -179,7 +183,7 @@ def test_reopen_lineup_calls_reset_rpc():
     body = resp.get_json()
     assert body["status"] == "ok"
     assert FECHA in body["message"]
-    sb.rpc.assert_called_once_with(
+    sb.schema("silver").rpc.assert_called_once_with(
         "reset_lineup_slots",
         {"p_open_mic_id": OM_ID, "p_fecha_evento": FECHA},
     )

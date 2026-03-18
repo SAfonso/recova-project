@@ -4,7 +4,7 @@ Cubre (spec smart_form_ingestion_spec §Endpoint):
   - happy path: 200 con field_mapping y métricas
   - guarda field_mapping en config del open mic via Supabase RPC
   - 400 si faltan parámetros obligatorios
-  - 401 sin API key
+  - 401 sin JWT
   - 422 si Gemini devuelve JSON inválido
   - métricas de cobertura en la respuesta
 """
@@ -26,8 +26,8 @@ os.environ.setdefault("GEMINI_API_KEY", "fake-gemini-key")
 
 from backend.src.triggers.webhook_listener import app  # noqa: E402
 
-API_KEY = "test-key"
-AUTH = {"X-API-KEY": API_KEY, "Content-Type": "application/json"}
+VALID_USER = {"sub": "user-123", "email": "test@test.com"}
+AUTH = {"Authorization": "Bearer valid.jwt.token", "Content-Type": "application/json"}
 
 OPEN_MIC_ID = "om-sprint9-uuid"
 FORM_ID = "1BxEfoo123"
@@ -58,6 +58,31 @@ FIELD_MAPPING = {
 
 
 # ---------------------------------------------------------------------------
+# Auth helpers
+# ---------------------------------------------------------------------------
+
+def _patch_auth_valid():
+    return patch(
+        "backend.src.triggers.blueprints.form.require_authenticated_user",
+        return_value=(VALID_USER, None),
+    )
+
+
+def _patch_auth_invalid():
+    return patch(
+        "backend.src.triggers.shared._is_authenticated_user",
+        return_value=None,
+    )
+
+
+def _patch_org_member_ok():
+    return patch(
+        "backend.src.triggers.blueprints.form.require_org_member",
+        return_value=None,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Helper Supabase mock
 # ---------------------------------------------------------------------------
 
@@ -79,7 +104,9 @@ def test_analyze_form_returns_200_with_mapping():
     """Happy path: 200 con field_mapping en la respuesta."""
     sb = _make_sb()
 
-    with patch("backend.src.triggers.blueprints.form._sb_client", return_value=sb), \
+    with _patch_auth_valid(), \
+         _patch_org_member_ok(), \
+         patch("backend.src.triggers.blueprints.form._sb_client", return_value=sb), \
          patch("backend.src.triggers.blueprints.form.FormIngestor") as MockIngestor, \
          patch("backend.src.triggers.blueprints.form.FormAnalyzer") as MockAnalyzer:
 
@@ -104,7 +131,9 @@ def test_analyze_form_saves_to_config():
     """Llama a la RPC update_open_mic_config_keys con field_mapping y external_form_id."""
     sb = _make_sb()
 
-    with patch("backend.src.triggers.blueprints.form._sb_client", return_value=sb), \
+    with _patch_auth_valid(), \
+         _patch_org_member_ok(), \
+         patch("backend.src.triggers.blueprints.form._sb_client", return_value=sb), \
          patch("backend.src.triggers.blueprints.form.FormIngestor") as MockIngestor, \
          patch("backend.src.triggers.blueprints.form.FormAnalyzer") as MockAnalyzer:
 
@@ -130,24 +159,26 @@ def test_analyze_form_saves_to_config():
 
 def test_analyze_form_missing_params_400():
     """400 si falta open_mic_id o form_id."""
-    with app.test_client() as c:
-        resp = c.post(
-            "/api/open-mic/analyze-form",
-            json={"open_mic_id": OPEN_MIC_ID},  # falta form_id
-            headers=AUTH,
-        )
+    with _patch_auth_valid(), _patch_org_member_ok():
+        with app.test_client() as c:
+            resp = c.post(
+                "/api/open-mic/analyze-form",
+                json={"open_mic_id": OPEN_MIC_ID},  # falta form_id
+                headers=AUTH,
+            )
     assert resp.status_code == 400
     assert "form_id" in resp.get_json()["error"]["message"]
 
 
 def test_analyze_form_unauthorized_401():
-    """401 sin API key."""
-    with app.test_client() as c:
-        resp = c.post(
-            "/api/open-mic/analyze-form",
-            json={"open_mic_id": OPEN_MIC_ID, "form_id": FORM_ID},
-            headers={"Content-Type": "application/json"},
-        )
+    """401 sin JWT."""
+    with _patch_auth_invalid():
+        with app.test_client() as c:
+            resp = c.post(
+                "/api/open-mic/analyze-form",
+                json={"open_mic_id": OPEN_MIC_ID, "form_id": FORM_ID},
+                headers={"Content-Type": "application/json"},
+            )
     assert resp.status_code == 401
 
 
@@ -155,7 +186,9 @@ def test_analyze_form_gemini_invalid_422():
     """422 si FormAnalyzer lanza ValueError (Gemini devuelve JSON inválido)."""
     sb = _make_sb()
 
-    with patch("backend.src.triggers.blueprints.form._sb_client", return_value=sb), \
+    with _patch_auth_valid(), \
+         _patch_org_member_ok(), \
+         patch("backend.src.triggers.blueprints.form._sb_client", return_value=sb), \
          patch("backend.src.triggers.blueprints.form.FormIngestor") as MockIngestor, \
          patch("backend.src.triggers.blueprints.form.FormAnalyzer") as MockAnalyzer:
 
@@ -180,7 +213,9 @@ def test_analyze_form_includes_coverage_metrics():
     """La respuesta incluye canonical_coverage, total_questions y unmapped_fields."""
     sb = _make_sb()
 
-    with patch("backend.src.triggers.blueprints.form._sb_client", return_value=sb), \
+    with _patch_auth_valid(), \
+         _patch_org_member_ok(), \
+         patch("backend.src.triggers.blueprints.form._sb_client", return_value=sb), \
          patch("backend.src.triggers.blueprints.form.FormIngestor") as MockIngestor, \
          patch("backend.src.triggers.blueprints.form.FormAnalyzer") as MockAnalyzer:
 

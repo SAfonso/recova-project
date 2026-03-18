@@ -1,19 +1,8 @@
 import { useState } from 'react';
-import { supabase } from '../supabaseClient';
-
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? '';
+import { authFetch } from '../utils/authFetch';
 
 async function devFetch(path, body) {
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token ?? '';
-  const res = await fetch(`${BACKEND_URL}${path}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    },
-    body: JSON.stringify(body),
-  });
+  const res = await authFetch(path, body);
   const json = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(json.error ?? `Error ${res.status}`);
   return json;

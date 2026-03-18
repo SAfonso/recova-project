@@ -95,7 +95,7 @@ def dev_seed_open_mic() -> tuple:
         ).execute()
     except Exception as exc:
         logger.exception("dev_seed_open_mic: error Supabase")
-        return api_error("EXTERNAL_SERVICE_ERROR", "error al sembrar open mic", 502, details=str(exc))
+        return api_error("EXTERNAL_SERVICE_ERROR", "error al sembrar open mic", 502)
 
     return jsonify({"status": "ok", "seeded": len(users)}), 200
 
@@ -103,8 +103,24 @@ def dev_seed_open_mic() -> tuple:
 @bp.route("/api/dev/trigger-ingest", methods=["POST"])
 def dev_trigger_ingest() -> tuple:
     """Lanza ingesta de sheets y forms en background. Protegido por Supabase JWT."""
-    if not _is_authenticated_user():
+    user = _is_authenticated_user()
+    if not user:
         return api_error("UNAUTHORIZED", "unauthorized", 401)
+
+    try:
+        sb = _sb_client()
+        member_check = (
+            sb.schema("silver")
+            .from_("organization_members")
+            .select("user_id")
+            .eq("user_id", user["sub"])
+            .execute()
+        )
+        if not member_check.data:
+            return api_error("FORBIDDEN", "forbidden", 403)
+    except Exception as exc:
+        logger.exception("dev_trigger_ingest: error Supabase")
+        return api_error("EXTERNAL_SERVICE_ERROR", "error al consultar Supabase", 502)
 
     run_ingestion_async()
     return jsonify({"status": "ok", "message": "ingesta lanzada en background"}), 200
@@ -138,11 +154,11 @@ def dev_trigger_scoring() -> tuple:
             return api_error("FORBIDDEN", "forbidden", 403)
     except Exception as exc:
         logger.exception("dev_trigger_scoring: error Supabase")
-        return api_error("EXTERNAL_SERVICE_ERROR", "error al consultar Supabase", 502, details=str(exc))
+        return api_error("EXTERNAL_SERVICE_ERROR", "error al consultar Supabase", 502)
 
     try:
         result = execute_scoring(open_mic_id)
     except Exception as exc:
-        return api_error("INTERNAL_ERROR", "error al ejecutar scoring", 500, details=str(exc))
+        return api_error("INTERNAL_ERROR", "error al ejecutar scoring", 500)
 
     return jsonify({"status": "ok", "result": result}), 200

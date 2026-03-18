@@ -1,6 +1,6 @@
 # AI LineUp Architect
 
-**Versión:** `0.32.0` · **Estado:** Desarrollo activo · **Metodología:** SDD + TDD
+**Versión:** `0.33.0` · **Estado:** Desarrollo activo · **Metodología:** SDD + TDD
 
 SaaS multi-tenant para gestión de open mics de comedia. Automatiza la recogida de solicitudes (Google Forms), el scoring con IA y la notificación del lineup por Telegram.
 
@@ -90,7 +90,7 @@ Variables de entorno: [`docs/setup.md`](docs/setup.md)
 
 ```bash
 source backend/venv/bin/activate
-PYTHONPATH=. pytest backend/tests/   # 443 tests backend
+PYTHONPATH=. pytest backend/tests/   # 445 tests backend
 cd frontend && npm test              # 70 tests frontend
 ```
 
@@ -135,6 +135,7 @@ Revisión técnica 1 (2026-03-16): 7/10. Revisión 2 (2026-03-17): 8/10. Revisi�
 | ~~I5~~ | ~~Error Boundary React~~ — `ErrorBoundary` class component envolviendo `Root` ✅ |
 | ~~I6~~ | ~~Type hints blueprints~~ — `-> tuple` en 23/23 endpoints ✅ |
 | ~~J1~~ | ~~Prompt injection guard~~ — `prompt_guard.py` protege FormAnalyzer + CustomScoringProposer, n8n sanitize nodes en Ingesta + Bot Telegram ✅ |
+| ~~K1~~ | ~~Auditoría externa~~ — API key eliminada del frontend (JWT auth), details=str(exc) eliminado, .execute() fix, trigger-ingest authz, tests n8n actualizados ✅ |
 
 </details>
 
