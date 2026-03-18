@@ -22,7 +22,15 @@ SaaS multi-tenant para gestión de open mics de comedia. Stack: React+Vite (fron
 
 ### Python — validación de endpoints
 - Todos los endpoints POST usan `@validate_json({"campo": tipo})` de `shared.py`. NO duplicar validación manual dentro del endpoint.
-- Usar `request.get_json(silent=True)` (no `force=True`) cuando el decorador ya valida el body.
+- Usar `request.get_json(silent=True)` (no `force=True`) cuando el decorador ya valida el body. `force=True` anula la validación del decorador.
+- **NUNCA interpolar nombres de columna en SQL con f-strings.** Usar whitelist o `sql.Identifier()` de psycopg2. Aplica a `register_ingestion_error()` en ingesta.
+
+### Python — scoring y configuración
+- Validar bounds de `ScoringConfig`: `available_slots > 0`, `penalty_points >= 0`. No confiar en que el host configure valores razonables.
+- `infer_gender()` devuelve `None` si las 3 capas fallan. El frontend convierte a `'nb'`. Es una limitación conocida — documentar, no ocultar.
+
+### Python — manejo de excepciones
+- **NO usar `except Exception: continue` sin logging.** Si una operación de ingesta falla (Sheet 403, JSON corrupto, etc.), al menos logear `logger.exception(...)` antes de continuar. Los silent failures son imposibles de debuguear en producción.
 
 ### Tests — aserciones de mensajes
 - **NO hacer assert de mensajes en español/inglés específicos** (ej: `"obligatorio" in msg`). En su lugar, verificar el campo relevante: `"field_name" in msg`. Esto evita roturas al cambiar idioma o formato del mensaje de error.

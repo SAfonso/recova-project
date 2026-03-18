@@ -110,10 +110,10 @@ cd frontend && npm test              # 70 tests frontend
 
 ## Deuda técnica — Sprints de mejora
 
-Revisión técnica (2026-03-16): Sprints A–D completados. Revisión 2 (2026-03-17): 3 red flags → Sprints E–G.
+Revisión técnica 1 (2026-03-16): 7/10. Revisión 2 (2026-03-17): 8/10. Revisión 3 (2026-03-17): 8.5/10. Todos los sprints completados.
 
 <details>
-<summary>Sprints A–D (completados) ✅</summary>
+<summary>Sprints A–G (completados) ✅</summary>
 
 | Sprint | Descripción |
 |--------|-------------|
@@ -122,8 +122,14 @@ Revisión técnica (2026-03-16): Sprints A–D completados. Revisión 2 (2026-03
 | ~~C~~ | ~~Arquitectura~~ — C1+C2 God File → 8 blueprints ✅ |
 | ~~D~~ | ~~Calidad~~ — D1 cascada INE + D2 BD source of truth + D3 tutorial UX + D4 paths portables ✅ |
 | ~~E~~ | ~~Red flags defensa~~ — E1 test e2e smoke + E2 `@validate_json` 13 endpoints + E3 score_breakdown JSONB ✅ |
+| ~~F1~~ | ~~Error response unificado~~ — `api_error()` en 75 puntos de error, formato único ✅ |
 | ~~F2~~ | ~~Descomponer App.jsx~~ — 534→120 líneas, 3 custom hooks + 4 componentes presentacionales ✅ |
 | ~~F3~~ | ~~Rate limiting~~ — `@rate_limit` decorador in-memory por IP, headers `X-RateLimit-*`, 9 tests ✅ |
 | ~~G1~~ | ~~OpenAPI spec~~ — `docs/openapi.yaml` con 22 rutas, schemas, auth y rate limiting ✅ |
 
 </details>
+
+### Limitaciones conocidas
+- Inferencia de género: si las 3 capas (INE, gender-guesser, genderize.io) fallan, se asigna `unknown` → frontend muestra `nb`. Mejora futura: campo de auto-declaración en el formulario.
+- Sin Docker ni CI/CD. PM2 en VPS sin containerización.
+- Sin versionado de API (`/api/v1/`).
