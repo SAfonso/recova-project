@@ -1,6 +1,6 @@
 # AI LineUp Architect
 
-**Versión:** `0.26.0` · **Estado:** Desarrollo activo · **Metodología:** SDD + TDD
+**Versión:** `0.27.0` · **Estado:** Desarrollo activo · **Metodología:** SDD + TDD
 
 SaaS multi-tenant para gestión de open mics de comedia. Automatiza la recogida de solicitudes (Google Forms), el scoring con IA y la notificación del lineup por Telegram.
 
@@ -90,7 +90,7 @@ Variables de entorno: [`docs/setup.md`](docs/setup.md)
 
 ```bash
 source backend/venv/bin/activate
-PYTHONPATH=. pytest backend/tests/   # 365 tests backend
+PYTHONPATH=. pytest backend/tests/   # 370 tests backend
 cd frontend && npm test              # 70 tests frontend
 ```
 
@@ -104,6 +104,7 @@ cd frontend && npm test              # 70 tests frontend
 | [`docs/setup.md`](docs/setup.md) | Setup local y producción |
 | [`docs/sprints.md`](docs/sprints.md) | Historial de sprints y roadmap |
 | [`docs/openapi.yaml`](docs/openapi.yaml) | Especificación OpenAPI 3.0 (22 rutas) |
+| [`docs/sequence-diagram.md`](docs/sequence-diagram.md) | Diagramas de secuencia Mermaid (flujo completo) |
 | [`CHANGELOG.md`](CHANGELOG.md) | Historial de versiones |
 
 ---
@@ -126,10 +127,13 @@ Revisión técnica 1 (2026-03-16): 7/10. Revisión 2 (2026-03-17): 8/10. Revisi�
 | ~~F2~~ | ~~Descomponer App.jsx~~ — 534→120 líneas, 3 custom hooks + 4 componentes presentacionales ✅ |
 | ~~F3~~ | ~~Rate limiting~~ — `@rate_limit` decorador in-memory por IP, headers `X-RateLimit-*`, 9 tests ✅ |
 | ~~G1~~ | ~~OpenAPI spec~~ — `docs/openapi.yaml` con 22 rutas, schemas, auth y rate limiting ✅ |
+| ~~H2-1~~ | ~~SQL injection fix~~ — Whitelist + `sql.Identifier()` en `register_ingestion_error()` ✅ |
+| ~~H2-2~~ | ~~Tests de carga~~ — 100 requests concurrentes verificando 429 thread-safe ✅ |
+| ~~H2-4~~ | ~~Diagrama secuencia~~ — 5 diagramas Mermaid del flujo completo ✅ |
 
 </details>
 
 ### Limitaciones conocidas
-- Inferencia de género: si las 3 capas (INE, gender-guesser, genderize.io) fallan, se asigna `unknown` → frontend muestra `nb`. Mejora futura: campo de auto-declaración en el formulario.
+- Inferencia de género: si las 3 capas (INE, gender-guesser, genderize.io) fallan, se asigna `unknown` → frontend muestra `nb`.
 - Sin Docker ni CI/CD. PM2 en VPS sin containerización.
 - Sin versionado de API (`/api/v1/`).

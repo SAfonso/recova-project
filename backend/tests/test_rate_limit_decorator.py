@@ -120,3 +120,25 @@ class TestRateLimitDecorator:
 
             resp2 = c.get("/test-rate-tight")
             assert resp2.status_code == 429
+
+    def test_concurrent_load_100_requests(self):
+        """100 requests concurrentes: solo max_requests pasan, el resto 429."""
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        total = 100
+        max_allowed = 3  # endpoint_rate_default tiene max_requests=3
+
+        def fire():
+            with app.test_client() as c:
+                return c.post("/test-rate-default").status_code
+
+        with ThreadPoolExecutor(max_workers=20) as pool:
+            futures = [pool.submit(fire) for _ in range(total)]
+            results = [f.result() for f in as_completed(futures)]
+
+        ok_count = results.count(200)
+        blocked_count = results.count(429)
+
+        assert ok_count == max_allowed, f"Esperadas {max_allowed} OK, got {ok_count}"
+        assert blocked_count == total - max_allowed
+        assert ok_count + blocked_count == total

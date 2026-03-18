@@ -1,3 +1,33 @@
+## [0.27.0] - 2026-03-18
+
+### Security — Sprint H2-1: SQL injection fix en `register_ingestion_error()`
+
+- **Whitelist** `_ALLOWED_ERROR_COLUMNS = frozenset({"metadata", "raw_data_extra"})` — `ValueError` si la columna no está en la lista
+- **`psycopg2.sql.Identifier()`** para construir la query de forma segura (doble protección)
+- Eliminado f-string con interpolación directa de nombre de columna en SQL
+- 4 tests nuevos: columnas permitidas, rechazo de inyección SQL, path `None`
+
+### Added — Sprint H2-2: Test de carga concurrente rate limiting
+
+- Test con **100 requests en 20 threads** contra endpoint con `max_requests=3`
+- Verifica exactamente 3 pasan (200) y 97 bloqueadas (429)
+- Confirma que `_rate_limit_lock` es thread-safe bajo carga concurrente
+
+### Added — Sprint H2-4: Diagramas de secuencia Mermaid
+
+- `docs/sequence-diagram.md` con 5 diagramas:
+  - **Flujo principal**: Solicitud → Ingesta Bronze/Silver → Scoring Gold → Validación → n8n
+  - **Telegram**: Registro host con código RCV-XXXX
+  - **Ingesta batch**: n8n → Sheets → Bronze → Silver
+  - **Arquitectura Medallion**: Flowchart Bronze → Silver → Gold
+  - **Seguridad por capa**: rate_limit → api_key → validate_json → whitelist SQL
+
+### Tests
+- 5 tests nuevos (4 whitelist + 1 carga concurrente)
+- **Total acumulado**: 370 backend + 70 frontend = 440 tests verdes
+
+---
+
 ## [0.26.0] - 2026-03-17
 
 ### Added — Sprint G1: OpenAPI spec

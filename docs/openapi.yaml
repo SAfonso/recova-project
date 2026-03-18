@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: AI LineUp Architect API
-  version: 0.26.0
+  version: 0.27.0
   description: |
     API REST del sistema de gestión de open mics de comedia.
     Automatiza la ingesta de solicitudes, scoring con IA, validación de lineup

@@ -408,3 +408,45 @@ class TestInferGender:
         assert ingestion._ine_lookup("bartholomew") is None
         assert ingestion._gender_guesser_lookup("bartholomew") == "m"
         assert ingestion.infer_gender("Bartholomew", None) == "m"
+
+
+# --- Tests register_ingestion_error whitelist ---
+
+
+class TestRegisterIngestionErrorWhitelist:
+    """Verifica que register_ingestion_error rechaza columnas no permitidas."""
+
+    def test_allowed_column_metadata(self):
+        assert "metadata" in ingestion._ALLOWED_ERROR_COLUMNS
+
+    def test_allowed_column_raw_data_extra(self):
+        assert "raw_data_extra" in ingestion._ALLOWED_ERROR_COLUMNS
+
+    def test_rejects_disallowed_column(self):
+        from unittest.mock import MagicMock
+        from uuid import UUID
+
+        conn = MagicMock()
+        with pytest.raises(ValueError, match="Columna no permitida"):
+            ingestion.register_ingestion_error(
+                conn,
+                bronze_id=UUID("00000000-0000-0000-0000-000000000001"),
+                error_metadata_column="Robert'; DROP TABLE bronze.solicitudes;--",
+                message="test",
+                phase="test",
+            )
+
+    def test_none_column_logs_instead(self):
+        """Con error_metadata_column=None no ejecuta SQL, solo logea."""
+        from unittest.mock import MagicMock
+        from uuid import UUID
+
+        conn = MagicMock()
+        ingestion.register_ingestion_error(
+            conn,
+            bronze_id=UUID("00000000-0000-0000-0000-000000000001"),
+            error_metadata_column=None,
+            message="test error",
+            phase="test_phase",
+        )
+        conn.cursor.assert_not_called()

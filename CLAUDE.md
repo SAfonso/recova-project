@@ -83,6 +83,6 @@ frontend/src/
 
 ## Tests
 ```bash
-PYTHONPATH=. pytest backend/tests/   # 365 tests
+PYTHONPATH=. pytest backend/tests/   # 370 tests
 cd frontend && npm test              # 70 tests
 ```

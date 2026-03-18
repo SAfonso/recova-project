@@ -15,6 +15,7 @@ from typing import Iterable
 from uuid import UUID
 
 import psycopg2
+from psycopg2 import sql
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -569,6 +570,9 @@ def mark_bronze_processed(conn, bronze_id: UUID) -> None:
         )
 
 
+_ALLOWED_ERROR_COLUMNS = frozenset({"metadata", "raw_data_extra"})
+
+
 def register_ingestion_error(
     conn,
     bronze_id: UUID,
@@ -579,22 +583,29 @@ def register_ingestion_error(
     error_timestamp = datetime.utcnow().isoformat(timespec="seconds") + "Z"
 
     if error_metadata_column:
+        if error_metadata_column not in _ALLOWED_ERROR_COLUMNS:
+            raise ValueError(
+                f"Columna no permitida: {error_metadata_column!r}"
+            )
+        col = sql.Identifier(error_metadata_column)
         with conn.cursor() as cursor:
             cursor.execute(
-                f"""
-                UPDATE bronze.solicitudes
-                SET {error_metadata_column} = COALESCE({error_metadata_column}, '{{}}'::jsonb)
-                  || jsonb_build_object(
-                        'estado', 'error_ingesta',
-                        'error_log',
-                        jsonb_build_object(
-                            'message', %s,
-                            'timestamp', %s,
-                            'phase', %s
-                        )
-                     )
-                WHERE id = %s
-                """,
+                sql.SQL(
+                    """
+                    UPDATE bronze.solicitudes
+                    SET {col} = COALESCE({col}, '{{}}'::jsonb)
+                      || jsonb_build_object(
+                            'estado', 'error_ingesta',
+                            'error_log',
+                            jsonb_build_object(
+                                'message', %s,
+                                'timestamp', %s,
+                                'phase', %s
+                            )
+                         )
+                    WHERE id = %s
+                    """
+                ).format(col=col),
                 (message, error_timestamp, phase, str(bronze_id)),
             )
         return
