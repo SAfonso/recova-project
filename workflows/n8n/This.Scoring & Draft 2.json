@@ -1,103 +1,143 @@
 {
-  "name": "Scoring & Draft",
+  "name": "This.Scoring & Draft 2",
   "nodes": [
     {
       "parameters": {
         "rule": {
           "interval": [
             {
-              "field": "days",
               "triggerAtHour": 10
             }
           ]
         }
       },
+      "id": "830ee7d7-3c27-44fc-a6bf-5c72cc78b87a",
       "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.3,
-      "position": [0, 0],
-      "id": "ef754ef2-b14d-4f0b-8e38-da7023a3e342",
+      "typeVersion": 1,
+      "position": [
+        -208,
+        0
+      ],
       "name": "Schedule Trigger"
     },
     {
       "parameters": {
-        "url": "={{ $env.SUPABASE_URL + '/rest/v1/telegram_users?select=telegram_user_id,host_id' }}",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/telegram_users?select=telegram_user_id,host_id",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey",         "value": "={{ $env.SUPABASE_KEY }}" },
-            { "name": "Authorization",  "value": "={{ 'Bearer ' + $env.SUPABASE_KEY }}" },
-            { "name": "Accept-Profile", "value": "silver" }
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.SUPABASE_KEY }}"
+            },
+            {
+              "name": "Accept-Profile",
+              "value": "silver"
+            }
           ]
         },
         "options": {}
       },
+      "id": "98720f11-56a9-45de-96d4-6514b64c9aa0",
+      "name": "HTTP (get users)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [220, 0],
-      "id": "bb000001-0000-0000-0000-000000000001",
-      "name": "HTTP (get users)"
+      "position": [
+        -32,
+        96
+      ]
     },
     {
       "parameters": {
         "batchSize": 1,
         "options": {}
       },
+      "id": "d5b10216-9873-4bd4-9b4d-0bf60fcea6f7",
       "type": "n8n-nodes-base.splitInBatches",
-      "typeVersion": 3,
-      "position": [440, 0],
-      "id": "bb000001-0000-0000-0000-000000000002",
+      "typeVersion": 2,
+      "position": [
+        128,
+        48
+      ],
       "name": "Split In Batches"
     },
     {
       "parameters": {
-        "url": "={{ $env.RECOVA_BACKEND_URL }}/mcp/open-mics",
+        "url": "={{ $env.BACKEND_URL }}/mcp/open-mics",
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "host_id", "value": "={{ $json.host_id }}" }
+            {
+              "name": "host_id",
+              "value": "={{ $json.host_id }}"
+            }
           ]
         },
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "X-API-KEY", "value": "={{ $env.WEBHOOK_API_KEY }}" }
+            {
+              "name": "X-API-KEY",
+              "value": "={{ $env.WEBHOOK_API_KEY }}"
+            }
           ]
         },
         "options": {}
       },
+      "id": "97649000-ac86-45a3-8ce9-70ab9c31fc62",
+      "name": "HTTP (get open_mics)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [660, 0],
-      "id": "bb000001-0000-0000-0000-000000000003",
-      "name": "HTTP (get open_mics)"
+      "position": [
+        304,
+        -64
+      ]
     },
     {
       "parameters": {
         "jsCode": "// Expande un host en N items (uno por open_mic)\nconst user = $('Split In Batches').item.json;\nconst openMics = $input.item.json.open_mics || [];\n\nif (openMics.length === 0) return [];\n\nreturn openMics.map(om => ({\n  json: {\n    telegram_user_id: user.telegram_user_id,\n    host_id: user.host_id,\n    open_mic_id: om.id,\n    open_mic_nombre: om.nombre,\n  }\n}));"
       },
+      "id": "deaf36dd-c0a5-4faa-bf94-cd04f3dd1a2c",
+      "name": "Code (flatten)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [880, 0],
-      "id": "bb000001-0000-0000-0000-000000000004",
-      "name": "Code (flatten)"
+      "position": [
+        480,
+        -112
+      ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.RECOVA_BACKEND_URL }}/api/lineup/prepare-validation",
+        "url": "={{ $env.BACKEND_URL }}/api/lineup/prepare-validation",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "X-API-KEY",     "value": "={{ $env.WEBHOOK_API_KEY }}" },
-            { "name": "Content-Type",  "value": "application/json" }
+            {
+              "name": "X-API-KEY",
+              "value": "={{ $env.WEBHOOK_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
-        "specifyBody": "keypair",
         "bodyParameters": {
           "parameters": [
-            { "name": "host_id",     "value": "={{ $json.host_id }}" },
-            { "name": "open_mic_id", "value": "={{ $json.open_mic_id }}" }
+            {
+              "name": "host_id",
+              "value": "={{ $json.host_id }}"
+            },
+            {
+              "name": "open_mic_id",
+              "value": "={{ $json.open_mic_id }}"
+            }
           ]
         },
         "options": {
@@ -108,11 +148,14 @@
           }
         }
       },
+      "id": "378ee8ad-5d2a-401c-a392-c9e352c56ba6",
+      "name": "HTTP (prepare-validation)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1100, 0],
-      "id": "bb000001-0000-0000-0000-000000000005",
-      "name": "HTTP (prepare-validation)"
+      "position": [
+        640,
+        -112
+      ]
     },
     {
       "parameters": {
@@ -125,21 +168,27 @@
           ]
         }
       },
+      "id": "57951fc7-5ee4-46ba-bd57-3f1a19047ba7",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [1320, 0],
-      "id": "bb000001-0000-0000-0000-000000000006",
+      "position": [
+        784,
+        -112
+      ],
       "name": "IF (tiene link?)"
     },
     {
       "parameters": {
         "jsCode": "// Formatea el mensaje de Telegram con lineup + link\nconst prep = $input.item.json;\nconst lineup = prep.lineup || [];\n\nconst lineupText = lineup.map((c, i) => {\n  const ig = c.instagram ? ` (@${c.instagram})` : '';\n  return `${i + 1}. ${c.nombre}${ig}`;\n}).join('\\n');\n\nlet fechaDisplay = prep.fecha_evento || '';\ntry {\n  fechaDisplay = new Date(prep.fecha_evento + 'T12:00:00').toLocaleDateString('es-ES', {\n    weekday: 'long', day: 'numeric', month: 'long'\n  });\n} catch(e) {}\n\nconst nombreShow = $('Code (flatten)').item.json.open_mic_nombre || 'tu show';\n\nreturn [{\n  json: {\n    telegram_user_id: $('Code (flatten)').item.json.telegram_user_id,\n    message_text: `Lineup para ${nombreShow} (${fechaDisplay}):\\n\\n${lineupText}\\n\\nValida aqui antes de que empiece el show:\\n${prep.validate_url}`,\n  }\n}];"
       },
+      "id": "f1a46483-51fa-49a3-b883-682a70ea9ce2",
+      "name": "Code (formato mensaje)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1540, -120],
-      "id": "bb000001-0000-0000-0000-000000000007",
-      "name": "Code (formato mensaje)"
+      "position": [
+        944,
+        -208
+      ]
     },
     {
       "parameters": {
@@ -147,11 +196,15 @@
         "text": "={{ $json.message_text }}",
         "additionalFields": {}
       },
+      "id": "0aeb9faa-43ff-4eb1-a18d-742802e8f773",
       "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1.2,
-      "position": [1760, -120],
-      "id": "bb000001-0000-0000-0000-000000000008",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        -208
+      ],
       "name": "Telegram (enviar)",
+      "webhookId": "91eb4d31-f059-4e05-8ee4-bd1d2c404b6d",
       "credentials": {
         "telegramApi": {
           "id": "6Ab7xKZYHk0wK6KP",
@@ -163,43 +216,103 @@
   "pinData": {},
   "connections": {
     "Schedule Trigger": {
-      "main": [[{ "node": "HTTP (get users)", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "HTTP (get users)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "HTTP (get users)": {
-      "main": [[{ "node": "Split In Batches", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Split In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Split In Batches": {
-      "main": [[{ "node": "HTTP (get open_mics)", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "HTTP (get open_mics)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "HTTP (get open_mics)": {
-      "main": [[{ "node": "Code (flatten)", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Code (flatten)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Code (flatten)": {
-      "main": [[{ "node": "HTTP (prepare-validation)", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "HTTP (prepare-validation)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "HTTP (prepare-validation)": {
-      "main": [[{ "node": "IF (tiene link?)", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "IF (tiene link?)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "IF (tiene link?)": {
       "main": [
-        [{ "node": "Code (formato mensaje)", "type": "main", "index": 0 }],
-        []
+        [
+          {
+            "node": "Code (formato mensaje)",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Code (formato mensaje)": {
-      "main": [[{ "node": "Telegram (enviar)", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Telegram (enviar)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
     "executionOrder": "v1",
     "availableInMCP": false
   },
-  "versionId": "fafe12bf-6486-4aa1-827e-9665b67d25aa",
+  "versionId": "1e3ee461-c2b7-42bb-bd23-240dde63143f",
   "meta": {
-    "templateCredsSetupCompleted": true,
     "instanceId": "0a875fbb3d2fbb10ab816e54655a603076a1de35a069a813489d324e1ea27d6a"
   },
-  "id": "DbGmkvy9A8IIvZhK",
+  "id": "itonRJTzLepmQBtC",
   "tags": []
 }

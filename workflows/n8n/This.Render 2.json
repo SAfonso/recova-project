@@ -1,0 +1,373 @@
+{
+  "name": "This.Render 2",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generar-poster-lineup",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -720,
+        -48
+      ],
+      "id": "027e38f6-07d8-426b-b84a-6921f3babc06",
+      "name": "Webhook",
+      "webhookId": "9282d6dc-a7d3-4d22-bcbe-4b9936a2054f"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/lineup_candidates",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "fecha_evento",
+              "value": "=eq.{{ $('Webhook').item.json.body.fecha }}"
+            },
+            {
+              "name": "estado",
+              "value": "=eq.aprobado"
+            },
+            {
+              "name": "select",
+              "value": "nombre,instagram,fecha_evento"
+            },
+            {
+              "name": "open_mic_id",
+              "value": "=eq.{{ $('Webhook').item.json.body.open_mic_id }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Accept-Profile",
+              "value": "gold"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        64,
+        -48
+      ],
+      "id": "d20c29a5-b156-4a67-9e33-88add5a70d5b",
+      "name": "Get Approved Comics",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const webhookBody = $('Webhook').first().json.body || {};\nconst fecha_evento = webhookBody.fecha || 'evento';\nconst telegramData = $('Get Telegram chat_id').first().json;\nconst telegram_user_id = String((Array.isArray(telegramData) ? telegramData[0]?.telegram_user_id : telegramData?.telegram_user_id) || '');\n\n// Usar el lineup exacto enviado por el frontend si existe,\n// si no, caer en los resultados de la query DB\nlet lineup;\nif (webhookBody.lineup && webhookBody.lineup.length > 0) {\n  lineup = webhookBody.lineup.map((c, index) => ({\n    order: index + 1,\n    name: c.name,\n    instagram: (c.instagram || '').replace('@', '').trim()\n  }));\n} else {\n  const items = $input.all();\n  if (items.length === 0) throw new Error('No hay cómicos aprobados para esta fecha');\n  lineup = items.map((item, index) => ({\n    order: index + 1,\n    name: item.json.nombre,\n    instagram: (item.json.instagram || '').replace('@', '').trim()\n  }));\n}\n\nconst lineupText = lineup.map(c => {\n  const ig = c.instagram ? ` — @${c.instagram}` : '';\n  return `${c.order}. ${c.name}${ig}`;\n}).join('\\n');\n\nconst message = `✅ Lineup confirmado\\n📅 ${fecha_evento}\\n\\n${lineupText}`;\n\nreturn [{\n  json: {\n    message: message,\n    event_id: fecha_evento,\n    date: fecha_evento,\n    lineup: lineup,\n    telegram_user_id: telegram_user_id\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        272,
+        -48
+      ],
+      "id": "3a2dbc97-cc10-46d8-b39d-0700ccbabd75",
+      "name": "Map Payload"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.BACKEND_URL }}/api/render-poster",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "={{ $env.WEBHOOK_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ event_id: $json.event_id, lineup: $json.lineup, date: $json.date, open_mic_id:\n  $('Webhook').first().json.body.open_mic_id }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "cartel"
+            }
+          },
+          "timeout": 60000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        512,
+        224
+      ],
+      "id": "ed5df256-47af-4b69-8817-6f0ba67c6509",
+      "name": "HTTP (render)",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Map Payload').item.json.telegram_user_id }}",
+        "text": "=={{ $('Map Payload').item.json.message }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        480,
+        -48
+      ],
+      "id": "c9fbc8d9-c7b0-4877-b36f-e25428163e1b",
+      "name": "Telegram (enviar)",
+      "webhookId": "8eddc129-2067-470a-b171-108a652b3a8e",
+      "credentials": {
+        "telegramApi": {
+          "id": "6Ab7xKZYHk0wK6KP",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/open_mics",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "select",
+              "value": "proveedor_id"
+            },
+            {
+              "name": "id",
+              "value": "=eq.{{ $json.body.open_mic_id }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Accept-Profile",
+              "value": "silver"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -512,
+        -48
+      ],
+      "id": "a48dd5bc-a4af-4881-a812-0135034fe59f",
+      "name": "Get Host proveedor_id",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/telegram_users ",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "select",
+              "value": "telegram_user_id"
+            },
+            {
+              "name": "host_id",
+              "value": "=eq.{{ $json.user_id }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Accept-Profile",
+              "value": "silver"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -144,
+        -48
+      ],
+      "id": "f100f61d-447f-4184-a79a-f5725729ca69",
+      "name": "Get Telegram chat_id",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/organization_members",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "select",
+              "value": "user_id"
+            },
+            {
+              "name": "proveedor_id",
+              "value": "=eq.{{ $json.proveedor_id }}"
+            },
+            {
+              "name": "limit",
+              "value": "1"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Accept-Profile",
+              "value": "silver"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -320,
+        -48
+      ],
+      "id": "7b576a1c-13b3-4183-909e-e8205de5f1d0",
+      "name": "Get Host user_id",
+      "alwaysOutputData": true
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Get Host proveedor_id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Approved Comics": {
+      "main": [
+        [
+          {
+            "node": "Map Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map Payload": {
+      "main": [
+        [
+          {
+            "node": "Telegram (enviar)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP (render)": {
+      "main": [
+        []
+      ]
+    },
+    "Get Host proveedor_id": {
+      "main": [
+        [
+          {
+            "node": "Get Host user_id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Telegram chat_id": {
+      "main": [
+        [
+          {
+            "node": "Get Approved Comics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Host user_id": {
+      "main": [
+        [
+          {
+            "node": "Get Telegram chat_id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "b9a5b833-af84-438f-b19b-260029678370",
+  "meta": {
+    "instanceId": "0a875fbb3d2fbb10ab816e54655a603076a1de35a069a813489d324e1ea27d6a"
+  },
+  "id": "MYNIA6jM0RIY66XT",
+  "tags": []
+}
