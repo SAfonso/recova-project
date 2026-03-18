@@ -1,3 +1,320 @@
+## [0.34.0] - 2026-03-19
+
+### Infra — Dockerización del backend
+
+- **Dockerfile** arreglado: `COPY backend/assets/` (fonts + poster templates), `HEALTHCHECK`, `--workers 1` (rate_limit store in-memory), `curl` instalado
+- **`docker-compose.yml`** nuevo: servicio único backend con healthcheck y restart policy
+- **Endpoint `/health`** en `webhook_listener.py` — `{"status": "ok"}` sin auth
+- **`deploy.yml`** actualizado: `docker compose down && docker compose up -d --build` reemplaza `pm2 startOrReload`
+- **`.dockerignore`** completado: excluye tests, docs, specs, workflows, node_modules, .github
+- **`flask-cors`** eliminado de `requirements.txt` (no se usa, CORS es manual)
+- **`LOG_LEVEL`** documentado en `.env.example`
+
+## [0.33.0] - 2026-03-18
+
+### Security — Sprint K1: Correcciones de auditoría externa
+
+#### [Crítico] API key eliminada del frontend
+- **`VITE_WEBHOOK_API_KEY`** ya no se expone en el bundle del frontend
+- Nuevos helpers en `shared.py`: `require_authenticated_user()` + `require_org_member()`
+- 3 endpoints de `form.py` (`create-form`, `analyze-form`, `propose-custom-rules`) migrados de API key a JWT + membership check
+- `telegram.py:generate-code` migrado a JWT auth; `host_id` se extrae del token, no del body
+- Nuevo `frontend/src/utils/authFetch.js` — helper centralizado para llamadas autenticadas
+- `OpenMicSelector.jsx`, `ScoringConfigurator.jsx`, `DevToolsPanel.jsx` usan `authFetch`
+- Eliminada `VITE_WEBHOOK_API_KEY` de `.env.example`
+
+#### [Alto] mcp_reopen_lineup — .execute() ausente
+- `mcp_agent.py:190`: `sb.rpc(...)` → `sb.schema("silver").rpc(...).execute()` (schema correcto + execute)
+
+#### [Medio] Exposición de detalles internos
+- Eliminadas 27 ocurrencias de `details=str(exc)` en `api_error()` de los 8 blueprints
+- El `logger.exception()` previo ya registra el traceback server-side
+
+#### [Medio] /api/dev/trigger-ingest sin control de pertenencia
+- Añadida verificación de membresía en `organization_members` antes de permitir la ingesta
+
+#### [Calidad] pytest.ini
+- Eliminada opción `asyncio_default_test_loop_scope` no soportada por la versión instalada de pytest-asyncio
+
+#### [Calidad] Tests n8n desactualizados
+- Nombres de workflows actualizados: `This.Ingesta-Solicitudes 3.json`, `This.Scoring & Draft 2.json`, `This.Render 2.json`, `This.Test BOT 3.json`
+- Assertions de env vars actualizadas: `$env.BACKEND_URL`, `$env.SUPABASE_SERVICE_KEY` en Render y Test BOT
+
+### Tests
+- Tests actualizados: `test_telegram_generate_code.py`, `test_analyze_form_endpoint.py`, `test_propose_custom_rules_endpoint.py`, `test_dev_tools.py`, `test_lineup_mcp_endpoints.py`
+- **Total acumulado**: 445 backend + 70 frontend = 515 tests verdes
+
+---
+
+## [0.32.0] - 2026-03-18
+
+### Security — Sprint J1: Protección contra Prompt Injection en llamadas a Gemini
+
+- Nuevo módulo **`backend/src/core/prompt_guard.py`** con dos capas de defensa:
+  - `detect_injection()` — pattern matching multilingüe (ES, EN, FR, DE, PT, IT, ZH, RU, JA, KO) + delimitadores de escape + Unicode tricks
+  - `sanitize_for_prompt()` — strip invisibles, control chars, trunca a 200 chars, escapa delimitadores
+  - `validate_fields()` — integra sanitización + detección, lanza `ValueError` si detecta inyección
+  - `wrap_user_field()` — envuelve campos en `<user_field>` tags + instrucción defensiva en prompt template
+- **`FormAnalyzer.analyze()`** y **`CustomScoringProposer.propose()`** ahora sanitizan y validan inputs antes de enviar a Gemini
+- Workflow n8n **Ingesta-Solicitudes**: nodo Code sanitize entre Edit Fields → Aggregate (nombres/instagrams de cómicos)
+- Workflow n8n **Test BOT**: nodo Code sanitize + If (¿Bloqueado?) antes de AI Agent + system prompt reforzado
+
+### Tests
+- 66 tests nuevos en `test_prompt_guard.py` (patrones multilingües, falsos positivos, sanitización, truncamiento)
+- 4 tests de integración en `test_form_analyzer.py` y `test_custom_scoring_proposer.py` (rechazo de inyección + tags `<user_field>`)
+- **Total acumulado**: 443 backend + 70 frontend = 513 tests verdes
+
+---
+
+## [0.31.0] - 2026-03-18
+
+### Added — Sprint I5: Error Boundary React
+
+- Componente `ErrorBoundary` (class component) con `getDerivedStateFromError` + `componentDidCatch`
+- Envuelve `<Root />` en `main.jsx` — captura errores no manejados en todo el árbol de componentes
+- UI amigable: mensaje de error + botón "Recargar página"
+- Errores se loguean en consola con `componentStack` para debugging
+
+### Added — Sprint I6: Type hints en blueprints
+
+- `-> tuple` en **23/23** endpoints Flask (16 nuevos + 7 existentes)
+- Blueprints actualizados: ingestion (3), lineup (3), telegram (2), dev (3), mcp_agent (5)
+
+### Fixed — Sprints I1, I2: Silent failures + savepoints SQL seguros
+
+- **I1**: Logging en 6 `except` silenciosos — `shared.py` (auth JWT, pipeline async), `lineup.py` (scoring), `poster.py` (cleanup), `poster_detector_gemini.py` (Gemini API), `bronze_to_silver_ingestion.py` (genderize.io)
+- **I2**: Reemplazadas f-strings en `SAVEPOINT`/`ROLLBACK TO SAVEPOINT` por `sql.SQL().format(sql.Identifier())` de psycopg2
+
+### Fixed — Bug bronze atascados en bucle infinito
+
+- Clasificador `_is_permanent_error()` distingue errores permanentes (UniqueViolation, CheckViolation, ValueError) de transitorios (OperationalError, timeout)
+- `mark_bronze_processed()` se llama tras errores permanentes para evitar reintentos infinitos
+- 2 tests nuevos: UniqueViolation marca procesado, OperationalError no lo marca
+
+### Tests
+- 4 tests nuevos (2 permanent/transient error + 1 assert actualizado + 1 warning fix)
+- **Total acumulado**: 372 backend + 70 frontend = 442 tests verdes
+
+---
+
+## [0.30.0] - 2026-03-18
+
+### Fixed — Sprints I1, I2: Silent failures + savepoints SQL seguros
+
+- Commit intermedio — cambios integrados en v0.31.0
+
+---
+
+## [0.29.0] - 2026-03-18
+
+### Refactor — Sprint I4: Descomponer `process_single_solicitud()` (God Function)
+
+- Extraída **`_parse_bronze_record(bronze, today)`** → dataclass `ParsedSolicitud` con normalización + parsing de fechas/experiencia/disponibilidad
+- Extraída **`_persist_solicitud(conn, bronze, parsed)`** → inferencia de género, upsert cómico, insert silver, mark processed
+- `process_single_solicitud()` queda como orquestador (~30 líneas): savepoint → parse → check dates → persist → error handling
+- Función original: ~107 líneas monolíticas → 3 funciones con responsabilidad única
+- **Total acumulado**: 370 backend + 70 frontend = 440 tests verdes
+
+---
+
+## [0.28.0] - 2026-03-18
+
+### Fixed — Sprint I3: Gender parity dead code
+
+- `'unknown'` ahora entra en el bucket `f_nb` del algoritmo de paridad de género, junto con `'f'` y `'nb'`
+- Antes: candidatos sin género inferido caían en bucket `unk` y se relegaban al final del ranking — gender parity no los incluía en la alternancia
+- Después: `unknown` alterna con `m` como parte del grupo subrepresentado
+- Constante `_F_NB = {"f", "nb", "unknown"}` centraliza la pertenencia al grupo
+- 2 tests actualizados con nuevo orden esperado de alternancia
+- **Total acumulado**: 370 backend + 70 frontend = 440 tests verdes
+
+---
+
+## [0.27.0] - 2026-03-18
+
+### Security — Sprint H2-1: SQL injection fix en `register_ingestion_error()`
+
+- **Whitelist** `_ALLOWED_ERROR_COLUMNS = frozenset({"metadata", "raw_data_extra"})` — `ValueError` si la columna no está en la lista
+- **`psycopg2.sql.Identifier()`** para construir la query de forma segura (doble protección)
+- Eliminado f-string con interpolación directa de nombre de columna en SQL
+- 4 tests nuevos: columnas permitidas, rechazo de inyección SQL, path `None`
+
+### Added — Sprint H2-2: Test de carga concurrente rate limiting
+
+- Test con **100 requests en 20 threads** contra endpoint con `max_requests=3`
+- Verifica exactamente 3 pasan (200) y 97 bloqueadas (429)
+- Confirma que `_rate_limit_lock` es thread-safe bajo carga concurrente
+
+### Added — Sprint H2-4: Diagramas de secuencia Mermaid
+
+- `docs/sequence-diagram.md` con 5 diagramas:
+  - **Flujo principal**: Solicitud → Ingesta Bronze/Silver → Scoring Gold → Validación → n8n
+  - **Telegram**: Registro host con código RCV-XXXX
+  - **Ingesta batch**: n8n → Sheets → Bronze → Silver
+  - **Arquitectura Medallion**: Flowchart Bronze → Silver → Gold
+  - **Seguridad por capa**: rate_limit → api_key → validate_json → whitelist SQL
+
+### Tests
+- 5 tests nuevos (4 whitelist + 1 carga concurrente)
+- **Total acumulado**: 370 backend + 70 frontend = 440 tests verdes
+
+---
+
+## [0.26.0] - 2026-03-17
+
+### Added — Sprint G1: OpenAPI spec
+
+- `docs/openapi.yaml` — Especificación OpenAPI 3.0.3 con las 22 rutas de la API
+- Organizada en 8 tags: Ingesta, Lineup, Formularios, Telegram, Poster, MCP Agent, Orquestación, Desarrollo
+- Documenta ambos mecanismos de auth (API Key + Bearer JWT), rate limiting y formato de errores unificado
+- Schemas reutilizables: `Error`, `CandidateItem`, `SlotItem`
+- Respuestas comunes: `Unauthorized`, `ValidationError`, `RateLimited`, `ExternalServiceError`
+
+---
+
+### Added — Sprint F3: Rate limiting in-memory por IP
+
+#### Decorador `@rate_limit(max_requests, window_seconds)`
+- Ventana deslizante in-memory con `{endpoint:ip: [timestamps]}`, thread-safe (`threading.Lock`)
+- Devuelve **429** con `Retry-After` header si se excede el límite
+- Headers informativos en cada respuesta: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`
+- No requiere Redis — el proceso PM2 es único
+
+#### Endpoints protegidos
+- `/api/form-submission` — **5 req/min** (dispara pipeline completo)
+- `/api/telegram/register` — **10 req/min**
+- `/api/validate-view/lineup` — **30 req/min**
+- `/api/validate-view/validate` — **30 req/min**
+
+### Tests
+- 9 tests nuevos en `test_rate_limit_decorator.py`: límite, 429, headers, ventana, endpoints independientes, expiración
+- Fixture `_reset_rate_limit_store` en `conftest.py` (autouse)
+- **Total acumulado**: 365 backend + 70 frontend = 435 tests verdes
+
+---
+
+## [0.25.0] - 2026-03-17
+
+### Changed — Sprint F2: Descomponer App.jsx (534 → 120 líneas)
+
+#### Hooks extraídos
+- **`useCandidates.js`** (~148 líneas) — data fetching, selectedIds, toggleSelected, isLastMinuteMode, singleDateMode, validación contra `silver.lineup_slots`
+- **`useEdits.js`** (~96 líneas) — getDraft, hasPendingEdit, updateDraft, handleGeneroUpdate, handleCategoryUpdate, clearEdits. Exporta `CATEGORY_OPTIONS`
+- **`useValidation.js`** (~131 líneas) — validateLineup (RPC + n8n fire-and-forget), handleCambiarAccept (reset slots)
+
+#### Componentes presentacionales extraídos
+- **`LoadingSkeleton.jsx`** — skeleton shimmer de 5 filas durante carga
+- **`ValidadoStamp.jsx`** — sello animado "VALIDADO" con checkmark SVG
+- **`CambiarConfirmModal.jsx`** — modal de confirmación para cambiar lineup validado
+- **`RecoveryNotes.jsx`** — textarea de notas de recuperación para Telegram/n8n
+
+#### App.jsx resultante (~120 líneas)
+- Solo estado UI local: `activeId`, `activeTab`, `isExpanded`, `recoveryNotes`
+- 3 llamadas a hooks + 1 useMemo (`activeCandidate`) + 1 función (`openExpanded`)
+- JSX layout puro: wiring de props a componentes existentes y nuevos
+
+### Tests
+- 26 tests nuevos: `useEdits.test.js` (10), `useCandidates.test.js` (8), `useValidation.test.js` (8)
+- **Total acumulado**: 356 backend + 70 frontend = 426 tests verdes
+
+---
+
+## [0.24.0] - 2026-03-17
+
+### Changed — Sprint E: Red flags defensa (E1 + E2 + E3)
+
+#### E1 — Test E2E smoke (happy path)
+- Nuevo test `test_e2e_happy_path.py` que simula el flujo completo sin red: POST `/api/form-submission` → `run_pipeline()` (bronze→silver) → `execute_scoring()` (silver→gold). Mock de Supabase + psycopg2 cursor con pattern matching SQL
+- 4 tests: happy path completo, detección de género, score positivo, categoría restricted excluida
+
+#### E2 — Validación de entrada centralizada
+- Nuevo decorador `@validate_json(required)` en `shared.py`: valida JSON body, campos obligatorios, tipos. Devuelve 400 con mensaje claro
+- Aplicado en **13 endpoints POST** de 6 blueprints: ingestion, form, telegram, dev, lineup, mcp_agent
+- Eliminadas validaciones manuales redundantes en `dev.py`
+- 11 tests dedicados en `test_validate_json_decorator.py`
+
+#### E3 — Auditoría del scoring (score breakdown)
+- Nuevo campo `score_breakdown: dict` en `CandidateScore` dataclass
+- `build_ranking()` construye desglose: `{base_score, categoria, recency_penalty, single_date_bonus, custom_rules_bonus, total}`
+- `persist_pending_score()` escribe `score_breakdown` como JSONB en `gold.solicitudes`
+- `execute_scoring()` incluye `score_breakdown` en respuesta API (`top_sugeridos`)
+- Migración SQL: `20260317_add_score_breakdown_to_gold.sql`
+- 9 tests dedicados en `test_score_breakdown.py`
+
+### Tests
+- **Total acumulado**: 356 backend + 44 frontend = 400 tests verdes
+
+---
+
+## [0.23.0] - 2026-03-16
+
+### Changed — Sprint B+D: Seguridad, calidad y UX
+
+#### Sprint B — Seguridad
+- **B2 CORS restringido** — `Access-Control-Allow-Origin: *` reemplazado por origin dinámico: solo acepta `FRONTEND_URL` (Vercel) y `localhost:5173/3000` (dev). Implementado en `shared.py` con `_cors_headers()` y `_cors_origin()`
+- **B3 Supabase singleton** — `create_client()` eliminado de todos los blueprints (`form.py`, `ingestion.py`, `dev.py`, `poster.py`). Nueva función `_sb_client()` en `shared.py` con lazy-init singleton. Fixture `_reset_sb_singleton` en `conftest.py` previene leaks entre tests
+
+#### Sprint D — Calidad y argumentación
+- **D1 Cascada de género 3 capas** — `infer_gender()` ahora usa: (1) diccionario INE con 54.977 nombres españoles del Padrón Continuo, (2) `gender-guesser` como fallback internacional, (3) `genderize.io` API (100 calls/día, `country_id=ES`, umbral ≥0.7). Resuelve correctamente Iker, Naiara, Maite, Yurena, Pepa, Amaia, Unai, Ainhoa y miles más
+- **D2 BD source of truth** — `App.jsx`: `isValidated` se inicializa desde localStorage (caché optimista) pero se reconcilia con `silver.lineup_slots` al montar. Si la BD dice "no confirmado", se limpia localStorage
+- **D3 Tutorial UX** — `OnboardingTutorial.jsx`: reactivado botón X, `disableOverlayClose` eliminado, `disableCloseOnEsc={false}`. Al cerrar/skip se muestra modal de confirmación: "El paso de Telegram es obligatorio para usar el bot" con opciones Salir/Continuar
+- **D4 Paths portables** — `ecosystem.config.js`: rutas hardcodeadas `/root/RECOVA` reemplazadas por `path.resolve(__dirname)` con soporte para `$PROJECT_ROOT` env var
+
+### Added
+- `backend/data/ine_nombres.json` — 54.977 nombres españoles (961 KB) extraídos del INE Padrón Continuo 2022
+- `_ine_lookup()`, `_gender_guesser_lookup()`, `_genderize_lookup()` — funciones de capa individual en `bronze_to_silver_ingestion.py`
+- `_cors_headers()`, `_cors_origin()`, `_ALLOWED_ORIGINS` — CORS dinámico en `shared.py`
+
+### Tests
+- 10 tests nuevos de género (INE + cascada) en `test_bronze_to_silver_ingestion.py`
+- 1 test actualizado en `OnboardingTutorial.test.jsx` (modal de confirmación al skip)
+- Todos los test patches migrados de `create_client` → `_sb_client` en los módulos correctos
+- **Total acumulado**: 332 backend + 44 frontend = 376 tests verdes
+
+---
+
+## [0.22.0] - 2026-03-16
+
+### Changed — Sprint C1+C2: Refactorizar webhook_listener.py + Unificar framework
+
+- **`webhook_listener.py`** — God File de 1.194 líneas refactorizado a app factory de 36 líneas que registra 8 Flask Blueprints + CORS
+- **`shared.py`** — nuevo módulo con auth (`_is_authorized`, `_is_authenticated_user`), constantes, helpers (`_next_event_datetime`, `_CANONICAL_TO_BRONZE`) y `run_ingestion_async()` (threading)
+- **8 blueprints** en `backend/src/triggers/blueprints/`: `n8n`, `ingestion`, `form`, `lineup`, `mcp_agent`, `telegram`, `dev`, `poster`
+- **`/ingest`** — `subprocess.run()` reemplazado por llamada directa a `run_pipeline()`
+- **`/scoring`** — `subprocess.run()` reemplazado por llamada directa a `execute_scoring()`
+- **`subprocess.Popen`** (ingesta background) — reemplazado por `run_ingestion_async()` con `threading.Thread(daemon=True)`
+- **`poster.py`** — absorbe lógica de render de `mcp_server.py`, convertida de async a sync
+
+### Removed
+
+- **`backend/src/mcp_server.py`** — 564 líneas eliminadas (FastAPI renderer, desactivado)
+- **`backend/tests/mcp/test_mcp_server_http.py`** y **`test_server_integration.py`** — 9 tests del servidor FastAPI eliminados
+- **Dependencias**: `fastapi`, `uvicorn`, `mcp[http]` eliminadas de `requirements.txt` y `pyproject.toml`
+- **`ecosystem.config.js`** — app `recova-mcp-http` eliminada (solo queda `webhook-ingesta`)
+
+### Tests
+
+- 14 ficheros de test actualizados (mock paths → blueprints)
+- `test_webhook_listener.py` reescrito para testear `/ingest` y `/scoring` con llamadas directas
+- **Total acumulado**: 322 backend + 44 frontend = 366 tests verdes
+- 22 rutas registradas, 0 cambios de URL (frontend y n8n no se tocan)
+
+---
+
+## [0.21.1] - 2026-03-16
+
+### Fixed — Sprint A: bugs funcionales
+
+- **A1 `scoring_engine.py`** — `build_ranking()` ahora respeta `gender_parity_enabled`: cuando está desactivado (default), el ranking se ordena puramente por score sin alternancia de género; cuando está activado, alterna f/nb ↔ m como antes
+- **A2 `scoring_config.py`** — falso positivo: `_SINGLE_DATE_BONUS=40` ya estaba protegido por `single_date_priority_enabled`. Documentada la decisión de diseño de no hacerlo configurable (evitar que cómicos exploten el hack)
+- **Tests** — 3 tests existentes actualizados para usar `_parity_config()` (flag `True`); 1 test nuevo `test_build_ranking_no_interleave_when_parity_disabled` que verifica orden puro por score
+
+### Tests
+
+- **Total acumulado**: 397 tests verdes (353 backend + 44 frontend)
+
+---
+
 ## [0.21.0] - 2026-03-13
 
 ### Added — Tutorial onboarding + fixes CORS y scripts

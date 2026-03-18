@@ -1,6 +1,6 @@
 # AI LineUp Architect
 
-**Versión:** `0.21.0` · **Estado:** Desarrollo activo · **Metodología:** SDD + TDD
+**Versión:** `0.34.0` · **Estado:** Desarrollo activo · **Metodología:** SDD + TDD
 
 SaaS multi-tenant para gestión de open mics de comedia. Automatiza la recogida de solicitudes (Google Forms), el scoring con IA y la notificación del lineup por Telegram.
 
@@ -19,13 +19,12 @@ SaaS multi-tenant para gestión de open mics de comedia. Automatiza la recogida 
 | Capa | Tecnología |
 |------|-----------|
 | Frontend | React + Vite + Tailwind |
-| Backend | Python / Flask :5000 |
-| Renderer | mcp_server.py — FastAPI :5050 (Gemini Vision + Pillow) · *desactivado temporalmente* |
+| Backend | Python / Flask :5000 (8 blueprints) |
 | Base de datos | Supabase (PostgreSQL — Bronze / Silver / Gold) |
 | Auth | Supabase (Google OAuth) |
 | Orquestación | n8n |
 | Formularios | Google Forms + Sheets API (OAuth2) |
-| Procesos | PM2 en VPS Ubuntu (Hetzner) · Traefik — `api.machango.org` |
+| Procesos | Docker Compose en VPS Ubuntu (Hetzner) · Traefik — `api.machango.org` |
 | Bot Telegram | `@ailineup_bot` (n8n + Gemini 2.5 Flash) |
 
 ---
@@ -39,23 +38,37 @@ recova-project/
 │   ├── scripts/              # OAuth2, seed, reset
 │   ├── src/
 │   │   ├── core/             # Módulos: scoring, render, forms, security
-│   │   ├── triggers/         # webhook_listener.py (Flask :5000)
+│   │   ├── triggers/
+│   │   │   ├── webhook_listener.py   # App factory + /health endpoint
+│   │   │   ├── shared.py             # Auth, constantes, helpers
+│   │   │   └── blueprints/           # 8 blueprints por dominio
+│   │   │       ├── n8n.py            # /ingest, /scoring
+│   │   │       ├── ingestion.py      # /api/form-submission, ingest-from-*
+│   │   │       ├── form.py           # /api/open-mic/create-form, analyze, propose
+│   │   │       ├── lineup.py         # /api/lineup/*, validate-view/*
+│   │   │       ├── mcp_agent.py      # /mcp/* (Telegram Agent)
+│   │   │       ├── telegram.py       # /api/telegram/*
+│   │   │       ├── dev.py            # /api/dev/*
+│   │   │       └── poster.py         # /api/render-poster
 │   │   ├── bronze_to_silver_ingestion.py
-│   │   ├── scoring_engine.py
-│   │   └── mcp_server.py     # Renderer API (FastAPI :5050)
+│   │   └── scoring_engine.py
 │   └── tests/
 │       ├── core/             # Tests módulos core
-│       ├── mcp/              # Tests renderer
+│       ├── mcp/              # Tests MCP agent endpoints
 │       ├── scripts/          # Tests scripts utilidad
 │       └── unit/             # Tests unitarios generales
 ├── frontend/
 │   └── src/
 │       ├── components/       # OpenMicSelector, OpenMicDetail, ScoringConfigurator…
-│       ├── App.jsx           # Lineup app (curación)
+│       ├── hooks/            # useCandidates, useEdits, useValidation
+│       ├── App.jsx           # Lineup app — orquestador (~120 líneas)
 │       └── main.jsx          # Root: Login → Selector → Detail → App
 ├── specs/                    # Specs SDD + esquemas y migraciones SQL
 ├── docs/                     # Documentación técnica
 ├── workflows/n8n/            # Workflows exportados
+├── Dockerfile                # Imagen backend (Gunicorn, 1 worker)
+├── docker-compose.yml        # Servicio backend con healthcheck
+├── .dockerignore             # Exclusiones para build
 └── CHANGELOG.md
 ```
 
@@ -64,10 +77,13 @@ recova-project/
 ## Inicio rápido
 
 ```bash
-# Backend
+# Backend (Docker — recomendado)
+cp .env.example .env   # rellenar valores
+docker compose up -d   # Flask :5000 via Gunicorn
+
+# Backend (local, sin Docker)
 pip install -r requirements.txt
-PYTHONPATH=. python backend/src/triggers/webhook_listener.py   # Flask :5000
-PYTHONPATH=. python -m backend.src.mcp_server                  # Renderer :5050
+PYTHONPATH=. python backend/src/triggers/webhook_listener.py
 
 # Frontend
 cd frontend && npm install && npm run dev
@@ -81,8 +97,8 @@ Variables de entorno: [`docs/setup.md`](docs/setup.md)
 
 ```bash
 source backend/venv/bin/activate
-PYTHONPATH=. pytest backend/tests/unit/ backend/tests/core/   # 189 tests backend
-cd frontend && npm test                                        # 40 tests frontend
+PYTHONPATH=. pytest backend/tests/   # 445 tests backend
+cd frontend && npm test              # 70 tests frontend
 ```
 
 ---
@@ -94,4 +110,43 @@ cd frontend && npm test                                        # 40 tests fronte
 | [`docs/architecture.md`](docs/architecture.md) | Variables de entorno y capas |
 | [`docs/setup.md`](docs/setup.md) | Setup local y producción |
 | [`docs/sprints.md`](docs/sprints.md) | Historial de sprints y roadmap |
+| [`docs/openapi.yaml`](docs/openapi.yaml) | Especificación OpenAPI 3.0 (22 rutas) |
+| [`docs/sequence-diagram.md`](docs/sequence-diagram.md) | Diagramas de secuencia Mermaid (flujo completo) |
 | [`CHANGELOG.md`](CHANGELOG.md) | Historial de versiones |
+
+---
+
+## Deuda técnica — Sprints de mejora
+
+Revisión técnica 1 (2026-03-16): 7/10. Revisión 2 (2026-03-17): 8/10. Revisión 3 (2026-03-17): 8.5/10.
+
+<details>
+<summary>Sprints A–G (completados) ✅</summary>
+
+| Sprint | Descripción |
+|--------|-------------|
+| ~~A~~ | ~~Bugs funcionales~~ — A1 gender_parity fix + A2 falso positivo documentado ✅ |
+| ~~B~~ | ~~Seguridad~~ — B2 CORS restringido + B3 singleton Supabase ✅ |
+| ~~C~~ | ~~Arquitectura~~ — C1+C2 God File → 8 blueprints ✅ |
+| ~~D~~ | ~~Calidad~~ — D1 cascada INE + D2 BD source of truth + D3 tutorial UX + D4 paths portables ✅ |
+| ~~E~~ | ~~Red flags defensa~~ — E1 test e2e smoke + E2 `@validate_json` 13 endpoints + E3 score_breakdown JSONB ✅ |
+| ~~F1~~ | ~~Error response unificado~~ — `api_error()` en 75 puntos de error, formato único ✅ |
+| ~~F2~~ | ~~Descomponer App.jsx~~ — 534→120 líneas, 3 custom hooks + 4 componentes presentacionales ✅ |
+| ~~F3~~ | ~~Rate limiting~~ — `@rate_limit` decorador in-memory por IP, headers `X-RateLimit-*`, 9 tests ✅ |
+| ~~G1~~ | ~~OpenAPI spec~~ — `docs/openapi.yaml` con 22 rutas, schemas, auth y rate limiting ✅ |
+| ~~H2-1~~ | ~~SQL injection fix~~ — Whitelist + `sql.Identifier()` en `register_ingestion_error()` ✅ |
+| ~~H2-2~~ | ~~Tests de carga~~ — 100 requests concurrentes verificando 429 thread-safe ✅ |
+| ~~H2-4~~ | ~~Diagrama secuencia~~ — 5 diagramas Mermaid del flujo completo ✅ |
+| ~~I3~~ | ~~Gender parity dead code~~ — `'unknown'` ahora alterna en bucket `f_nb` ✅ |
+| ~~I4~~ | ~~God Function~~ — `process_single_solicitud()` descompuesta en `_parse_bronze_record()` + `_persist_solicitud()` ✅ |
+| ~~I5~~ | ~~Error Boundary React~~ — `ErrorBoundary` class component envolviendo `Root` ✅ |
+| ~~I6~~ | ~~Type hints blueprints~~ — `-> tuple` en 23/23 endpoints ✅ |
+| ~~J1~~ | ~~Prompt injection guard~~ — `prompt_guard.py` protege FormAnalyzer + CustomScoringProposer, n8n sanitize nodes en Ingesta + Bot Telegram ✅ |
+| ~~K1~~ | ~~Auditoría externa~~ — API key eliminada del frontend (JWT auth), details=str(exc) eliminado, .execute() fix, trigger-ingest authz, tests n8n actualizados ✅ |
+
+</details>
+
+### Limitaciones conocidas
+- Inferencia de género: si las 3 capas (INE, gender-guesser, genderize.io) fallan, se asigna `unknown`. El scoring agrupa `unknown` con `f/nb` para paridad; el frontend muestra `NB`.
+- CD via GitHub Actions → SSH → `docker compose up -d --build` (desde v0.34.0).
+- Sin versionado de API (`/api/v1/`).

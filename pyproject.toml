@@ -1,6 +1,6 @@
 [project]
 name = "ai-lineup-architect-backend"
-version = "0.18.3"
+version = "0.22.0"
 description = "Backend scripts for LineUp scoring and ingestion"
 authors = [
     {name = "SAfonso"}
@@ -14,9 +14,6 @@ dependencies = [
     "flask>=3.0.0",
     "jinja2>=3.1.0",
     "playwright>=1.50.0",
-    "fastapi>=0.115.0",
-    "uvicorn>=0.30.0",
-    "mcp[http]>=1.0.0",
     "google-api-python-client>=2.100.0",
     "google-auth>=2.23.0"
 ]

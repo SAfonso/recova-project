@@ -1,15 +1,17 @@
+const path = require('path');
+
+const PROJECT_ROOT = process.env.PROJECT_ROOT || path.resolve(__dirname);
+
 module.exports = {
   apps: [
     {
-      name: "recova-mcp-http",
-      cwd: "/home/sergio/Desktop/Recova Project/recova-project",
-      script: "./.venv/bin/python",
-      args: "-m backend.src.mcp_server",
-      interpreter: "none",
+      name: "webhook-ingesta",
+      cwd: PROJECT_ROOT,
+      script: path.join(PROJECT_ROOT, "backend/src/triggers/webhook_listener.py"),
+      interpreter: path.join(PROJECT_ROOT, "venv/bin/python3"),
       env: {
-        PYTHONUNBUFFERED: "1",
-        MCP_HOST: "127.0.0.1",
-        MCP_PORT: "8000"
+        PYTHONPATH: PROJECT_ROOT,
+        PYTHONUNBUFFERED: "1"
       },
       autorestart: true,
       max_restarts: 10,

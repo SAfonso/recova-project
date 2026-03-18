@@ -10,9 +10,12 @@ Variable de entorno: GEMINI_API_KEY
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 from typing import Any
 
 from .poster_detector_base import AbstractDetector, PlaceholderAnchor
@@ -160,4 +163,5 @@ class GeminiDetector(AbstractDetector):
             )
             return resp.text.strip().strip('"').strip("'")
         except Exception:
+            logger.warning("detect_font: Gemini API call failed", exc_info=True)
             return ""

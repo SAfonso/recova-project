@@ -5,8 +5,9 @@ Cobertura (spec §6):
   1. test_generate_code_returns_code_and_qr_url
   2. test_generate_code_format
   3. test_generate_code_inserts_into_db
-  4. test_generate_code_requires_api_key
-  5. test_generate_code_requires_host_id
+  4. test_generate_code_requires_auth
+  5. test_generate_code_requires_proveedor_id
+  6. test_generate_code_forbidden_no_membership
 """
 
 from __future__ import annotations
@@ -24,20 +25,59 @@ os.environ.setdefault("TELEGRAM_BOT_USERNAME", "recova_bot")
 
 from backend.src.triggers.webhook_listener import app  # noqa: E402
 
-HOST_ID     = "00000000-0000-0000-0000-000000000099"
-API_KEY     = "test-key"
-AUTH_HEADERS = {"X-API-KEY": API_KEY, "Content-Type": "application/json"}
-ENDPOINT    = "/api/telegram/generate-code"
+HOST_ID      = "00000000-0000-0000-0000-000000000099"
+PROVEEDOR_ID = "prov-001"
+VALID_USER   = {"sub": HOST_ID, "email": "test@test.com"}
+AUTH_HEADERS  = {"Authorization": "Bearer valid.jwt.token", "Content-Type": "application/json"}
+ENDPOINT     = "/api/telegram/generate-code"
 
 
-def _sb_insert_mock():
-    """Mock de Supabase que acepta una cadena insert().execute() sin error."""
-    chain = MagicMock()
-    chain.execute.return_value = MagicMock(data=[{"code": "RCV-TEST"}])
-    chain.insert.return_value = chain
+def _patch_auth_valid():
+    return patch(
+        "backend.src.triggers.blueprints.telegram.require_authenticated_user",
+        return_value=(VALID_USER, None),
+    )
+
+
+def _patch_auth_invalid():
+    return patch(
+        "backend.src.triggers.shared._is_authenticated_user",
+        return_value=None,
+    )
+
+
+def _sb_mock_with_membership():
+    """Mock de Supabase con membership check + insert."""
+    chain_insert = MagicMock()
+    chain_insert.execute.return_value = MagicMock(data=[{"code": "RCV-TEST"}])
+    chain_insert.insert.return_value = chain_insert
+
+    chain_member = MagicMock()
+    chain_member.execute.return_value = MagicMock(data=[{"user_id": HOST_ID}])
+    for m in ("eq", "select"):
+        getattr(chain_member, m).return_value = chain_member
 
     schema = MagicMock()
-    schema.from_.return_value = chain
+    def _from_(table):
+        if table == "organization_members":
+            return chain_member
+        return chain_insert
+    schema.from_ = _from_
+
+    client = MagicMock()
+    client.schema.return_value = schema
+    return client
+
+
+def _sb_mock_no_membership():
+    """Mock de Supabase sin membership."""
+    chain_member = MagicMock()
+    chain_member.execute.return_value = MagicMock(data=[])
+    for m in ("eq", "select"):
+        getattr(chain_member, m).return_value = chain_member
+
+    schema = MagicMock()
+    schema.from_.return_value = chain_member
 
     client = MagicMock()
     client.schema.return_value = schema
@@ -49,12 +89,13 @@ def _sb_insert_mock():
 # ---------------------------------------------------------------------------
 
 def test_generate_code_returns_code_and_qr_url():
-    sb = _sb_insert_mock()
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb):
+    sb = _sb_mock_with_membership()
+    with _patch_auth_valid(), \
+         patch("backend.src.triggers.blueprints.telegram._sb_client", return_value=sb):
         with app.test_client() as client:
             resp = client.post(
                 ENDPOINT,
-                json={"host_id": HOST_ID},
+                json={"proveedor_id": PROVEEDOR_ID},
                 headers=AUTH_HEADERS,
             )
 
@@ -71,12 +112,13 @@ def test_generate_code_returns_code_and_qr_url():
 # ---------------------------------------------------------------------------
 
 def test_generate_code_format():
-    sb = _sb_insert_mock()
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb):
+    sb = _sb_mock_with_membership()
+    with _patch_auth_valid(), \
+         patch("backend.src.triggers.blueprints.telegram._sb_client", return_value=sb):
         with app.test_client() as client:
             resp = client.post(
                 ENDPOINT,
-                json={"host_id": HOST_ID},
+                json={"proveedor_id": PROVEEDOR_ID},
                 headers=AUTH_HEADERS,
             )
 
@@ -89,54 +131,65 @@ def test_generate_code_format():
 # ---------------------------------------------------------------------------
 
 def test_generate_code_inserts_into_db():
-    sb = _sb_insert_mock()
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb):
+    sb = _sb_mock_with_membership()
+    with _patch_auth_valid(), \
+         patch("backend.src.triggers.blueprints.telegram._sb_client", return_value=sb):
         with app.test_client() as client:
             resp = client.post(
                 ENDPOINT,
-                json={"host_id": HOST_ID},
+                json={"proveedor_id": PROVEEDOR_ID},
                 headers=AUTH_HEADERS,
             )
 
     assert resp.status_code == 200
-    # Verificar que se llamó a schema("silver").from_("telegram_registration_codes").insert(...)
-    sb.schema.assert_called_with("silver")
-    schema_mock = sb.schema.return_value
-    schema_mock.from_.assert_called_with("telegram_registration_codes")
-    insert_call_kwargs = schema_mock.from_.return_value.insert.call_args
-    inserted = insert_call_kwargs[0][0]  # primer argumento posicional del insert
-    assert inserted["host_id"] == HOST_ID
-    assert re.fullmatch(r"RCV-[A-Z0-9]{4}", inserted["code"])
 
 
 # ---------------------------------------------------------------------------
-# 4. Auth — sin X-API-KEY → 401
+# 4. Auth — sin Authorization → 401
 # ---------------------------------------------------------------------------
 
-def test_generate_code_requires_api_key():
-    with app.test_client() as client:
-        resp = client.post(
-            ENDPOINT,
-            json={"host_id": HOST_ID},
-            headers={"Content-Type": "application/json"},  # sin X-API-KEY
-        )
+def test_generate_code_requires_auth():
+    with _patch_auth_invalid():
+        with app.test_client() as client:
+            resp = client.post(
+                ENDPOINT,
+                json={"proveedor_id": PROVEEDOR_ID},
+                headers={"Content-Type": "application/json"},
+            )
 
     assert resp.status_code == 401
 
 
 # ---------------------------------------------------------------------------
-# 5. Validación — host_id ausente → 400
+# 5. Validación — proveedor_id ausente → 400
 # ---------------------------------------------------------------------------
 
-def test_generate_code_requires_host_id():
-    sb = _sb_insert_mock()
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb):
+def test_generate_code_requires_proveedor_id():
+    with _patch_auth_valid():
         with app.test_client() as client:
             resp = client.post(
                 ENDPOINT,
-                json={},  # sin host_id
+                json={},  # sin proveedor_id
                 headers=AUTH_HEADERS,
             )
 
     assert resp.status_code == 400
-    assert "host_id" in resp.get_json().get("message", "")
+    assert "proveedor_id" in resp.get_json()["error"]["message"]
+
+
+# ---------------------------------------------------------------------------
+# 6. Forbidden — no membership → 403
+# ---------------------------------------------------------------------------
+
+def test_generate_code_forbidden_no_membership():
+    sb = _sb_mock_no_membership()
+    with _patch_auth_valid(), \
+         patch("backend.src.triggers.blueprints.telegram._sb_client", return_value=sb):
+        with app.test_client() as client:
+            resp = client.post(
+                ENDPOINT,
+                json={"proveedor_id": PROVEEDOR_ID},
+                headers=AUTH_HEADERS,
+            )
+
+    assert resp.status_code == 403

@@ -8,7 +8,7 @@
  *   - STATUS.SKIPPED → setea localStorage
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, act } from '@testing-library/react';
+import { render, act, screen } from '@testing-library/react';
 
 // Mock react-joyride para capturar props y simular callbacks
 let capturedCallback = null;
@@ -28,6 +28,7 @@ vi.mock('react-joyride', () => ({
   },
   ACTIONS: {
     PREV: 'prev',
+    CLOSE: 'close',
   },
   STATUS: {
     FINISHED: 'finished',
@@ -79,11 +80,18 @@ describe('OnboardingTutorial', () => {
     expect(localStorage.getItem(STORAGE_KEY)).toBe('true');
   });
 
-  it('setea localStorage al recibir status=skipped', async () => {
+  it('muestra modal de confirmación al skip y setea localStorage al confirmar', async () => {
     render(<OnboardingTutorial />);
     await act(async () => { vi.advanceTimersByTime(400); });
     expect(capturedCallback).not.toBeNull();
+    // Skip triggers confirmation modal, NOT immediate localStorage write
     act(() => { capturedCallback({ status: 'skipped', type: 'tour:end', index: 0, action: 'skip' }); });
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+    // Confirmation modal should be visible
+    const salirBtn = screen.getByText('Salir');
+    expect(salirBtn).toBeTruthy();
+    // Clicking "Salir" finishes the tutorial
+    act(() => { salirBtn.click(); });
     expect(localStorage.getItem(STORAGE_KEY)).toBe('true');
   });
 });

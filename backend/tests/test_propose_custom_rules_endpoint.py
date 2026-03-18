@@ -7,7 +7,7 @@ Cubre (spec custom_scoring_spec §Endpoint):
   - 200 con rules:[] si no hay campos no canónicos
   - 422 si Gemini falla
   - guarda rules en config via RPC
-  - 401 sin API key
+  - 401 sin JWT
 """
 
 from __future__ import annotations
@@ -27,8 +27,8 @@ os.environ.setdefault("GEMINI_API_KEY", "fake-gemini-key")
 
 from backend.src.triggers.webhook_listener import app  # noqa: E402
 
-API_KEY = "test-key"
-AUTH = {"X-API-KEY": API_KEY, "Content-Type": "application/json"}
+VALID_USER = {"sub": "user-123", "email": "test@test.com"}
+AUTH = {"Authorization": "Bearer valid.jwt.token", "Content-Type": "application/json"}
 
 OPEN_MIC_ID = "om-sprint10-uuid"
 
@@ -59,6 +59,31 @@ PROPOSED_RULES = [
         "description": "Bono por humor negro",
     }
 ]
+
+
+# ---------------------------------------------------------------------------
+# Auth helpers
+# ---------------------------------------------------------------------------
+
+def _patch_auth_valid():
+    return patch(
+        "backend.src.triggers.blueprints.form.require_authenticated_user",
+        return_value=(VALID_USER, None),
+    )
+
+
+def _patch_auth_invalid():
+    return patch(
+        "backend.src.triggers.shared._is_authenticated_user",
+        return_value=None,
+    )
+
+
+def _patch_org_member_ok():
+    return patch(
+        "backend.src.triggers.blueprints.form.require_org_member",
+        return_value=None,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -95,8 +120,10 @@ def test_propose_returns_200_with_rules():
     """Happy path: 200 con lista de reglas propuestas."""
     sb = _make_sb(CONFIG_WITH_UNMAPPED)
 
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb), \
-         patch("backend.src.triggers.webhook_listener.CustomScoringProposer") as MockProposer:
+    with _patch_auth_valid(), \
+         _patch_org_member_ok(), \
+         patch("backend.src.triggers.blueprints.form._sb_client", return_value=sb), \
+         patch("backend.src.triggers.blueprints.form.CustomScoringProposer") as MockProposer:
 
         MockProposer.return_value.propose.return_value = PROPOSED_RULES
 
@@ -116,21 +143,24 @@ def test_propose_returns_200_with_rules():
 
 def test_propose_missing_open_mic_id_400():
     """400 si falta open_mic_id."""
-    with app.test_client() as c:
-        resp = c.post(
-            "/api/open-mic/propose-custom-rules",
-            json={},
-            headers=AUTH,
-        )
+    with _patch_auth_valid(), _patch_org_member_ok():
+        with app.test_client() as c:
+            resp = c.post(
+                "/api/open-mic/propose-custom-rules",
+                json={},
+                headers=AUTH,
+            )
     assert resp.status_code == 400
-    assert "obligatorio" in resp.get_json()["message"]
+    assert "open_mic_id" in resp.get_json()["error"]["message"]
 
 
 def test_propose_no_field_mapping_422():
     """422 si config del open mic no tiene field_mapping."""
     sb = _make_sb({})  # config sin field_mapping
 
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb):
+    with _patch_auth_valid(), \
+         _patch_org_member_ok(), \
+         patch("backend.src.triggers.blueprints.form._sb_client", return_value=sb):
         with app.test_client() as c:
             resp = c.post(
                 "/api/open-mic/propose-custom-rules",
@@ -141,15 +171,18 @@ def test_propose_no_field_mapping_422():
     assert resp.status_code == 422
     data = resp.get_json()
     assert data["status"] == "error"
-    assert "field_mapping" in data["message"]
+    assert data["error"]["code"] == "UNPROCESSABLE_ENTITY"
+    assert "field_mapping" in data["error"]["message"]
 
 
 def test_propose_no_unmapped_fields_200_empty():
     """200 con rules:[] si todos los campos del form son canónicos."""
     sb = _make_sb(CONFIG_ALL_CANONICAL)
 
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb), \
-         patch("backend.src.triggers.webhook_listener.CustomScoringProposer") as MockProposer:
+    with _patch_auth_valid(), \
+         _patch_org_member_ok(), \
+         patch("backend.src.triggers.blueprints.form._sb_client", return_value=sb), \
+         patch("backend.src.triggers.blueprints.form.CustomScoringProposer") as MockProposer:
 
         MockProposer.return_value.propose.return_value = []
 
@@ -170,8 +203,10 @@ def test_propose_gemini_invalid_422():
     """422 si CustomScoringProposer lanza ValueError."""
     sb = _make_sb(CONFIG_WITH_UNMAPPED)
 
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb), \
-         patch("backend.src.triggers.webhook_listener.CustomScoringProposer") as MockProposer:
+    with _patch_auth_valid(), \
+         _patch_org_member_ok(), \
+         patch("backend.src.triggers.blueprints.form._sb_client", return_value=sb), \
+         patch("backend.src.triggers.blueprints.form.CustomScoringProposer") as MockProposer:
 
         MockProposer.return_value.propose.side_effect = ValueError("Gemini devolvió JSON inválido: {{{")
 
@@ -185,15 +220,18 @@ def test_propose_gemini_invalid_422():
     assert resp.status_code == 422
     data = resp.get_json()
     assert data["status"] == "error"
-    assert "inválido" in data["message"]
+    assert data["error"]["code"] == "UNPROCESSABLE_ENTITY"
+    assert "inválido" in data["error"]["message"]
 
 
 def test_propose_saves_rules_to_config():
     """Llama a RPC update_open_mic_config_keys con custom_scoring_rules."""
     sb = _make_sb(CONFIG_WITH_UNMAPPED)
 
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb), \
-         patch("backend.src.triggers.webhook_listener.CustomScoringProposer") as MockProposer:
+    with _patch_auth_valid(), \
+         _patch_org_member_ok(), \
+         patch("backend.src.triggers.blueprints.form._sb_client", return_value=sb), \
+         patch("backend.src.triggers.blueprints.form.CustomScoringProposer") as MockProposer:
 
         MockProposer.return_value.propose.return_value = PROPOSED_RULES
 
@@ -215,13 +253,14 @@ def test_propose_saves_rules_to_config():
 
 
 def test_propose_unauthorized_401():
-    """401 sin API key."""
-    with app.test_client() as c:
-        resp = c.post(
-            "/api/open-mic/propose-custom-rules",
-            json={"open_mic_id": OPEN_MIC_ID},
-            headers={"Content-Type": "application/json"},
-        )
+    """401 sin JWT."""
+    with _patch_auth_invalid():
+        with app.test_client() as c:
+            resp = c.post(
+                "/api/open-mic/propose-custom-rules",
+                json={"open_mic_id": OPEN_MIC_ID},
+                headers={"Content-Type": "application/json"},
+            )
     assert resp.status_code == 401
 
 
@@ -229,8 +268,10 @@ def test_propose_response_includes_metadata():
     """La respuesta incluye unmapped_fields y proposed_count."""
     sb = _make_sb(CONFIG_WITH_UNMAPPED)
 
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb), \
-         patch("backend.src.triggers.webhook_listener.CustomScoringProposer") as MockProposer:
+    with _patch_auth_valid(), \
+         _patch_org_member_ok(), \
+         patch("backend.src.triggers.blueprints.form._sb_client", return_value=sb), \
+         patch("backend.src.triggers.blueprints.form.CustomScoringProposer") as MockProposer:
 
         MockProposer.return_value.propose.return_value = PROPOSED_RULES
 

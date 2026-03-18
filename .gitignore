@@ -30,8 +30,7 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # --- Docker ---
-.dockerignore
-# Nota: No ignoramos el Dockerfile, solo archivos temporales si los hubiera
+# Nota: .dockerignore y Dockerfile deben estar en el repo para builds en CI/CD
 
 # --- SO y Editores ---
 .DS_Store

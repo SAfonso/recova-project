@@ -1,0 +1,1181 @@
+openapi: 3.0.3
+info:
+  title: AI LineUp Architect API
+  version: 0.27.0
+  description: |
+    API REST del sistema de gestión de open mics de comedia.
+    Automatiza la ingesta de solicitudes, scoring con IA, validación de lineup
+    y notificaciones por Telegram.
+
+    ## Autenticación
+
+    La API soporta dos mecanismos de autenticación:
+
+    - **API Key**: Header `X-API-KEY` — usado por n8n, Google Apps Script y el bot de Telegram.
+    - **Bearer JWT**: Header `Authorization: Bearer <token>` — tokens Supabase para endpoints de desarrollo.
+
+    Dos endpoints de validación usan **tokens temporales** en lugar de auth convencional.
+
+    ## Rate Limiting
+
+    Endpoints sensibles incluyen rate limiting por IP. Las respuestas incluyen headers:
+    - `X-RateLimit-Limit` — máximo de requests en la ventana
+    - `X-RateLimit-Remaining` — requests restantes
+    - `X-RateLimit-Reset` — segundos hasta reset de la ventana
+
+    Si se excede el límite se devuelve `429` con header `Retry-After`.
+
+    ## Formato de errores
+
+    Todos los errores siguen el mismo formato:
+    ```json
+    {
+      "status": "error",
+      "error": {
+        "code": "ERROR_CODE",
+        "message": "Descripción legible"
+      }
+    }
+    ```
+
+servers:
+  - url: https://api.machango.org
+    description: Producción (VPS Hetzner + Traefik)
+  - url: http://localhost:5000
+    description: Desarrollo local
+
+tags:
+  - name: Ingesta
+    description: Recepción y procesamiento de solicitudes desde formularios y hojas de cálculo
+  - name: Lineup
+    description: Preparación y validación del lineup de comediantes
+  - name: Formularios
+    description: Creación y análisis de Google Forms
+  - name: Telegram
+    description: Registro de hosts en el bot de Telegram
+  - name: Poster
+    description: Generación de posters del lineup
+  - name: MCP Agent
+    description: Endpoints para el agente conversacional de Telegram (Gemini)
+  - name: Orquestación
+    description: Triggers de n8n para pipelines de ingesta y scoring
+  - name: Desarrollo
+    description: Herramientas de desarrollo (seed, triggers manuales)
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-KEY
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: MISSING_FIELDS
+            message:
+              type: string
+              example: "Missing required fields: open_mic_id"
+            details:
+              type: string
+              description: Información adicional (opcional, solo en errores de servicio externo)
+
+    CandidateItem:
+      type: object
+      properties:
+        solicitud_id:
+          type: string
+        nombre:
+          type: string
+          example: "Ana García"
+        instagram:
+          type: string
+          example: "anacomica"
+        score:
+          type: number
+          example: 85.5
+
+    SlotItem:
+      type: object
+      properties:
+        slot_order:
+          type: integer
+        nombre:
+          type: string
+        instagram:
+          type: string
+        categoria:
+          type: string
+          example: "regular"
+
+  responses:
+    Unauthorized:
+      description: API key inválida o ausente
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            status: error
+            error:
+              code: UNAUTHORIZED
+              message: unauthorized
+    ValidationError:
+      description: Error de validación en el body o parámetros
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    RateLimited:
+      description: Demasiadas peticiones
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+          description: Segundos hasta poder reintentar
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            status: error
+            error:
+              code: RATE_LIMITED
+              message: Too many requests
+    ExternalServiceError:
+      description: Error en servicio externo (Supabase, Google APIs)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Paths
+# ──────────────────────────────────────────────────────────────────────────────
+
+paths:
+
+  # ── Ingesta ────────────────────────────────────────────────────────────────
+
+  /api/form-submission:
+    post:
+      tags: [Ingesta]
+      summary: Recibir solicitud desde Google Form
+      description: |
+        Recibe datos de un formulario (via Apps Script), los inserta en bronze
+        y lanza la ingesta bronze→silver en background.
+        Rate limit: 5 req/min por IP.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [open_mic_id]
+              properties:
+                open_mic_id:
+                  type: string
+                Nombre artístico:
+                  type: string
+                "Instagram (sin @)":
+                  type: string
+                WhatsApp:
+                  type: string
+                "¿Cuántas veces has actuado en un open mic?":
+                  type: string
+                "¿Qué fechas te vienen bien?":
+                  type: string
+                "¿Estarías disponible si nos falla alguien de última hora?":
+                  type: string
+                "¿Cómo nos conociste?":
+                  type: string
+      responses:
+        "200":
+          description: Solicitud recibida correctamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Open mic no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "502":
+          $ref: "#/components/responses/ExternalServiceError"
+
+  /api/ingest-from-sheets:
+    post:
+      tags: [Ingesta]
+      summary: Ingestar desde Google Sheets
+      description: |
+        Lee todas las hojas de cálculo de open mics activos con `sheet_id` configurado
+        e inserta filas nuevas en bronze. Lanza ingesta bronze→silver al finalizar.
+      security:
+        - ApiKeyAuth: []
+      responses:
+        "200":
+          description: Ingesta completada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  open_mics_processed:
+                    type: integer
+                  rows_ingested:
+                    type: integer
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "502":
+          $ref: "#/components/responses/ExternalServiceError"
+
+  /api/ingest-from-forms:
+    post:
+      tags: [Ingesta]
+      summary: Ingestar desde Google Forms API
+      description: |
+        Lee respuestas directamente de Google Forms para open mics con
+        `external_form_id` y `field_mapping` configurados. Inserta filas nuevas
+        en bronze y actualiza el cursor `last_form_ingestion_at`.
+      security:
+        - ApiKeyAuth: []
+      responses:
+        "200":
+          description: Ingesta completada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  open_mics_processed:
+                    type: integer
+                  rows_ingested:
+                    type: integer
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          description: Error al inicializar el ingestor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "502":
+          $ref: "#/components/responses/ExternalServiceError"
+
+  # ── Lineup ─────────────────────────────────────────────────────────────────
+
+  /api/lineup/prepare-validation:
+    post:
+      tags: [Lineup]
+      summary: Preparar validación del lineup
+      description: |
+        Calcula el próximo show, ejecuta scoring, genera un token temporal
+        y devuelve el lineup ordenado por score junto con el link de validación.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [host_id, open_mic_id]
+              properties:
+                host_id:
+                  type: string
+                open_mic_id:
+                  type: string
+      responses:
+        "200":
+          description: Lineup preparado con token de validación
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  fecha_evento:
+                    type: string
+                    format: date
+                  show_datetime:
+                    type: string
+                    format: date-time
+                  validate_url:
+                    type: string
+                    format: uri
+                  lineup:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/CandidateItem"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: El host no pertenece a la organización
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: El show de esta semana ya empezó
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "502":
+          $ref: "#/components/responses/ExternalServiceError"
+
+  /api/validate-view/lineup:
+    get:
+      tags: [Lineup]
+      summary: Obtener lineup para vista de validación
+      description: |
+        Endpoint público protegido por token temporal. Devuelve el lineup
+        de candidatos para que el host valide desde una URL standalone.
+        Rate limit: 30 req/min por IP.
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Lineup con estado de validación
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  open_mic_id:
+                    type: string
+                  fecha_evento:
+                    type: string
+                    format: date
+                  show_datetime:
+                    type: string
+                    format: date-time
+                  is_validated:
+                    type: boolean
+                  candidates:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/CandidateItem"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          description: Token no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "410":
+          description: Token expirado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "502":
+          $ref: "#/components/responses/ExternalServiceError"
+
+  /api/validate-view/validate:
+    post:
+      tags: [Lineup]
+      summary: Confirmar lineup desde vista de validación
+      description: |
+        Confirma la selección de comediantes. Ejecuta las RPCs `validate_lineup`
+        y `upsert_confirmed_lineup`, luego invalida el token.
+        Rate limit: 30 req/min por IP.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, solicitud_ids]
+              properties:
+                token:
+                  type: string
+                solicitud_ids:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        "200":
+          description: Lineup validado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: validated
+                  slots_created:
+                    type: integer
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          description: Token no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "410":
+          description: Token expirado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "502":
+          $ref: "#/components/responses/ExternalServiceError"
+
+  # ── Formularios ────────────────────────────────────────────────────────────
+
+  /api/open-mic/create-form:
+    post:
+      tags: [Formularios]
+      summary: Crear Google Form para un open mic
+      description: |
+        Genera un formulario de Google Forms con las preguntas estándar,
+        lo vincula a una hoja de cálculo y guarda la configuración en Supabase.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [open_mic_id, nombre]
+              properties:
+                open_mic_id:
+                  type: string
+                nombre:
+                  type: string
+                  description: Nombre comercial del open mic
+      responses:
+        "200":
+          description: Formulario creado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  form_url:
+                    type: string
+                    format: uri
+                  form_id:
+                    type: string
+                  sheet_id:
+                    type: string
+                  sheet_url:
+                    type: string
+                    format: uri
+                  bg_color:
+                    type: string
+                    description: Color de fondo del formulario (hex)
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Ya existe un formulario para este open mic
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "502":
+          $ref: "#/components/responses/ExternalServiceError"
+
+  /api/open-mic/analyze-form:
+    post:
+      tags: [Formularios]
+      summary: Analizar formulario externo con IA
+      description: |
+        Analiza un Google Form externo usando Gemini para mapear sus preguntas
+        a los campos canónicos del sistema (nombre, instagram, experiencia, etc.).
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [open_mic_id, form_id]
+              properties:
+                open_mic_id:
+                  type: string
+                form_id:
+                  type: string
+                  description: ID del Google Form externo
+      responses:
+        "200":
+          description: Análisis completado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  field_mapping:
+                    type: object
+                    description: Mapeo pregunta → campo canónico
+                  canonical_coverage:
+                    type: integer
+                    description: Campos canónicos cubiertos
+                  total_questions:
+                    type: integer
+                  unmapped_fields:
+                    type: array
+                    items:
+                      type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          description: Gemini devolvió un resultado no procesable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "502":
+          $ref: "#/components/responses/ExternalServiceError"
+
+  /api/open-mic/propose-custom-rules:
+    post:
+      tags: [Formularios]
+      summary: Proponer reglas de scoring personalizadas
+      description: |
+        Analiza los campos no mapeados del formulario y propone reglas
+        de scoring personalizadas usando Gemini.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [open_mic_id]
+              properties:
+                open_mic_id:
+                  type: string
+      responses:
+        "200":
+          description: Reglas propuestas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rules:
+                    type: object
+                    description: Reglas de scoring propuestas
+                  unmapped_fields:
+                    type: array
+                    items:
+                      type: string
+                  proposed_count:
+                    type: integer
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          description: No hay field_mapping configurado o Gemini falló
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "502":
+          $ref: "#/components/responses/ExternalServiceError"
+
+  # ── Telegram ───────────────────────────────────────────────────────────────
+
+  /api/telegram/generate-code:
+    post:
+      tags: [Telegram]
+      summary: Generar código de registro para Telegram
+      description: |
+        Genera un código temporal `RCV-XXXX` que el host envía al bot
+        de Telegram para vincular su cuenta.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [host_id]
+              properties:
+                host_id:
+                  type: string
+      responses:
+        "200":
+          description: Código generado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: RCV-A3X9
+                  qr_url:
+                    type: string
+                    format: uri
+                    example: "https://t.me/ailineup_bot?start=RCV-A3X9"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "502":
+          $ref: "#/components/responses/ExternalServiceError"
+
+  /api/telegram/register:
+    post:
+      tags: [Telegram]
+      summary: Registrar host en Telegram
+      description: |
+        Procesa el comando `/start RCV-XXXX` del bot: valida el código,
+        registra al usuario en `telegram_users` y marca el código como usado.
+        Rate limit: 10 req/min por IP.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code, telegram_user_id]
+              properties:
+                code:
+                  type: string
+                  example: RCV-A3X9
+                telegram_user_id:
+                  type: integer
+      responses:
+        "200":
+          description: Registro exitoso o usuario ya registrado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  host_id:
+                    type: string
+                  already_registered:
+                    type: boolean
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Código no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Código ya usado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "410":
+          description: Código expirado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  # ── Poster ─────────────────────────────────────────────────────────────────
+
+  /api/render-poster:
+    post:
+      tags: [Poster]
+      summary: Generar poster del lineup
+      description: |
+        Renderiza un poster PNG con los nombres del lineup usando Pillow.
+        Soporta templates personalizados e imágenes de referencia.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [lineup]
+              properties:
+                lineup:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                  description: Lista de comediantes con nombre
+                open_mic_id:
+                  type: string
+                date:
+                  type: string
+                event:
+                  type: object
+                  description: Datos del evento (nombre, hora, lugar)
+                intent:
+                  type: object
+                  properties:
+                    template_id:
+                      type: string
+                      default: base_poster
+                    reference_image_url:
+                      type: string
+                      format: uri
+      responses:
+        "200":
+          description: Poster generado
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          description: Error al renderizar el poster
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # ── MCP Agent ──────────────────────────────────────────────────────────────
+
+  /mcp/open-mics:
+    get:
+      tags: [MCP Agent]
+      summary: Listar open mics del host
+      description: Devuelve los open mics asociados al host autenticado.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: host_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Lista de open mics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  open_mics:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        nombre:
+                          type: string
+                        icon:
+                          type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "502":
+          $ref: "#/components/responses/ExternalServiceError"
+
+  /mcp/lineup:
+    get:
+      tags: [MCP Agent]
+      summary: Obtener lineup confirmado
+      description: Devuelve los slots confirmados para una fecha de evento.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: open_mic_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: fecha_evento
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Lineup con slots
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  open_mic_id:
+                    type: string
+                  fecha_evento:
+                    type: string
+                    format: date
+                  slots:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/SlotItem"
+                  total:
+                    type: integer
+                  validado:
+                    type: boolean
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "502":
+          $ref: "#/components/responses/ExternalServiceError"
+
+  /mcp/candidates:
+    get:
+      tags: [MCP Agent]
+      summary: Obtener candidatos con score
+      description: Devuelve los mejores candidatos ordenados por score.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: open_mic_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: Lista de candidatos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  candidates:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        nombre:
+                          type: string
+                        instagram:
+                          type: string
+                        score_final:
+                          type: number
+                        categoria:
+                          type: string
+                        estado:
+                          type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "502":
+          $ref: "#/components/responses/ExternalServiceError"
+
+  /mcp/run-scoring:
+    post:
+      tags: [MCP Agent]
+      summary: Ejecutar scoring manualmente
+      description: Lanza el motor de scoring para un open mic específico.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [open_mic_id]
+              properties:
+                open_mic_id:
+                  type: string
+      responses:
+        "200":
+          description: Resultado del scoring
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          description: Error al ejecutar scoring
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /mcp/reopen-lineup:
+    post:
+      tags: [MCP Agent]
+      summary: Reabrir lineup validado
+      description: Elimina los slots confirmados de una fecha para permitir revalidación.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [open_mic_id, fecha_evento]
+              properties:
+                open_mic_id:
+                  type: string
+                fecha_evento:
+                  type: string
+                  format: date
+      responses:
+        "200":
+          description: Lineup reabierto
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  message:
+                    type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "502":
+          $ref: "#/components/responses/ExternalServiceError"
+
+  # ── Orquestación (n8n) ────────────────────────────────────────────────────
+
+  /ingest:
+    post:
+      tags: [Orquestación]
+      summary: Trigger de ingesta bronze→silver
+      description: Ejecuta el pipeline de ingesta completo. Llamado por n8n.
+      security:
+        - ApiKeyAuth: []
+      responses:
+        "200":
+          description: Pipeline ejecutado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  output:
+                    type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          description: Error en el pipeline
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /scoring:
+    post:
+      tags: [Orquestación]
+      summary: Trigger de scoring silver→gold
+      description: Ejecuta el motor de scoring para todos los open mics. Llamado por n8n.
+      security:
+        - ApiKeyAuth: []
+      responses:
+        "200":
+          description: Scoring ejecutado
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          description: Error en el scoring
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # ── Desarrollo ─────────────────────────────────────────────────────────────
+
+  /api/dev/seed-open-mic:
+    post:
+      tags: [Desarrollo]
+      summary: Sembrar datos de prueba
+      description: |
+        Inserta 10 solicitudes de prueba en bronze para un open mic.
+        Solo disponible para usuarios autenticados que pertenezcan a la organización.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [open_mic_id]
+              properties:
+                open_mic_id:
+                  type: string
+      responses:
+        "200":
+          description: Datos sembrados
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  seeded:
+                    type: integer
+                    example: 10
+        "401":
+          description: JWT inválido o ausente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Usuario no pertenece a la organización
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Open mic ya tiene datos de prueba
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "502":
+          $ref: "#/components/responses/ExternalServiceError"
+
+  /api/dev/trigger-ingest:
+    post:
+      tags: [Desarrollo]
+      summary: Lanzar ingesta manual
+      description: Dispara el pipeline bronze→silver en background.
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Ingesta lanzada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  message:
+                    type: string
+                    example: ingesta lanzada en background
+        "401":
+          description: JWT inválido o ausente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/dev/trigger-scoring:
+    post:
+      tags: [Desarrollo]
+      summary: Lanzar scoring manual
+      description: Ejecuta el motor de scoring para un open mic específico.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [open_mic_id]
+              properties:
+                open_mic_id:
+                  type: string
+      responses:
+        "200":
+          description: Scoring ejecutado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  result:
+                    type: object
+        "401":
+          description: JWT inválido o ausente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Usuario no pertenece a la organización
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Error al ejecutar scoring
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "502":
+          $ref: "#/components/responses/ExternalServiceError"

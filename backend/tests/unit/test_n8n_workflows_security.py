@@ -38,29 +38,28 @@ def test_n8n_workflows_do_not_contain_known_hardcoded_secrets_or_hosts():
 
 
 def test_n8n_workflows_use_env_references_for_sensitive_values():
-    ingesta = _workflow_text("Ingesta-Solicitudes.json")
-    scoring = _workflow_text("Scoring & Draft.json")
-    lineup = _workflow_text("LineUp.json")
-    test_bot = _workflow_text("Test BOT.json")
+    ingesta = _workflow_text("This.Ingesta-Solicitudes 3.json")
+    scoring = _workflow_text("This.Scoring & Draft 2.json")
+    render = _workflow_text("This.Render 2.json")
+    test_bot = _workflow_text("This.Test BOT 3.json")
 
-    assert "$env.N8N_BACKEND_INGEST_URL" in ingesta
+    assert "$env.BACKEND_URL" in ingesta
     assert "$env.WEBHOOK_API_KEY" in ingesta
-    assert "$env.SUPABASE_URL + '/rest/v1/comicos'" in ingesta
+    assert "$env.SUPABASE_URL }}/rest/v1/comicos" in ingesta
     assert "$env.SUPABASE_KEY" in ingesta
     assert "'Bearer ' + $env.SUPABASE_KEY" in ingesta
 
-    # Scoring & Draft reconstruido (multi-tenant, Sprint 5): usa RECOVA_BACKEND_URL y SUPABASE_URL
-    assert "$env.RECOVA_BACKEND_URL" in scoring
+    # Scoring & Draft reconstruido (multi-tenant, Sprint 5): usa BACKEND_URL y SUPABASE_URL
+    assert "$env.BACKEND_URL" in scoring
     assert "$env.SUPABASE_URL" in scoring
     assert "$env.WEBHOOK_API_KEY" in scoring
 
-    assert "$env.SUPABASE_URL + '/rest/v1/lineup_candidates'" in lineup
-    assert "$env.SUPABASE_KEY" in lineup
-    assert "'Bearer ' + $env.SUPABASE_KEY" in lineup
-    assert "$env.RECOVA_RENDERER_URL" in lineup  # render va a recova-renderer:5050
+    assert "$env.SUPABASE_URL }}/rest/v1/lineup_candidates" in render
+    assert "$env.SUPABASE_SERVICE_KEY" in render
+    assert "'Bearer ' + $env.SUPABASE_SERVICE_KEY" in render
 
     # Test BOT.json debe usar env vars para todas las keys sensibles
     assert "$env.WEBHOOK_API_KEY" in test_bot
     assert "$env.SUPABASE_SERVICE_KEY" in test_bot
-    assert "$env.RECOVA_BACKEND_URL" in test_bot
+    assert "$env.BACKEND_URL" in test_bot
     assert "$env.SUPABASE_URL" in test_bot

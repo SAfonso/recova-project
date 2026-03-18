@@ -18,7 +18,12 @@ from typing import Any
 # Valores por defecto — deben mantenerse sincronizados con el DEFAULT JSONB
 # definido en silver.open_mics.config (specs/sql/v3_schema.sql §3).
 # ---------------------------------------------------------------------------
-_SINGLE_DATE_BONUS = 40  # Bono interno fijo — no configurable por el host
+# Bono interno fijo — intencionalmente no configurable por el host.
+# Se añade un peso al cómico que solo puede en una fecha para darle más
+# oportunidad. No se da la opción de configurarlo para que el host no caiga
+# en la tentación de darle mucho más peso, que llegue a oídos de los cómicos
+# y se aprovechen del hack para asegurarse la asistencia.
+_SINGLE_DATE_BONUS = 40
 
 _DEFAULTS: dict[str, Any] = {
     "available_slots": 8,

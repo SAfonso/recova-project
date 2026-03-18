@@ -54,9 +54,13 @@ def _sb_mock(data):
     schema = MagicMock()
     schema.from_.return_value = chain
 
+    rpc_chain = MagicMock()
+    rpc_chain.execute.return_value = result
+
+    schema.rpc.return_value = rpc_chain
+
     client = MagicMock()
     client.schema.return_value = schema
-    client.rpc.return_value = result
     return client
 
 
@@ -71,7 +75,7 @@ def test_get_lineup_returns_slots():
     ]
     sb = _sb_mock(slots)
 
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb):
+    with patch("backend.src.triggers.blueprints.mcp_agent._sb_client", return_value=sb):
         with app.test_client() as client:
             resp = client.get(
                 f"/mcp/lineup?open_mic_id={OM_ID}&fecha_evento={FECHA}",
@@ -93,7 +97,7 @@ def test_get_lineup_returns_slots():
 def test_get_lineup_empty_when_no_slots():
     sb = _sb_mock([])
 
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb):
+    with patch("backend.src.triggers.blueprints.mcp_agent._sb_client", return_value=sb):
         with app.test_client() as client:
             resp = client.get(
                 f"/mcp/lineup?open_mic_id={OM_ID}&fecha_evento={FECHA}",
@@ -118,7 +122,7 @@ def test_get_candidates_returns_sorted():
     ]
     sb = _sb_mock(candidates)
 
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb):
+    with patch("backend.src.triggers.blueprints.mcp_agent._sb_client", return_value=sb):
         with app.test_client() as client:
             resp = client.get(
                 f"/mcp/candidates?open_mic_id={OM_ID}&limit=10",
@@ -145,7 +149,7 @@ def test_run_scoring_calls_engine():
         "top_sugeridos": [],
     }
 
-    with patch("backend.src.triggers.webhook_listener.execute_scoring", return_value=scoring_result) as mock_scoring:
+    with patch("backend.src.triggers.blueprints.mcp_agent.execute_scoring", return_value=scoring_result) as mock_scoring:
         with app.test_client() as client:
             resp = client.post(
                 "/mcp/run-scoring",
@@ -167,7 +171,7 @@ def test_run_scoring_calls_engine():
 def test_reopen_lineup_calls_reset_rpc():
     sb = _sb_mock(None)
 
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb):
+    with patch("backend.src.triggers.blueprints.mcp_agent._sb_client", return_value=sb):
         with app.test_client() as client:
             resp = client.post(
                 "/mcp/reopen-lineup",
@@ -179,7 +183,7 @@ def test_reopen_lineup_calls_reset_rpc():
     body = resp.get_json()
     assert body["status"] == "ok"
     assert FECHA in body["message"]
-    sb.rpc.assert_called_once_with(
+    sb.schema("silver").rpc.assert_called_once_with(
         "reset_lineup_slots",
         {"p_open_mic_id": OM_ID, "p_fecha_evento": FECHA},
     )
@@ -222,7 +226,7 @@ def test_list_open_mics_filters_by_host():
     sb = MagicMock()
     sb.schema.return_value = schema
 
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb):
+    with patch("backend.src.triggers.blueprints.mcp_agent._sb_client", return_value=sb):
         with app.test_client() as client:
             resp = client.get(
                 f"/mcp/open-mics?host_id={HOST_ID}",

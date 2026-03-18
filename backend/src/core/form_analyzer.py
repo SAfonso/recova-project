@@ -15,6 +15,12 @@ import re
 
 import google.genai as genai
 
+from backend.src.core.prompt_guard import (
+    get_defensive_instruction,
+    validate_fields,
+    wrap_user_field,
+)
+
 
 _CANONICAL_FIELDS = [
     "nombre_artistico",
@@ -29,6 +35,8 @@ _CANONICAL_FIELDS = [
 
 _PROMPT_TEMPLATE = """\
 Tienes un formulario de solicitud para actuar en un open mic de comedia.
+{defensive_instruction}
+
 Las preguntas del formulario son:
 
 {preguntas}
@@ -71,8 +79,14 @@ class FormAnalyzer:
         Devuelve {titulo_pregunta → campo_canónico | None}.
         Lanza ValueError si Gemini devuelve JSON inválido.
         """
-        preguntas = "\n".join(f"{i+1}. {q}" for i, q in enumerate(form_questions))
-        prompt = _PROMPT_TEMPLATE.format(preguntas=preguntas)
+        sanitized = validate_fields(form_questions)
+        preguntas = "\n".join(
+            f"{i+1}. {wrap_user_field(q)}" for i, q in enumerate(sanitized)
+        )
+        prompt = _PROMPT_TEMPLATE.format(
+            preguntas=preguntas,
+            defensive_instruction=get_defensive_instruction(),
+        )
 
         client = genai.Client(api_key=self._api_key)
         response = client.models.generate_content(

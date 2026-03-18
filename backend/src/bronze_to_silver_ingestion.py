@@ -15,8 +15,24 @@ from typing import Iterable
 from uuid import UUID
 
 import psycopg2
+from psycopg2 import errors as pg_errors, sql
 from pathlib import Path
 from dotenv import load_dotenv
+
+try:
+    import gender_guesser.detector as _gender_detector
+    _GENDER_DETECTOR = _gender_detector.Detector()
+except ImportError:
+    _GENDER_DETECTOR = None
+
+# --- INE dictionary (54k+ Spanish names from Padrón Continuo) ---
+_INE_NAMES: dict[str, str] = {}
+_INE_PATH = Path(__file__).resolve().parents[1] / "data" / "ine_nombres.json"
+try:
+    with open(_INE_PATH, "r", encoding="utf-8") as _f:
+        _INE_NAMES = json.load(_f)
+except (FileNotFoundError, json.JSONDecodeError):
+    pass
 
 _ROOT_ENV = Path(__file__).resolve().parents[2] / ".env"
 
@@ -309,11 +325,108 @@ def resolve_error_metadata_column(conn) -> str | None:
     return row[0] if row else None
 
 
+_INSTAGRAM_WORD_RE = re.compile(r"[a-zA-Z]{3,}")
+
+# --- Genderize.io (último recurso, 100 calls/día free) ---
+_GENDERIZE_URL = "https://api.genderize.io"
+
+
+def _normalize_name(word: str) -> str:
+    """Quita tildes y devuelve lowercase."""
+    return unicodedata.normalize("NFKD", word).encode("ascii", "ignore").decode().lower()
+
+
+def _ine_lookup(word: str) -> str | None:
+    """Capa 1: diccionario INE (~55k nombres españoles del Padrón Continuo)."""
+    if not _INE_NAMES:
+        return None
+    key = _normalize_name(word)
+    return _INE_NAMES.get(key)
+
+
+def _gender_guesser_lookup(word: str) -> str | None:
+    """Capa 2: gender-guesser (corpus internacional ~40k nombres)."""
+    if _GENDER_DETECTOR is None:
+        return None
+    normalized = _normalize_name(word)
+    if not normalized:
+        return None
+    result = _GENDER_DETECTOR.get_gender(normalized.capitalize())
+    if result in ("male", "mostly_male"):
+        return "m"
+    if result in ("female", "mostly_female"):
+        return "f"
+    return None
+
+
+def _genderize_lookup(word: str) -> str | None:
+    """Capa 3: genderize.io API (100 calls/día free, localizado a ES)."""
+    try:
+        import urllib.request
+        normalized = _normalize_name(word)
+        if not normalized or len(normalized) < 3:
+            return None
+        url = f"{_GENDERIZE_URL}?name={normalized}&country_id=ES"
+        req = urllib.request.Request(url, headers={"Accept": "application/json"})
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            data = json.loads(resp.read().decode())
+        if data.get("gender") and data.get("probability", 0) >= 0.7:
+            return "m" if data["gender"] == "male" else "f"
+    except Exception:
+        LOGGER.warning("_genderize_lookup: API call failed for '%s'", normalized, exc_info=True)
+    return None
+
+
+def _detect_from_word(word: str) -> str | None:
+    """Cascada: INE → gender-guesser → genderize.io."""
+    for layer in (_ine_lookup, _gender_guesser_lookup, _genderize_lookup):
+        result = layer(word)
+        if result:
+            return result
+    return None
+
+
+def infer_gender(nombre: str | None, instagram: str | None) -> str | None:
+    """Infiere género ('m'/'f') a partir del nombre y, si no, del handle de instagram.
+
+    Cascada de 3 capas:
+      1. Diccionario INE (55k nombres españoles, offline)
+      2. gender-guesser (corpus internacional, offline)
+      3. genderize.io (API, 100 calls/día free, localizado a ES)
+
+    Devuelve 'm', 'f', o None si no se puede determinar con suficiente confianza.
+    Nunca devuelve 'nb' — ese valor se asigna en el frontend para los no clasificados.
+    """
+    # 1. Intentar con el primer nombre
+    if nombre:
+        first = nombre.strip().split()[0] if nombre.strip() else ""
+        if first:
+            detected = _detect_from_word(first)
+            if detected:
+                return detected
+
+    # 2. Fallback: segmentos del handle de instagram (divididos por números/guiones bajos)
+    if instagram:
+        handle = re.sub(r"^@+", "", instagram).lower()
+        segments = re.split(r"[0-9_\-\.]+", handle)
+        for seg in segments:
+            if len(seg) < 3:
+                continue
+            # Probar prefijos del segmento (4..len) — los nombres suelen ir al inicio
+            for end in range(4, len(seg) + 1):
+                detected = _detect_from_word(seg[:end])
+                if detected:
+                    return detected
+
+    return None
+
+
 def upsert_comico_silver(
     conn,
     instagram: str,
     nombre: str | None,
     telefono: str | None,
+    genero: str | None = None,
 ) -> UUID:
     with conn.cursor() as cursor:
         cursor.execute(
@@ -321,13 +434,17 @@ def upsert_comico_silver(
             INSERT INTO silver.comicos (
                 instagram,
                 nombre,
-                telefono
+                telefono,
+                genero
             )
-            VALUES (%s, %s, %s)
-            ON CONFLICT (instagram) DO NOTHING
+            VALUES (%s, %s, %s, %s)
+            ON CONFLICT (instagram) DO UPDATE
+                SET nombre    = COALESCE(EXCLUDED.nombre, silver.comicos.nombre),
+                    telefono  = COALESCE(EXCLUDED.telefono, silver.comicos.telefono),
+                    genero    = COALESCE(silver.comicos.genero, EXCLUDED.genero)
             RETURNING id
             """,
-            (instagram, nombre, telefono),
+            (instagram, nombre, telefono, genero),
         )
         row = cursor.fetchone()
 
@@ -453,6 +570,22 @@ def mark_bronze_processed(conn, bronze_id: UUID) -> None:
         )
 
 
+_PERMANENT_DB_ERRORS = (
+    pg_errors.UniqueViolation,
+    pg_errors.CheckViolation,
+    pg_errors.ForeignKeyViolation,
+    pg_errors.NotNullViolation,
+)
+
+
+def _is_permanent_error(exc: Exception) -> bool:
+    """True si el error nunca se resolverá reintentando."""
+    return isinstance(exc, (*_PERMANENT_DB_ERRORS, ValueError, TypeError, KeyError))
+
+
+_ALLOWED_ERROR_COLUMNS = frozenset({"metadata", "raw_data_extra"})
+
+
 def register_ingestion_error(
     conn,
     bronze_id: UUID,
@@ -463,22 +596,29 @@ def register_ingestion_error(
     error_timestamp = datetime.utcnow().isoformat(timespec="seconds") + "Z"
 
     if error_metadata_column:
+        if error_metadata_column not in _ALLOWED_ERROR_COLUMNS:
+            raise ValueError(
+                f"Columna no permitida: {error_metadata_column!r}"
+            )
+        col = sql.Identifier(error_metadata_column)
         with conn.cursor() as cursor:
             cursor.execute(
-                f"""
-                UPDATE bronze.solicitudes
-                SET {error_metadata_column} = COALESCE({error_metadata_column}, '{{}}'::jsonb)
-                  || jsonb_build_object(
-                        'estado', 'error_ingesta',
-                        'error_log',
-                        jsonb_build_object(
-                            'message', %s,
-                            'timestamp', %s,
-                            'phase', %s
-                        )
-                     )
-                WHERE id = %s
-                """,
+                sql.SQL(
+                    """
+                    UPDATE bronze.solicitudes
+                    SET {col} = COALESCE({col}, '{{}}'::jsonb)
+                      || jsonb_build_object(
+                            'estado', 'error_ingesta',
+                            'error_log',
+                            jsonb_build_object(
+                                'message', %s,
+                                'timestamp', %s,
+                                'phase', %s
+                            )
+                         )
+                    WHERE id = %s
+                    """
+                ).format(col=col),
                 (message, error_timestamp, phase, str(bronze_id)),
             )
         return
@@ -489,6 +629,78 @@ def register_ingestion_error(
         phase,
         message,
     )
+
+
+@dataclass(frozen=True)
+class ParsedSolicitud:
+    nombre: str
+    instagram: str
+    telefono: str
+    event_dates: list[date]
+    level: int
+    available_last_minute: bool
+
+
+def _parse_bronze_record(bronze: BronzeRecord, today: date) -> ParsedSolicitud:
+    """Normaliza y parsea un BronzeRecord.
+
+    Raises ValueError si los campos obligatorios son inválidos.
+    Atributo ``phase`` en la excepción NO se añade aquí — el caller
+    controla la fase según qué paso falla.
+    """
+    form_row = {
+        "Nombre artístico":                                           bronze.nombre_raw,
+        "Instagram (sin @)":                                          bronze.instagram_raw,
+        "WhatsApp":                                                   bronze.telefono_raw,
+        "¿Cuántas veces has actuado en un open mic?":                bronze.experiencia_raw,
+        "¿Qué fechas te vienen bien?":                               bronze.fechas_seleccionadas_raw,
+        "¿Estarías disponible si nos falla alguien de última hora?": bronze.disponibilidad_ultimo_minuto,
+        "¿Tienes algún show próximo que quieras mencionar?":         bronze.info_show_cercano,
+        "¿Cómo nos conociste?":                                      bronze.origen_conocimiento,
+    }
+    normalized_result = normalize_row(form_row)
+    if not normalized_result["is_valid"]:
+        raise ValueError("; ".join(normalized_result["errors"]))
+
+    normalized = normalized_result["normalized"]
+    return ParsedSolicitud(
+        nombre=str(normalized["nombre"]),
+        instagram=str(normalized["instagram"]),
+        telefono=str(normalized["telefono"]),
+        event_dates=parse_event_dates(str(normalized["fechas_raw"]), today),
+        level=map_experience_level(str(normalized["experiencia_raw"])),
+        available_last_minute=parse_last_minute_availability(
+            str(normalized["disponibilidad_ultimo_minuto"])
+        ),
+    )
+
+
+def _persist_solicitud(conn, bronze: BronzeRecord, parsed: ParsedSolicitud) -> int:
+    """Upsert cómico + insert silver rows + mark processed. Returns inserted count."""
+    genero = infer_gender(parsed.nombre, parsed.instagram)
+    comico_id = upsert_comico_silver(
+        conn,
+        instagram=parsed.instagram,
+        nombre=parsed.nombre,
+        telefono=parsed.telefono,
+        genero=genero,
+    )
+    inserted = insert_silver_rows(
+        conn,
+        bronze=bronze,
+        comico_id=comico_id,
+        event_dates=parsed.event_dates,
+        level=parsed.level,
+        available_last_minute=parsed.available_last_minute,
+    )
+    mark_bronze_processed(conn, bronze.id)
+    LOGGER.info(
+        "Bronze %s procesado | comico_id=%s | fechas_insertadas=%s",
+        bronze.id,
+        comico_id,
+        len(parsed.event_dates),
+    )
+    return inserted
 
 
 def process_single_solicitud(
@@ -502,79 +714,27 @@ def process_single_solicitud(
     phase = "inicio"
 
     with conn.cursor() as cursor:
-        cursor.execute(f"SAVEPOINT {savepoint_name}")
+        cursor.execute(sql.SQL("SAVEPOINT {}").format(sql.Identifier(savepoint_name)))
 
     try:
         phase = "normalizacion"
-        # Usar nombres de campos v3 (normalize_row soporta fallback a legacy)
-        form_row = {
-            "Nombre artístico":                                           bronze.nombre_raw,
-            "Instagram (sin @)":                                          bronze.instagram_raw,
-            "WhatsApp":                                                   bronze.telefono_raw,
-            "¿Cuántas veces has actuado en un open mic?":                bronze.experiencia_raw,
-            "¿Qué fechas te vienen bien?":                               bronze.fechas_seleccionadas_raw,
-            "¿Estarías disponible si nos falla alguien de última hora?": bronze.disponibilidad_ultimo_minuto,
-            "¿Tienes algún show próximo que quieras mencionar?":         bronze.info_show_cercano,
-            "¿Cómo nos conociste?":                                      bronze.origen_conocimiento,
-        }
-        normalized_result = normalize_row(form_row)
-        if not normalized_result["is_valid"]:
-            joined_errors = "; ".join(normalized_result["errors"])
-            raise ValueError(joined_errors)
+        parsed = _parse_bronze_record(bronze, today)
 
-        normalized = normalized_result["normalized"]
-        instagram = str(normalized["instagram"])
-        telefono = str(normalized["telefono"])
-        nombre = str(normalized["nombre"])
-
-        phase = "parsing_fechas"
-        event_dates = parse_event_dates(str(normalized["fechas_raw"]), today)
-
-        phase = "mapeo_experiencia"
-        level = map_experience_level(str(normalized["experiencia_raw"]))
-
-        phase = "mapeo_disponibilidad_ultimo_minuto"
-        available_last_minute = parse_last_minute_availability(
-            str(normalized["disponibilidad_ultimo_minuto"])
-        )
-
-        if not event_dates:
+        if not parsed.event_dates:
             motivo = "Sin fechas futuras válidas"
             detalles_descarte.append({"id": str(bronze.id), "motivo": motivo})
             LOGGER.info("Bronze %s descartado: %s", bronze.id, motivo)
             mark_bronze_processed(conn, bronze.id)
             return 0
 
-        phase = "upsert_comico_silver"
-        comico_id = upsert_comico_silver(
-            conn,
-            instagram=instagram,
-            nombre=nombre,
-            telefono=telefono,
-        )
-
-        phase = "insert_silver"
-        inserted = insert_silver_rows(
-            conn,
-            bronze=bronze,
-            comico_id=comico_id,
-            event_dates=event_dates,
-            level=level,
-            available_last_minute=available_last_minute,
-        )
-        mark_bronze_processed(conn, bronze.id)
+        phase = "persist_silver"
+        inserted = _persist_solicitud(conn, bronze, parsed)
 
         if inserted == 0:
             motivo = "Duplicado en Silver (sin nuevas filas para insertar)"
             detalles_descarte.append({"id": str(bronze.id), "motivo": motivo})
             LOGGER.warning("Bronze %s descartado: %s", bronze.id, motivo)
 
-        LOGGER.info(
-            "Bronze %s procesado | comico_id=%s | fechas_insertadas=%s",
-            bronze.id,
-            comico_id,
-            len(event_dates),
-        )
         return inserted
     except Exception as exc:  # noqa: BLE001
         motivo = f"Error de validación/procesamiento en fase '{phase}': {exc}"
@@ -586,7 +746,7 @@ def process_single_solicitud(
             exc,
         )
         with conn.cursor() as cursor:
-            cursor.execute(f"ROLLBACK TO SAVEPOINT {savepoint_name}")
+            cursor.execute(sql.SQL("ROLLBACK TO SAVEPOINT {}").format(sql.Identifier(savepoint_name)))
 
         register_ingestion_error(
             conn,
@@ -595,6 +755,15 @@ def process_single_solicitud(
             message=str(exc),
             phase=phase,
         )
+
+        if _is_permanent_error(exc):
+            mark_bronze_processed(conn, bronze.id)
+            LOGGER.info(
+                "Bronze %s marcado como procesado (error permanente: %s)",
+                bronze.id,
+                type(exc).__name__,
+            )
+
         return 0
 
 

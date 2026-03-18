@@ -32,7 +32,7 @@ from dotenv import load_dotenv
 
 _ROOT_ENV = Path(__file__).resolve().parents[2] / ".env"
 
-from backend.src.core.scoring_config import ScoringConfig
+from backend.src.core.scoring_config import ScoringConfig, _SINGLE_DATE_BONUS
 
 LOGGER = logging.getLogger("scoring_engine")
 LOG_DIRECTORY = str(Path(__file__).resolve().parents[1] / "logs")
@@ -82,6 +82,7 @@ class CandidateScore:
     puede_hoy: bool = False
     is_single_date: bool = False
     solicitud_id: str = ""
+    score_breakdown: dict = field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------
@@ -326,6 +327,7 @@ def parse_primary_date(fechas_disponibles: str) -> date:
 def persist_pending_score(conn, candidate: CandidateScore) -> None:
     """Escribe/actualiza el score en gold.solicitudes y gold.comicos."""
     solicitud_id = candidate.solicitud_id or str(uuid4())
+    breakdown_json = json.dumps(candidate.score_breakdown) if candidate.score_breakdown else None
     with conn.cursor() as cursor:
         cursor.execute(
             """
@@ -338,17 +340,19 @@ def persist_pending_score(conn, candidate: CandidateScore) -> None:
                 score_aplicado,
                 marca_temporal,
                 puede_hoy,
-                is_single_date
+                is_single_date,
+                score_breakdown
             )
-            VALUES (%s, %s, %s, %s, 'scorado', %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, 'scorado', %s, %s, %s, %s, %s)
             ON CONFLICT (id) DO UPDATE
-            SET comico_id      = EXCLUDED.comico_id,
-                fecha_evento   = EXCLUDED.fecha_evento,
-                open_mic_id    = EXCLUDED.open_mic_id,
-                score_aplicado = EXCLUDED.score_aplicado,
-                marca_temporal = EXCLUDED.marca_temporal,
-                puede_hoy      = EXCLUDED.puede_hoy,
-                is_single_date = EXCLUDED.is_single_date
+            SET comico_id        = EXCLUDED.comico_id,
+                fecha_evento     = EXCLUDED.fecha_evento,
+                open_mic_id      = EXCLUDED.open_mic_id,
+                score_aplicado   = EXCLUDED.score_aplicado,
+                marca_temporal   = EXCLUDED.marca_temporal,
+                puede_hoy        = EXCLUDED.puede_hoy,
+                is_single_date   = EXCLUDED.is_single_date,
+                score_breakdown  = EXCLUDED.score_breakdown
             WHERE gold.solicitudes.estado IN ('pendiente', 'scorado')
             """,
             (
@@ -360,6 +364,7 @@ def persist_pending_score(conn, candidate: CandidateScore) -> None:
                 candidate.marca_temporal,
                 candidate.puede_hoy,
                 candidate.is_single_date,
+                breakdown_json,
             ),
         )
         cursor.execute(
@@ -404,8 +409,8 @@ def build_ranking(
 ) -> tuple[list[CandidateScore], int]:
     """Puntúa y ordena candidatos según las reglas del ScoringConfig.
 
-    Devuelve (ranking_balanceado, n_descartados_por_restricción).
-    El ranking balancea géneros f/nb con m en alternancia.
+    Devuelve (ranking, n_descartados_por_restricción).
+    Si gender_parity_enabled=True, alterna f/nb ↔ m; si no, orden puro por score.
     """
     scored: list[CandidateScore] = []
     skipped_restricted = 0
@@ -431,7 +436,22 @@ def build_ranking(
                 skipped_restricted += 1
                 continue
 
-            score += config.apply_custom_rules(request.metadata)
+            custom_bonus = config.apply_custom_rules(request.metadata)
+            score += custom_bonus
+
+            # Build score breakdown for audit trail
+            rule = config.category_rule(categoria_gold)
+            breakdown: dict[str, Any] = {
+                "base_score": rule.base_score or 0,
+                "categoria": categoria_gold,
+            }
+            if config.recency_penalty_enabled and penalty:
+                breakdown["recency_penalty"] = -config.recency_penalty_points
+            if config.single_date_priority_enabled and single_date:
+                breakdown["single_date_bonus"] = _SINGLE_DATE_BONUS
+            if custom_bonus != 0:
+                breakdown["custom_rules_bonus"] = custom_bonus
+            breakdown["total"] = score
 
             backup_val = str(request.metadata.get('backup', '')).strip().lower()
             scored.append(
@@ -450,6 +470,7 @@ def build_ranking(
                     puede_hoy=backup_val in ('sí', 'si', 'yes', 'true', '1'),
                     is_single_date=single_date,
                     solicitud_id=request.solicitud_id,
+                    score_breakdown=breakdown,
                 )
             )
         except Exception as exc:  # noqa: BLE001
@@ -462,13 +483,24 @@ def build_ranking(
     def sort_key(c: CandidateScore):
         return (-c.score_final, c.marca_temporal or datetime.max.replace(tzinfo=timezone.utc))
 
-    f_nb = sorted([c for c in scored if c.genero in {"f", "nb"}], key=sort_key)
-    m    = sorted([c for c in scored if c.genero == "m"],          key=sort_key)
-    unk  = sorted([c for c in scored if c.genero not in {"m", "f", "nb"}], key=sort_key)
-
-    # Alternancia f/nb ↔ m para paridad de género
-    balanced: list[CandidateScore] = []
+    # Deduplicar por comico_id (quedarse con el de mayor score)
     seen: set[str] = set()
+
+    if not config.gender_parity_enabled:
+        # Sin paridad: orden puro por score
+        ranked: list[CandidateScore] = []
+        for c in sorted(scored, key=sort_key):
+            if c.comico_id not in seen:
+                ranked.append(c); seen.add(c.comico_id)
+        return ranked, skipped_restricted
+
+    # Con paridad: alternancia f/nb/unknown ↔ m
+    _F_NB = {"f", "nb", "unknown"}
+    f_nb = sorted([c for c in scored if c.genero in _F_NB],            key=sort_key)
+    m    = sorted([c for c in scored if c.genero == "m"],              key=sort_key)
+    unk  = sorted([c for c in scored if c.genero not in (_F_NB | {"m"})], key=sort_key)
+
+    balanced: list[CandidateScore] = []
     idx_f = idx_m = 0
 
     while idx_f < len(f_nb) or idx_m < len(m):
@@ -520,14 +552,15 @@ def execute_scoring(open_mic_id: str) -> dict[str, Any]:
         "filas_descartadas_restriccion": skipped,
         "top_sugeridos": [
             {
-                "nombre":          c.nombre,
-                "instagram":       c.instagram,
-                "genero":          c.genero,
-                "categoria":       c.categoria,
-                "score_final":     c.score_final,
-                "penalizado":      c.penalizado_por_recencia,
-                "is_single_date":  c.is_single_date,
-                "marca_temporal":  c.marca_temporal.isoformat() if c.marca_temporal else None,
+                "nombre":           c.nombre,
+                "instagram":        c.instagram,
+                "genero":           c.genero,
+                "categoria":        c.categoria,
+                "score_final":      c.score_final,
+                "penalizado":       c.penalizado_por_recencia,
+                "is_single_date":   c.is_single_date,
+                "marca_temporal":   c.marca_temporal.isoformat() if c.marca_temporal else None,
+                "score_breakdown":  c.score_breakdown,
             }
             for c in ranking[:top_n]
         ],

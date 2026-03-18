@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { supabase } from '../supabaseClient';
+import { authFetch } from '../utils/authFetch';
 import { OpenMicIcon } from './open-mic/openmic-icons';
 
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
@@ -92,15 +93,7 @@ export function OpenMicSelector({ session, onSelect }) {
       })
       .select('id, nombre').single();
     if (insertError) { setSaving(false); setError(insertError.message); return; }
-    const backendUrl = import.meta.env.VITE_BACKEND_URL;
-    const apiKey     = import.meta.env.VITE_WEBHOOK_API_KEY;
-    if (backendUrl && apiKey) {
-      fetch(`${backendUrl}/api/open-mic/create-form`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-API-KEY': apiKey },
-        body: JSON.stringify({ open_mic_id: newMic.id, nombre: newMic.nombre }),
-      }).catch(() => {});
-    }
+    authFetch('/api/open-mic/create-form', { open_mic_id: newMic.id, nombre: newMic.nombre }).catch(() => {});
     setSaving(false);
     onSelect(newMic.id, { isNew: true });
   };
@@ -119,11 +112,7 @@ export function OpenMicSelector({ session, onSelect }) {
     setTgLoading(true);
     setTgError(null);
     try {
-      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/telegram/generate-code`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-API-KEY': import.meta.env.VITE_WEBHOOK_API_KEY },
-        body: JSON.stringify({ host_id: session.user.id, proveedor_id: tgProveedorId }),
-      });
+      const res = await authFetch('/api/telegram/generate-code', { proveedor_id: tgProveedorId });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
       setTgData(data);

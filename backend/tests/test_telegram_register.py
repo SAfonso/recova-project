@@ -120,7 +120,7 @@ def test_register_happy_path():
     sb, schema_mock, update_chain, insert_chain = _make_sb(
         code_row=_code_row(), user_row=None
     )
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb):
+    with patch("backend.src.triggers.blueprints.telegram._sb_client", return_value=sb):
         with app.test_client() as client:
             resp = client.post(
                 ENDPOINT,
@@ -146,7 +146,7 @@ def test_register_already_registered_code_unused():
     sb, schema_mock, update_chain, insert_chain = _make_sb(
         code_row=_code_row(used=False), user_row=_user_row()
     )
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb):
+    with patch("backend.src.triggers.blueprints.telegram._sb_client", return_value=sb):
         with app.test_client() as client:
             resp = client.post(
                 ENDPOINT,
@@ -172,7 +172,7 @@ def test_register_already_registered_code_used():
     sb, schema_mock, update_chain, insert_chain = _make_sb(
         code_row=_code_row(used=True), user_row=_user_row()
     )
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb):
+    with patch("backend.src.triggers.blueprints.telegram._sb_client", return_value=sb):
         with app.test_client() as client:
             resp = client.post(
                 ENDPOINT,
@@ -195,7 +195,7 @@ def test_register_already_registered_code_expired():
     sb, schema_mock, update_chain, insert_chain = _make_sb(
         code_row=_code_row(used=False, expires_at=PAST), user_row=_user_row()
     )
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb):
+    with patch("backend.src.triggers.blueprints.telegram._sb_client", return_value=sb):
         with app.test_client() as client:
             resp = client.post(
                 ENDPOINT,
@@ -215,7 +215,7 @@ def test_register_already_registered_code_expired():
 
 def test_register_code_not_found():
     sb, *_ = _make_sb(code_row=None, user_row=None)
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb):
+    with patch("backend.src.triggers.blueprints.telegram._sb_client", return_value=sb):
         with app.test_client() as client:
             resp = client.post(
                 ENDPOINT,
@@ -232,7 +232,7 @@ def test_register_code_not_found():
 
 def test_register_code_already_used():
     sb, *_ = _make_sb(code_row=_code_row(used=True), user_row=None)
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb):
+    with patch("backend.src.triggers.blueprints.telegram._sb_client", return_value=sb):
         with app.test_client() as client:
             resp = client.post(
                 ENDPOINT,
@@ -249,7 +249,7 @@ def test_register_code_already_used():
 
 def test_register_code_expired():
     sb, *_ = _make_sb(code_row=_code_row(used=False, expires_at=PAST), user_row=None)
-    with patch("backend.src.triggers.webhook_listener.create_client", return_value=sb):
+    with patch("backend.src.triggers.blueprints.telegram._sb_client", return_value=sb):
         with app.test_client() as client:
             resp = client.post(
                 ENDPOINT,
@@ -288,7 +288,7 @@ def test_register_missing_telegram_user_id():
         )
 
     assert resp.status_code == 400
-    assert "telegram_user_id" in resp.get_json().get("message", "")
+    assert "telegram_user_id" in resp.get_json()["error"]["message"]
 
 
 # ---------------------------------------------------------------------------
@@ -304,4 +304,4 @@ def test_register_missing_code():
         )
 
     assert resp.status_code == 400
-    assert "code" in resp.get_json().get("message", "")
+    assert "code" in resp.get_json()["error"]["message"]

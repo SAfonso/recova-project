@@ -1,0 +1,428 @@
+{
+  "name": "This.Ingesta-Solicitudes 3",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -688,
+        -64
+      ],
+      "id": "507fad22-491d-4bdb-bc8b-bd357bd567d8",
+      "name": "Schedule Trigger (09:00)"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.BACKEND_URL }}/api/ingest-from-sheets",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "={{ $env.WEBHOOK_API_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -512,
+        -240
+      ],
+      "id": "151bd7d4-c91e-4cde-9033-46f3817a0005",
+      "name": "Ingest from Sheets"
+    },
+    {
+      "parameters": {
+        "content": "## Ingesta multi-tenant\nLee Sheets de todos los open mics,\ningesta filas nuevas en bronze y\nlanza bronze→silver.",
+        "height": 128,
+        "width": 220
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -464,
+        96
+      ],
+      "id": "56260932-df1d-4a73-9450-6b1436db83bb",
+      "name": "Sticky Note Ingesta"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/comicos",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "genero",
+              "value": "eq.unknown"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.SUPABASE_KEY }}"
+            },
+            {
+              "name": "Accept-Profile",
+              "value": "silver"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -208,
+        -240
+      ],
+      "id": "195c9838-1c4e-4e73-9c81-0c9bcb4c4fbe",
+      "name": "Get Unknown Gender Comics",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "915bdf0c-c93b-4814-aac1-f78e78535a21",
+              "name": "id",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "5d49ce6d-7fb8-4da5-b99e-9fa034da3bd3",
+              "name": "nombre",
+              "value": "={{ $json.nombre }}",
+              "type": "string"
+            },
+            {
+              "id": "94364346-8c5f-4316-94a5-5885aa9a7e3d",
+              "name": "instagram",
+              "value": "={{ $json.instagram }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -64,
+        -80
+      ],
+      "id": "42dd8c44-82e3-4ab9-803f-a10df12df509",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        160,
+        -64
+      ],
+      "id": "4c1af921-6937-47ca-96f3-6a90222d868e",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=\"Eres un clasificador de género masivo. Recibirás una lista de comediantes.\\n\\nTu tarea: Clasifica el género de cada uno basándote en su nombre e instagram.\\nReglas: Responde ÚNICAMENTE con un array de objetos JSON con este formato: [{\\\"id\\\": \\\"...\\\", \\\"genero\\\": \\\"m|f|nb|unknown\\\"}].\\n\\nLista de entrada:\" + {{ JSON.stringify($json.data) }}",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.8,
+      "position": [
+        304,
+        -176
+      ],
+      "id": "03f3c4ed-8218-4aae-964e-53cd7534f6dd",
+      "name": "Basic LLM Chain",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        320,
+        -32
+      ],
+      "id": "1dfc1611-485d-4751-8ecf-3d60dcac34a1",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "ImSu7hn5P6MJj2QI",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rawText = $json.text || $json.output || $json.message.content;\nconst cleanText = rawText.replace(/```json|```/g, \"\").trim();\nconst listaComicos = JSON.parse(cleanText);\nreturn listaComicos;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        608,
+        -144
+      ],
+      "id": "86effe44-2094-4974-a9ef-ed28cfe6f8c3",
+      "name": "Parse Gender Response"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/comicos",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "id",
+              "value": "=eq.{{ $json.id }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.SUPABASE_KEY }}"
+            },
+            {
+              "name": "Content-Profile",
+              "value": "silver"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "genero",
+              "value": "={{ $json.genero }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        832,
+        -64
+      ],
+      "id": "508163eb-a674-4dff-8521-74f56e926f42",
+      "name": "Update Gender"
+    },
+    {
+      "parameters": {
+        "content": "## Clasificador de género\nBatch global: todos los cómicos\nsin género se clasifican con Gemini\nantes de que corra el scoring.",
+        "height": 128,
+        "width": 220
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        256,
+        -320
+      ],
+      "id": "c94cee28-c70e-4733-aac6-8773fa8d1cf5",
+      "name": "Sticky Note Género"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.BACKEND_URL }}/api/ingest-from-forms",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "={{ $env.WEBHOOK_API_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -368,
+        -96
+      ],
+      "id": "37026402-a5d2-462a-97f1-b04afa8a76ea",
+      "name": "Ingest from Forms1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Sanitize Fields — strip control chars, truncar, detectar injection patterns\nconst INJECTION_RE = /(?:ignora|olvida|descarta|ignore|forget|disregard)\\s+(?:las?\\s+)?(?:all\\s+)?(?:previous\\s+)?instruc/i;                                                          \nconst MAX_LEN = 80;\n  \nfor (const item of $input.all()) {\n  // Strip Unicode invisibles y control chars\n  for (const key of ['nombre', 'instagram']) {\n    let val = (item.json[key] || '')\n      .replace(/[\\u200b-\\u200f\\u2060-\\u2064\\ufeff\\u202a-\\u202e\\u2066-\\u2069]/g, '')\n      .replace(/[\\x00-\\x08\\x0b\\x0c\\x0e-\\x1f]/g, '')\n      .slice(0, MAX_LEN);\n\n    if (INJECTION_RE.test(val)) {\n      val = '[REDACTED]';                                 \n    }\n    item.json[key] = val;                                 \n  }\n}\n\nreturn $input.all(); "
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -32,
+        144
+      ],
+      "id": "5cbe9984-b592-446e-87ba-e4839d101277",
+      "name": "Sanitize Fields"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger (09:00)": {
+      "main": [
+        [
+          {
+            "node": "Ingest from Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ingest from Sheets": {
+      "main": [
+        [
+          {
+            "node": "Ingest from Forms1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Unknown Gender Comics": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Sanitize Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Parse Gender Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Gender Response": {
+      "main": [
+        [
+          {
+            "node": "Update Gender",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ingest from Forms1": {
+      "main": [
+        [
+          {
+            "node": "Get Unknown Gender Comics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sanitize Fields": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "8e6a4201-668b-4e15-9d12-fb8e1447a9d3",
+  "meta": {
+    "instanceId": "0a875fbb3d2fbb10ab816e54655a603076a1de35a069a813489d324e1ea27d6a"
+  },
+  "id": "nlmUhduEBfBdJFJ5",
+  "tags": []
+}
