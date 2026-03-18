@@ -1,0 +1,17 @@
+backend/venv/
+backend/.env
+backend/logs/
+backend/tests/
+backend/scripts/
+**/__pycache__/
+**/*.pyc
+.git/
+.github/
+.claude/
+.agents/
+frontend/
+node_modules/
+*.md
+docs/
+specs/
+workflows/

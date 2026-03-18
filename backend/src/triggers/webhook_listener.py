@@ -11,6 +11,11 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 
 
+@app.route("/health")
+def _health():
+    return {"status": "ok"}, 200
+
+
 @app.before_request
 def _handle_options():
     if request.method == "OPTIONS":

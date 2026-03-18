@@ -1,3 +1,15 @@
+## [0.34.0] - 2026-03-19
+
+### Infra — Dockerización del backend
+
+- **Dockerfile** arreglado: `COPY backend/assets/` (fonts + poster templates), `HEALTHCHECK`, `--workers 1` (rate_limit store in-memory), `curl` instalado
+- **`docker-compose.yml`** nuevo: servicio único backend con healthcheck y restart policy
+- **Endpoint `/health`** en `webhook_listener.py` — `{"status": "ok"}` sin auth
+- **`deploy.yml`** actualizado: `docker compose down && docker compose up -d --build` reemplaza `pm2 startOrReload`
+- **`.dockerignore`** completado: excluye tests, docs, specs, workflows, node_modules, .github
+- **`flask-cors`** eliminado de `requirements.txt` (no se usa, CORS es manual)
+- **`LOG_LEVEL`** documentado en `.env.example`
+
 ## [0.33.0] - 2026-03-18
 
 ### Security — Sprint K1: Correcciones de auditoría externa
