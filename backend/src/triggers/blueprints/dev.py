@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 @bp.route("/api/dev/seed-open-mic", methods=["POST"])
 @validate_json({"open_mic_id": str})
-def dev_seed_open_mic():
+def dev_seed_open_mic() -> tuple:
     """Siembra 10 usuarios de prueba en un open mic. Protegido por Supabase JWT."""
     user = _is_authenticated_user()
     if not user:
@@ -101,7 +101,7 @@ def dev_seed_open_mic():
 
 
 @bp.route("/api/dev/trigger-ingest", methods=["POST"])
-def dev_trigger_ingest():
+def dev_trigger_ingest() -> tuple:
     """Lanza ingesta de sheets y forms en background. Protegido por Supabase JWT."""
     if not _is_authenticated_user():
         return api_error("UNAUTHORIZED", "unauthorized", 401)
@@ -112,7 +112,7 @@ def dev_trigger_ingest():
 
 @bp.route("/api/dev/trigger-scoring", methods=["POST"])
 @validate_json({"open_mic_id": str})
-def dev_trigger_scoring():
+def dev_trigger_scoring() -> tuple:
     """Ejecuta scoring para un open mic. Protegido por Supabase JWT."""
     user = _is_authenticated_user()
     if not user:

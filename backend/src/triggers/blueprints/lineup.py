@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 @bp.route("/api/lineup/prepare-validation", methods=["POST"])
 @validate_json({"host_id": str, "open_mic_id": str})
-def lineup_prepare_validation():
+def lineup_prepare_validation() -> tuple:
     """Calcula el proximo show, ejecuta scoring, genera token y devuelve lineup + link."""
     err = require_api_key()
     if err:
@@ -129,7 +129,7 @@ def lineup_prepare_validation():
 
 @bp.route("/api/validate-view/lineup", methods=["GET"])
 @rate_limit(max_requests=30, window_seconds=60)
-def validate_view_lineup():
+def validate_view_lineup() -> tuple:
     """Devuelve el lineup para la vista standalone de validacion."""
     token = request.args.get("token", "").strip()
     if not token:
@@ -201,7 +201,7 @@ def validate_view_lineup():
 @bp.route("/api/validate-view/validate", methods=["POST"])
 @rate_limit(max_requests=30, window_seconds=60)
 @validate_json({"token": str, "solicitud_ids": list})
-def validate_view_validate():
+def validate_view_validate() -> tuple:
     """Valida el lineup desde la vista standalone."""
     body = request.get_json(silent=True) or {}
     token = body.get("token", "").strip()

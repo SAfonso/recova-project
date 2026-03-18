@@ -1,3 +1,42 @@
+## [0.31.0] - 2026-03-18
+
+### Added — Sprint I5: Error Boundary React
+
+- Componente `ErrorBoundary` (class component) con `getDerivedStateFromError` + `componentDidCatch`
+- Envuelve `<Root />` en `main.jsx` — captura errores no manejados en todo el árbol de componentes
+- UI amigable: mensaje de error + botón "Recargar página"
+- Errores se loguean en consola con `componentStack` para debugging
+
+### Added — Sprint I6: Type hints en blueprints
+
+- `-> tuple` en **23/23** endpoints Flask (16 nuevos + 7 existentes)
+- Blueprints actualizados: ingestion (3), lineup (3), telegram (2), dev (3), mcp_agent (5)
+
+### Fixed — Sprints I1, I2: Silent failures + savepoints SQL seguros
+
+- **I1**: Logging en 6 `except` silenciosos — `shared.py` (auth JWT, pipeline async), `lineup.py` (scoring), `poster.py` (cleanup), `poster_detector_gemini.py` (Gemini API), `bronze_to_silver_ingestion.py` (genderize.io)
+- **I2**: Reemplazadas f-strings en `SAVEPOINT`/`ROLLBACK TO SAVEPOINT` por `sql.SQL().format(sql.Identifier())` de psycopg2
+
+### Fixed — Bug bronze atascados en bucle infinito
+
+- Clasificador `_is_permanent_error()` distingue errores permanentes (UniqueViolation, CheckViolation, ValueError) de transitorios (OperationalError, timeout)
+- `mark_bronze_processed()` se llama tras errores permanentes para evitar reintentos infinitos
+- 2 tests nuevos: UniqueViolation marca procesado, OperationalError no lo marca
+
+### Tests
+- 4 tests nuevos (2 permanent/transient error + 1 assert actualizado + 1 warning fix)
+- **Total acumulado**: 372 backend + 70 frontend = 442 tests verdes
+
+---
+
+## [0.30.0] - 2026-03-18
+
+### Fixed — Sprints I1, I2: Silent failures + savepoints SQL seguros
+
+- Commit intermedio — cambios integrados en v0.31.0
+
+---
+
 ## [0.29.0] - 2026-03-18
 
 ### Refactor — Sprint I4: Descomponer `process_single_solicitud()` (God Function)

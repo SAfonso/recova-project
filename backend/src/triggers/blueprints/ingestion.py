@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 @bp.route("/api/form-submission", methods=["POST"])
 @rate_limit(max_requests=5, window_seconds=60)
 @validate_json({"open_mic_id": str})
-def form_submission():
+def form_submission() -> tuple:
     """Recibe datos de Google Form via Apps Script y los ingesta en bronze."""
     err = require_api_key()
     if err:
@@ -69,7 +69,7 @@ def form_submission():
 
 
 @bp.route("/api/ingest-from-sheets", methods=["POST"])
-def ingest_from_sheets():
+def ingest_from_sheets() -> tuple:
     """Lee todas las Sheets de open mics activos e ingesta filas nuevas en bronze."""
     err = require_api_key()
     if err:
@@ -148,7 +148,7 @@ def ingest_from_sheets():
 
 
 @bp.route("/api/ingest-from-forms", methods=["POST"])
-def ingest_from_forms():
+def ingest_from_forms() -> tuple:
     """Lee respuestas de Google Forms de todos los open mics activos e ingesta en bronze."""
     err = require_api_key()
     if err:

@@ -1,6 +1,6 @@
 # AI LineUp Architect
 
-**Versión:** `0.29.0` · **Estado:** Desarrollo activo · **Metodología:** SDD + TDD
+**Versión:** `0.31.0` · **Estado:** Desarrollo activo · **Metodología:** SDD + TDD
 
 SaaS multi-tenant para gestión de open mics de comedia. Automatiza la recogida de solicitudes (Google Forms), el scoring con IA y la notificación del lineup por Telegram.
 
@@ -90,7 +90,7 @@ Variables de entorno: [`docs/setup.md`](docs/setup.md)
 
 ```bash
 source backend/venv/bin/activate
-PYTHONPATH=. pytest backend/tests/   # 370 tests backend
+PYTHONPATH=. pytest backend/tests/   # 372 tests backend
 cd frontend && npm test              # 70 tests frontend
 ```
 
@@ -132,6 +132,8 @@ Revisión técnica 1 (2026-03-16): 7/10. Revisión 2 (2026-03-17): 8/10. Revisi�
 | ~~H2-4~~ | ~~Diagrama secuencia~~ — 5 diagramas Mermaid del flujo completo ✅ |
 | ~~I3~~ | ~~Gender parity dead code~~ — `'unknown'` ahora alterna en bucket `f_nb` ✅ |
 | ~~I4~~ | ~~God Function~~ — `process_single_solicitud()` descompuesta en `_parse_bronze_record()` + `_persist_solicitud()` ✅ |
+| ~~I5~~ | ~~Error Boundary React~~ — `ErrorBoundary` class component envolviendo `Root` ✅ |
+| ~~I6~~ | ~~Type hints blueprints~~ — `-> tuple` en 23/23 endpoints ✅ |
 
 </details>
 

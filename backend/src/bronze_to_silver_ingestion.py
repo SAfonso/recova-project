@@ -15,7 +15,7 @@ from typing import Iterable
 from uuid import UUID
 
 import psycopg2
-from psycopg2 import sql
+from psycopg2 import errors as pg_errors, sql
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -570,6 +570,19 @@ def mark_bronze_processed(conn, bronze_id: UUID) -> None:
         )
 
 
+_PERMANENT_DB_ERRORS = (
+    pg_errors.UniqueViolation,
+    pg_errors.CheckViolation,
+    pg_errors.ForeignKeyViolation,
+    pg_errors.NotNullViolation,
+)
+
+
+def _is_permanent_error(exc: Exception) -> bool:
+    """True si el error nunca se resolverá reintentando."""
+    return isinstance(exc, (*_PERMANENT_DB_ERRORS, ValueError, TypeError, KeyError))
+
+
 _ALLOWED_ERROR_COLUMNS = frozenset({"metadata", "raw_data_extra"})
 
 
@@ -742,6 +755,15 @@ def process_single_solicitud(
             message=str(exc),
             phase=phase,
         )
+
+        if _is_permanent_error(exc):
+            mark_bronze_processed(conn, bronze.id)
+            LOGGER.info(
+                "Bronze %s marcado como procesado (error permanente: %s)",
+                bronze.id,
+                type(exc).__name__,
+            )
+
         return 0
 
 

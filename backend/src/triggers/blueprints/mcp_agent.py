@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 @bp.route("/mcp/open-mics", methods=["GET"])
-def mcp_list_open_mics():
+def mcp_list_open_mics() -> tuple:
     """Lista los open mics del host."""
     err = require_api_key()
     if err:
@@ -59,7 +59,7 @@ def mcp_list_open_mics():
 
 
 @bp.route("/mcp/lineup", methods=["GET"])
-def mcp_get_lineup():
+def mcp_get_lineup() -> tuple:
     """Devuelve el lineup confirmado para un open mic y fecha."""
     err = require_api_key()
     if err:
@@ -107,7 +107,7 @@ def mcp_get_lineup():
 
 
 @bp.route("/mcp/candidates", methods=["GET"])
-def mcp_get_candidates():
+def mcp_get_candidates() -> tuple:
     """Devuelve candidatos ordenados por score para un open mic."""
     err = require_api_key()
     if err:
@@ -152,7 +152,7 @@ def mcp_get_candidates():
 
 @bp.route("/mcp/run-scoring", methods=["POST"])
 @validate_json({"open_mic_id": str})
-def mcp_run_scoring():
+def mcp_run_scoring() -> tuple:
     """Ejecuta el motor de scoring para un open mic."""
     err = require_api_key()
     if err:
@@ -173,7 +173,7 @@ def mcp_run_scoring():
 
 @bp.route("/mcp/reopen-lineup", methods=["POST"])
 @validate_json({"open_mic_id": str, "fecha_evento": str})
-def mcp_reopen_lineup():
+def mcp_reopen_lineup() -> tuple:
     """Resetea los slots confirmados de un lineup para permitir cambios."""
     err = require_api_key()
     if err:

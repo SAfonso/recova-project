@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import date
 from uuid import UUID
 
+import psycopg2
 import pytest
 
 import bronze_to_silver_ingestion as ingestion
@@ -261,6 +262,112 @@ def test_process_single_solicitud_rolls_back_and_registers_error(monkeypatch):
     assert errors[0][1] == "raw_data_extra"
     assert errors[0][3] == "normalizacion"
     assert any("ROLLBACK TO SAVEPOINT" in query for query, _ in conn.executed)
+    # ValueError es permanente → debe marcar bronze como procesado
+    assert any(
+        "UPDATE bronze.solicitudes SET procesado = true" in query
+        for query, _ in conn.executed
+    )
+
+
+def test_process_single_solicitud_transient_error_does_not_mark_processed(monkeypatch):
+    """Un error transitorio (OperationalError) NO debe marcar el bronze como procesado."""
+    conn = FakeConn()
+    bronze = make_bronze_record()
+    today = date(2026, 2, 15)
+    descartes: list[dict[str, str]] = []
+
+    monkeypatch.setattr(
+        ingestion,
+        "normalize_row",
+        lambda _row: {
+            "is_valid": True,
+            "errors": [],
+            "normalized": {
+                "nombre": "Mati",
+                "instagram": "mati.show",
+                "telefono": "+34666555888",
+                "experiencia_raw": "He probado alguna vez",
+                "fechas_raw": "20-02-26",
+                "disponibilidad_ultimo_minuto": "si",
+            },
+        },
+    )
+
+    def boom(*_args, **_kwargs):
+        raise psycopg2.OperationalError("connection lost")
+
+    monkeypatch.setattr(ingestion, "parse_event_dates", boom)
+    monkeypatch.setattr(
+        ingestion,
+        "register_ingestion_error",
+        lambda _conn, bronze_id, error_metadata_column, message, phase: None,
+    )
+
+    inserted = ingestion.process_single_solicitud(
+        conn,
+        bronze,
+        today,
+        error_metadata_column="raw_data_extra",
+        detalles_descarte=descartes,
+    )
+
+    assert inserted == 0
+    # OperationalError es transitorio → NO debe marcar como procesado
+    assert not any(
+        "UPDATE bronze.solicitudes SET procesado = true" in query
+        for query, _ in conn.executed
+    )
+
+
+def test_process_single_solicitud_unique_violation_marks_processed(monkeypatch):
+    """UniqueViolation es permanente → debe marcar el bronze como procesado."""
+    import psycopg2.errors
+
+    conn = FakeConn()
+    bronze = make_bronze_record()
+    today = date(2026, 2, 15)
+    descartes: list[dict[str, str]] = []
+
+    monkeypatch.setattr(
+        ingestion,
+        "normalize_row",
+        lambda _row: {
+            "is_valid": True,
+            "errors": [],
+            "normalized": {
+                "nombre": "Mati",
+                "instagram": "mati.show",
+                "telefono": "+34666555888",
+                "experiencia_raw": "He probado alguna vez",
+                "fechas_raw": "20-02-26",
+                "disponibilidad_ultimo_minuto": "si",
+            },
+        },
+    )
+
+    def boom(*_args, **_kwargs):
+        raise psycopg2.errors.UniqueViolation("duplicate key")
+
+    monkeypatch.setattr(ingestion, "parse_event_dates", boom)
+    monkeypatch.setattr(
+        ingestion,
+        "register_ingestion_error",
+        lambda _conn, bronze_id, error_metadata_column, message, phase: None,
+    )
+
+    inserted = ingestion.process_single_solicitud(
+        conn,
+        bronze,
+        today,
+        error_metadata_column="raw_data_extra",
+        detalles_descarte=descartes,
+    )
+
+    assert inserted == 0
+    assert any(
+        "UPDATE bronze.solicitudes SET procesado = true" in query
+        for query, _ in conn.executed
+    )
 
 
 def test_run_pipeline_success_aggregates_counts(monkeypatch):

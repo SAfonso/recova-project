@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 @bp.route("/api/telegram/generate-code", methods=["POST"])
 @validate_json({"host_id": str})
-def telegram_generate_code():
+def telegram_generate_code() -> tuple:
     """Genera un código temporal para self-registration del bot de Telegram."""
     err = require_api_key()
     if err:
@@ -50,7 +50,7 @@ def telegram_generate_code():
 @bp.route("/api/telegram/register", methods=["POST"])
 @rate_limit(max_requests=10, window_seconds=60)
 @validate_json({"code": str})
-def telegram_register():
+def telegram_register() -> tuple:
     """Procesa /start RCV-XXXX: valida codigo y registra host en telegram_users."""
     err = require_api_key()
     if err:

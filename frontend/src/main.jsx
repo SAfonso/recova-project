@@ -8,6 +8,7 @@ import { OnboardingScreen } from './components/OnboardingScreen';
 import { OpenMicDetail } from './components/OpenMicDetail';
 import { OpenMicSelector } from './components/OpenMicSelector';
 import { ValidateView } from './components/ValidateView';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { supabase } from './supabaseClient';
 import './index.css';
 
@@ -78,7 +79,9 @@ function Root() {
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <OnboardingTutorial />
-    <Root />
+    <ErrorBoundary>
+      <OnboardingTutorial />
+      <Root />
+    </ErrorBoundary>
   </React.StrictMode>,
 );
