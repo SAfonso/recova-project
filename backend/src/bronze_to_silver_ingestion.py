@@ -618,6 +618,78 @@ def register_ingestion_error(
     )
 
 
+@dataclass(frozen=True)
+class ParsedSolicitud:
+    nombre: str
+    instagram: str
+    telefono: str
+    event_dates: list[date]
+    level: int
+    available_last_minute: bool
+
+
+def _parse_bronze_record(bronze: BronzeRecord, today: date) -> ParsedSolicitud:
+    """Normaliza y parsea un BronzeRecord.
+
+    Raises ValueError si los campos obligatorios son inválidos.
+    Atributo ``phase`` en la excepción NO se añade aquí — el caller
+    controla la fase según qué paso falla.
+    """
+    form_row = {
+        "Nombre artístico":                                           bronze.nombre_raw,
+        "Instagram (sin @)":                                          bronze.instagram_raw,
+        "WhatsApp":                                                   bronze.telefono_raw,
+        "¿Cuántas veces has actuado en un open mic?":                bronze.experiencia_raw,
+        "¿Qué fechas te vienen bien?":                               bronze.fechas_seleccionadas_raw,
+        "¿Estarías disponible si nos falla alguien de última hora?": bronze.disponibilidad_ultimo_minuto,
+        "¿Tienes algún show próximo que quieras mencionar?":         bronze.info_show_cercano,
+        "¿Cómo nos conociste?":                                      bronze.origen_conocimiento,
+    }
+    normalized_result = normalize_row(form_row)
+    if not normalized_result["is_valid"]:
+        raise ValueError("; ".join(normalized_result["errors"]))
+
+    normalized = normalized_result["normalized"]
+    return ParsedSolicitud(
+        nombre=str(normalized["nombre"]),
+        instagram=str(normalized["instagram"]),
+        telefono=str(normalized["telefono"]),
+        event_dates=parse_event_dates(str(normalized["fechas_raw"]), today),
+        level=map_experience_level(str(normalized["experiencia_raw"])),
+        available_last_minute=parse_last_minute_availability(
+            str(normalized["disponibilidad_ultimo_minuto"])
+        ),
+    )
+
+
+def _persist_solicitud(conn, bronze: BronzeRecord, parsed: ParsedSolicitud) -> int:
+    """Upsert cómico + insert silver rows + mark processed. Returns inserted count."""
+    genero = infer_gender(parsed.nombre, parsed.instagram)
+    comico_id = upsert_comico_silver(
+        conn,
+        instagram=parsed.instagram,
+        nombre=parsed.nombre,
+        telefono=parsed.telefono,
+        genero=genero,
+    )
+    inserted = insert_silver_rows(
+        conn,
+        bronze=bronze,
+        comico_id=comico_id,
+        event_dates=parsed.event_dates,
+        level=parsed.level,
+        available_last_minute=parsed.available_last_minute,
+    )
+    mark_bronze_processed(conn, bronze.id)
+    LOGGER.info(
+        "Bronze %s procesado | comico_id=%s | fechas_insertadas=%s",
+        bronze.id,
+        comico_id,
+        len(parsed.event_dates),
+    )
+    return inserted
+
+
 def process_single_solicitud(
     conn,
     bronze: BronzeRecord,
@@ -633,77 +705,23 @@ def process_single_solicitud(
 
     try:
         phase = "normalizacion"
-        # Usar nombres de campos v3 (normalize_row soporta fallback a legacy)
-        form_row = {
-            "Nombre artístico":                                           bronze.nombre_raw,
-            "Instagram (sin @)":                                          bronze.instagram_raw,
-            "WhatsApp":                                                   bronze.telefono_raw,
-            "¿Cuántas veces has actuado en un open mic?":                bronze.experiencia_raw,
-            "¿Qué fechas te vienen bien?":                               bronze.fechas_seleccionadas_raw,
-            "¿Estarías disponible si nos falla alguien de última hora?": bronze.disponibilidad_ultimo_minuto,
-            "¿Tienes algún show próximo que quieras mencionar?":         bronze.info_show_cercano,
-            "¿Cómo nos conociste?":                                      bronze.origen_conocimiento,
-        }
-        normalized_result = normalize_row(form_row)
-        if not normalized_result["is_valid"]:
-            joined_errors = "; ".join(normalized_result["errors"])
-            raise ValueError(joined_errors)
+        parsed = _parse_bronze_record(bronze, today)
 
-        normalized = normalized_result["normalized"]
-        instagram = str(normalized["instagram"])
-        telefono = str(normalized["telefono"])
-        nombre = str(normalized["nombre"])
-
-        phase = "parsing_fechas"
-        event_dates = parse_event_dates(str(normalized["fechas_raw"]), today)
-
-        phase = "mapeo_experiencia"
-        level = map_experience_level(str(normalized["experiencia_raw"]))
-
-        phase = "mapeo_disponibilidad_ultimo_minuto"
-        available_last_minute = parse_last_minute_availability(
-            str(normalized["disponibilidad_ultimo_minuto"])
-        )
-
-        if not event_dates:
+        if not parsed.event_dates:
             motivo = "Sin fechas futuras válidas"
             detalles_descarte.append({"id": str(bronze.id), "motivo": motivo})
             LOGGER.info("Bronze %s descartado: %s", bronze.id, motivo)
             mark_bronze_processed(conn, bronze.id)
             return 0
 
-        phase = "upsert_comico_silver"
-        genero = infer_gender(nombre, instagram)
-        comico_id = upsert_comico_silver(
-            conn,
-            instagram=instagram,
-            nombre=nombre,
-            telefono=telefono,
-            genero=genero,
-        )
-
-        phase = "insert_silver"
-        inserted = insert_silver_rows(
-            conn,
-            bronze=bronze,
-            comico_id=comico_id,
-            event_dates=event_dates,
-            level=level,
-            available_last_minute=available_last_minute,
-        )
-        mark_bronze_processed(conn, bronze.id)
+        phase = "persist_silver"
+        inserted = _persist_solicitud(conn, bronze, parsed)
 
         if inserted == 0:
             motivo = "Duplicado en Silver (sin nuevas filas para insertar)"
             detalles_descarte.append({"id": str(bronze.id), "motivo": motivo})
             LOGGER.warning("Bronze %s descartado: %s", bronze.id, motivo)
 
-        LOGGER.info(
-            "Bronze %s procesado | comico_id=%s | fechas_insertadas=%s",
-            bronze.id,
-            comico_id,
-            len(event_dates),
-        )
         return inserted
     except Exception as exc:  # noqa: BLE001
         motivo = f"Error de validación/procesamiento en fase '{phase}': {exc}"

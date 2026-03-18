@@ -255,11 +255,11 @@ def test_process_single_solicitud_rolls_back_and_registers_error(monkeypatch):
 
     assert inserted == 0
     assert len(descartes) == 1
-    assert "parsing_fechas" in descartes[0]["motivo"]
+    assert "normalizacion" in descartes[0]["motivo"]
     assert len(errors) == 1
     assert errors[0][0] == bronze.id
     assert errors[0][1] == "raw_data_extra"
-    assert errors[0][3] == "parsing_fechas"
+    assert errors[0][3] == "normalizacion"
     assert any("ROLLBACK TO SAVEPOINT" in query for query, _ in conn.executed)
 
 

@@ -1,3 +1,15 @@
+## [0.29.0] - 2026-03-18
+
+### Refactor — Sprint I4: Descomponer `process_single_solicitud()` (God Function)
+
+- Extraída **`_parse_bronze_record(bronze, today)`** → dataclass `ParsedSolicitud` con normalización + parsing de fechas/experiencia/disponibilidad
+- Extraída **`_persist_solicitud(conn, bronze, parsed)`** → inferencia de género, upsert cómico, insert silver, mark processed
+- `process_single_solicitud()` queda como orquestador (~30 líneas): savepoint → parse → check dates → persist → error handling
+- Función original: ~107 líneas monolíticas → 3 funciones con responsabilidad única
+- **Total acumulado**: 370 backend + 70 frontend = 440 tests verdes
+
+---
+
 ## [0.28.0] - 2026-03-18
 
 ### Fixed — Sprint I3: Gender parity dead code
