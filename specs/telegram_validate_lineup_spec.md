@@ -291,7 +291,7 @@ Cuando el host pide el lineup al bot, el agente debe:
 ```
 Type: toolHttpRequest
 Method: POST
-URL: http://46.225.120.243:5000/api/lineup/prepare-validation
+URL: http://<BACKEND_URL>/api/lineup/prepare-validation
 Headers: X-API-KEY
 Body params:
   - host_id    (inyectado por el agente desde el system prompt)
