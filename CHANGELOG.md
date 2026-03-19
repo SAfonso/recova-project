@@ -1,3 +1,13 @@
+## [0.34.5] - 2026-03-19
+
+### Docs — eliminación referencias al poster
+
+- **`README.md`**: eliminadas referencias a poster en funcionalidades, árbol de estructura y módulos core
+- **`docs/architecture.svg`**: nodos Renderer :5050, Storage (posters), Render Poster y PNG Poster reemplazados por Scoring Engine, Auth·RLS, Notificación y Google Sheets
+- **`docs/dataflow.svg`**: lane OUTPUT simplificada — n8n Notif conecta directamente a Telegram; eliminados nodos Renderer :5050 y Storage
+- **`docs/architecture.md`**: eliminados subgraph Renderer, Storage(posters), flujo App→Playwright, N8N_BACKEND_RENDER_URL y Renderer API de la tabla de servicios
+- **`docs/openapi.yaml`**: eliminados tag Poster y endpoint `/api/render-poster`
+
 ## [0.34.4] - 2026-03-19
 
 ### Docs & UX
