@@ -1,3 +1,11 @@
+## [0.34.3] - 2026-03-19
+
+### Fix — CORS, error message form, Google Forms API
+
+- **`shared.py`**: `FRONTEND_URL` por defecto actualizado a `https://recova.machango.org` — el dominio anterior (`recova-project-z5zp.vercel.app`) bloqueaba requests desde el dominio personalizado
+- **`ScoringConfigurator.jsx`**: leer `data.error.message` en lugar de `data.message` al crear form — `api_error()` anida el mensaje en `error.message`, no en el top level; ahora se muestra el error real del backend
+- **`google_form_builder.py`**: mover `description` a `batchUpdate` — la Forms API solo acepta `title` en `create`; enviar `description` en el create causaba HTTP 400
+
 ## [0.34.2] - 2026-03-19
 
 ### Fix — configurador: no navega al guardar + no pierde datos al cambiar pestaña
