@@ -98,6 +98,8 @@ def telegram_register() -> tuple:
     already_registered = bool(user_res.data)
 
     if already_registered:
+        # Actualizar host_id por si el usuario cambió de proveedor/cuenta
+        silver.from_("telegram_users").update({"host_id": host_id}).eq("telegram_user_id", telegram_user_id).execute()
         # Marcar codigo como usado si todavia no lo estaba
         if not code_row["used"]:
             silver.from_("telegram_registration_codes").update({"used": True}).eq("code", code).execute()
