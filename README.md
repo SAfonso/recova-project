@@ -116,37 +116,8 @@ cd frontend && npm test              # 70 tests frontend
 
 ---
 
-## Deuda técnica — Sprints de mejora
+## Limitaciones conocidas
 
-Revisión técnica 1 (2026-03-16): 7/10. Revisión 2 (2026-03-17): 8/10. Revisión 3 (2026-03-17): 8.5/10.
-
-<details>
-<summary>Sprints A–G (completados) ✅</summary>
-
-| Sprint | Descripción |
-|--------|-------------|
-| ~~A~~ | ~~Bugs funcionales~~ — A1 gender_parity fix + A2 falso positivo documentado ✅ |
-| ~~B~~ | ~~Seguridad~~ — B2 CORS restringido + B3 singleton Supabase ✅ |
-| ~~C~~ | ~~Arquitectura~~ — C1+C2 God File → 8 blueprints ✅ |
-| ~~D~~ | ~~Calidad~~ — D1 cascada INE + D2 BD source of truth + D3 tutorial UX + D4 paths portables ✅ |
-| ~~E~~ | ~~Red flags defensa~~ — E1 test e2e smoke + E2 `@validate_json` 13 endpoints + E3 score_breakdown JSONB ✅ |
-| ~~F1~~ | ~~Error response unificado~~ — `api_error()` en 75 puntos de error, formato único ✅ |
-| ~~F2~~ | ~~Descomponer App.jsx~~ — 534→120 líneas, 3 custom hooks + 4 componentes presentacionales ✅ |
-| ~~F3~~ | ~~Rate limiting~~ — `@rate_limit` decorador in-memory por IP, headers `X-RateLimit-*`, 9 tests ✅ |
-| ~~G1~~ | ~~OpenAPI spec~~ — `docs/openapi.yaml` con 22 rutas, schemas, auth y rate limiting ✅ |
-| ~~H2-1~~ | ~~SQL injection fix~~ — Whitelist + `sql.Identifier()` en `register_ingestion_error()` ✅ |
-| ~~H2-2~~ | ~~Tests de carga~~ — 100 requests concurrentes verificando 429 thread-safe ✅ |
-| ~~H2-4~~ | ~~Diagrama secuencia~~ — 5 diagramas Mermaid del flujo completo ✅ |
-| ~~I3~~ | ~~Gender parity dead code~~ — `'unknown'` ahora alterna en bucket `f_nb` ✅ |
-| ~~I4~~ | ~~God Function~~ — `process_single_solicitud()` descompuesta en `_parse_bronze_record()` + `_persist_solicitud()` ✅ |
-| ~~I5~~ | ~~Error Boundary React~~ — `ErrorBoundary` class component envolviendo `Root` ✅ |
-| ~~I6~~ | ~~Type hints blueprints~~ — `-> tuple` en 23/23 endpoints ✅ |
-| ~~J1~~ | ~~Prompt injection guard~~ — `prompt_guard.py` protege FormAnalyzer + CustomScoringProposer, n8n sanitize nodes en Ingesta + Bot Telegram ✅ |
-| ~~K1~~ | ~~Auditoría externa~~ — API key eliminada del frontend (JWT auth), details=str(exc) eliminado, .execute() fix, trigger-ingest authz, tests n8n actualizados ✅ |
-
-</details>
-
-### Limitaciones conocidas
 - Inferencia de género: si las 3 capas (INE, gender-guesser, genderize.io) fallan, se asigna `unknown`. El scoring agrupa `unknown` con `f/nb` para paridad; el frontend muestra `NB`.
 - CD via GitHub Actions → SSH → `docker compose up -d --build` (desde v0.34.0).
 - Sin versionado de API (`/api/v1/`).
