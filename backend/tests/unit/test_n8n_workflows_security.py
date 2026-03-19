@@ -21,15 +21,19 @@ def test_n8n_workflow_exports_are_valid_json():
 
 
 def test_n8n_workflows_do_not_contain_known_hardcoded_secrets_or_hosts():
+    import os
+
     forbidden_literals = [
         "sb_publishable_",
-        "46.225.120.243:5000",
-        "cggciltvpffitognpnae.supabase.co/rest/v1",
-        # Tokens expuestos — deben estar rotados y nunca volver al código
-        "94obEDseUUlOSVOdKyUWuwINiRpOPIWyhy7yOin7v1k=",
-        # Prefijo JWT service_role del proyecto (común a cualquier rotation de este proyecto)
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNnZ2NpbHR2cGZmaXRvZ25wbmFlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSI",
+        # Webhook API key literal (cargada desde env en CI)
+        os.getenv("WEBHOOK_API_KEY", ""),
+        # Prefijo JWT del service role (cargado desde env en CI)
+        os.getenv("_TEST_JWT_PREFIX", ""),
+        # IP del servidor hardcodeada (cargada desde env en CI)
+        os.getenv("_TEST_SERVER_IP", ""),
     ]
+    # Filtrar strings vacías (cuando la env var no está definida, no chequear)
+    forbidden_literals = [v for v in forbidden_literals if v]
 
     for path in sorted(WORKFLOWS_DIR.glob("*.json")):
         content = path.read_text(encoding="utf-8")

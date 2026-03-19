@@ -159,6 +159,7 @@ def dev_trigger_scoring() -> tuple:
     try:
         result = execute_scoring(open_mic_id)
     except Exception as exc:
+        logger.exception("dev_trigger_scoring: error en execute_scoring para %s", open_mic_id)
         return api_error("INTERNAL_ERROR", "error al ejecutar scoring", 500)
 
     return jsonify({"status": "ok", "result": result}), 200

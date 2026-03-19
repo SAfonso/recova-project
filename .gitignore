@@ -1,3 +1,7 @@
+# =============================================================================
+# Recova Project — .gitignore
+# =============================================================================
+
 # --- Secretos y Configuración ---
 .env
 .env.local
@@ -8,13 +12,28 @@ secrets.json
 *service_account*.json
 google-sa*.json
 google_sa*.json
+# Ficheros OAuth2 generados por google_oauth_setup.py
+token.json
+token_*.json
+client_secret*.json
+credentials.json
+# Certificados y claves privadas
+*.pem
+*.key
+*.p12
+*.pfx
 
-# --- Python (PEP 8 & Herramientas) ---
+# --- Python ---
 __pycache__/
 *.py[cod]
 *$py.class
 .pytest_cache/
 .coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.mypy_cache/
+.ruff_cache/
 .venv/
 venv/
 ENV/
@@ -22,15 +41,24 @@ build/
 dist/
 *.egg-info/
 
-# --- Node.js (package.json) ---
+# --- Logs del backend ---
+backend/logs/
+*.log
+*.log.*
+
+# --- Node.js ---
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
+# --- Frontend build ---
+frontend/dist/
+frontend/.env
+
 # --- Docker ---
-# Nota: .dockerignore y Dockerfile deben estar en el repo para builds en CI/CD
+# Nota: Dockerfile, docker-compose.yml y .dockerignore SÍ deben estar en el repo
 
 # --- SO y Editores ---
 .DS_Store
@@ -39,18 +67,19 @@ Thumbs.db
 .idea/
 *.swp
 *.bak
+*.orig
 
 # --- Datos Locales ---
-*.log
 /data/*.csv
 /data/*.json
 !/data/.gitkeep
 /backups/*
 !/backups/.gitkeep
 
-# --- Scripts locales de diagnóstico (Canva) ---
+# --- Scripts locales de diagnóstico ---
 backend/src/test.py
 backend/src/getVeri.py
+backend/scripts/compare_poster_renderers.py
 
 # --- Scripts locales de seed/reset de datos (y sus tests) ---
 backend/scripts/seed_full.py

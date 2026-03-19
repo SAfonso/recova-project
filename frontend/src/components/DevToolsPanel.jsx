@@ -4,7 +4,7 @@ import { authFetch } from '../utils/authFetch';
 async function devFetch(path, body) {
   const res = await authFetch(path, body);
   const json = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(json.error ?? `Error ${res.status}`);
+  if (!res.ok) throw new Error(json.error?.message ?? json.error ?? `Error ${res.status}`);
   return json;
 }
 
