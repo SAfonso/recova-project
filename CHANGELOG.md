@@ -1,3 +1,10 @@
+## [0.34.4] - 2026-03-19
+
+### Docs & UX
+
+- **`DevToolsPanel.jsx`**: aviso explicativo al inicio de la pestaña Dev — describe que ingesta y scoring se lanzan por CRON en producción, e incluye el flujo recomendado (poblar → ingesta → scoring)
+- **`README.md`**: añadida sección "Funcionalidades principales" y URL de producción `recova.machango.org`
+
 ## [0.34.3] - 2026-03-19
 
 ### Fix — CORS, error message form, Google Forms API
