@@ -53,8 +53,6 @@ tags:
     description: Creación y análisis de Google Forms
   - name: Telegram
     description: Registro de hosts en el bot de Telegram
-  - name: Poster
-    description: Generación de posters del lineup
   - name: MCP Agent
     description: Endpoints para el agente conversacional de Telegram (Gemini)
   - name: Orquestación
@@ -726,68 +724,6 @@ paths:
                 $ref: "#/components/schemas/Error"
         "429":
           $ref: "#/components/responses/RateLimited"
-
-  # ── Poster ─────────────────────────────────────────────────────────────────
-
-  /api/render-poster:
-    post:
-      tags: [Poster]
-      summary: Generar poster del lineup
-      description: |
-        Renderiza un poster PNG con los nombres del lineup usando Pillow.
-        Soporta templates personalizados e imágenes de referencia.
-      security:
-        - ApiKeyAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [lineup]
-              properties:
-                lineup:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      name:
-                        type: string
-                  description: Lista de comediantes con nombre
-                open_mic_id:
-                  type: string
-                date:
-                  type: string
-                event:
-                  type: object
-                  description: Datos del evento (nombre, hora, lugar)
-                intent:
-                  type: object
-                  properties:
-                    template_id:
-                      type: string
-                      default: base_poster
-                    reference_image_url:
-                      type: string
-                      format: uri
-      responses:
-        "200":
-          description: Poster generado
-          content:
-            image/png:
-              schema:
-                type: string
-                format: binary
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "500":
-          description: Error al renderizar el poster
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
 
   # ── MCP Agent ──────────────────────────────────────────────────────────────
 

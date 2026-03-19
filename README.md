@@ -28,7 +28,6 @@ SaaS multi-tenant para gestión de open mics de comedia. Automatiza la recogida 
 ### Lineup y validación
 - Vista curada de candidatos con edición inline (nombre, género, experiencia)
 - Validación del lineup con verificación de slots y persistencia en `silver.lineup_slots`
-- Generación de poster del evento con Pillow (fuentes, colores, layout configurables)
 
 ### Notificación por Telegram
 - Bot `@ailineup_bot`: los cómicos reciben su confirmación directamente por Telegram
@@ -70,10 +69,10 @@ SaaS multi-tenant para gestión de open mics de comedia. Automatiza la recogida 
 ```
 recova-project/
 ├── backend/
-│   ├── assets/               # Fuentes y posters base (Pillow)
+│   ├── assets/               # Fuentes y templates
 │   ├── scripts/              # OAuth2, seed, reset
 │   ├── src/
-│   │   ├── core/             # Módulos: scoring, render, forms, security
+│   │   ├── core/             # Módulos: scoring, forms, security
 │   │   ├── triggers/
 │   │   │   ├── webhook_listener.py   # App factory + /health endpoint
 │   │   │   ├── shared.py             # Auth, constantes, helpers
@@ -85,7 +84,6 @@ recova-project/
 │   │   │       ├── mcp_agent.py      # /mcp/* (Telegram Agent)
 │   │   │       ├── telegram.py       # /api/telegram/*
 │   │   │       ├── dev.py            # /api/dev/*
-│   │   │       └── poster.py         # /api/render-poster
 │   │   ├── bronze_to_silver_ingestion.py
 │   │   └── scoring_engine.py
 │   └── tests/
