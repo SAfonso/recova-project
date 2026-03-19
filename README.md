@@ -4,6 +4,42 @@
 
 SaaS multi-tenant para gestión de open mics de comedia. Automatiza la recogida de solicitudes (Google Forms), el scoring con IA y la notificación del lineup por Telegram.
 
+**Demo en producción:** [recova.machango.org](https://recova.machango.org)
+
+---
+
+## Funcionalidades principales
+
+### Gestión de open mics
+- Creación y configuración de múltiples open mics por organización (multi-tenant)
+- Configuración de cadencia (semanal, quincenal, mensual, único), local, scoring y formulario
+- Generación automática de Google Form con campos estándar, descripción contextual y color aleatorio vinculado al open mic
+
+### Recogida y procesamiento de solicitudes
+- Ingesta automática desde Google Forms vía Apps Script → webhook → arquitectura Medallion Bronze/Silver
+- Deduplicación, normalización y enriquecimiento de datos (género por cascada: INE → gender-guesser → genderize.io)
+- Soporte para ingesta manual desde Google Sheets y entrada directa por Telegram
+
+### Scoring con IA
+- Motor de scoring configurable por host: experiencia, paridad de género, antigüedad, disponibilidad last-minute
+- Auditoría completa en `score_breakdown` JSONB — cada puntuación es trazable
+- Soporte para reglas de scoring custom propuestas por Gemini a partir de campos no canónicos del formulario
+
+### Lineup y validación
+- Vista curada de candidatos con edición inline (nombre, género, experiencia)
+- Validación del lineup con verificación de slots y persistencia en `silver.lineup_slots`
+- Generación de poster del evento con Pillow (fuentes, colores, layout configurables)
+
+### Notificación por Telegram
+- Bot `@ailineup_bot`: los cómicos reciben su confirmación directamente por Telegram
+- Registro de usuarios vía QR/link con código temporal (15 min)
+- Agente MCP con Gemini para reapertura de lineup y consultas desde Telegram
+
+### Infraestructura y seguridad
+- Auth con JWT (Supabase) en todos los endpoints sensibles; sin API keys expuestas en el frontend
+- Rate limiting in-memory por endpoint; CORS manual con origin dinámico
+- CD automático vía GitHub Actions → SSH → Docker Compose en VPS Hetzner
+
 ---
 
 ## Arquitectura
