@@ -116,8 +116,3 @@ cd frontend && npm test              # 70 tests frontend
 
 ---
 
-## Limitaciones conocidas
-
-- Inferencia de género: si las 3 capas (INE, gender-guesser, genderize.io) fallan, se asigna `unknown`. El scoring agrupa `unknown` con `f/nb` para paridad; el frontend muestra `NB`.
-- CD via GitHub Actions → SSH → `docker compose up -d --build` (desde v0.34.0).
-- Sin versionado de API (`/api/v1/`).
