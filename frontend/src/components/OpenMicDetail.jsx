@@ -130,7 +130,7 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
 
   const handleSaved = () => {
     fetchOpenMic();
-    setView('info');
+    // Quedarse en la pestaña actual — el feedback lo muestra cada configurador
   };
 
   const handleDelete = async () => {
@@ -272,27 +272,21 @@ export function OpenMicDetail({ session, openMicId, initialView = 'info', onBack
             <div className="-rotate-[1deg] paper-drop">
             <div className="scrapbook-panel pin-corner paper-rough paper-note px-6 py-4">
 
-              {configTab === 'info' ? (
+              <div className={configTab === 'info' ? '' : 'hidden'}>
                 <InfoConfigurator openMicId={openMicId} openMic={openMic} onSaved={handleSaved} />
-              ) : configTab === 'scoring' ? (
-                <>
-                  <h2 className="mb-4 font-['Bangers'] text-xl tracking-wide text-[#1a1a1a]">
-                    Configuración de scoring
-                  </h2>
-                  <ScoringConfigurator openMicId={openMicId} openMicName={openMic?.nombre} onSaved={handleSaved} />
-                </>
-              ) : (
-                <>
-                  <h2 className="mb-4 font-['Bangers'] text-xl tracking-wide text-[#1a1a1a]">
-                    Herramientas de prueba
-                  </h2>
-                  <DevToolsPanel
-                    openMicId={openMicId}
-                    openMic={openMic}
-                    onSeedDone={handleSaved}
-                  />
-                </>
-              )}
+              </div>
+              <div className={configTab === 'scoring' ? '' : 'hidden'}>
+                <h2 className="mb-4 font-['Bangers'] text-xl tracking-wide text-[#1a1a1a]">
+                  Configuración de scoring
+                </h2>
+                <ScoringConfigurator openMicId={openMicId} openMicName={openMic?.nombre} onSaved={handleSaved} />
+              </div>
+              <div className={configTab === 'dev' ? '' : 'hidden'}>
+                <h2 className="mb-4 font-['Bangers'] text-xl tracking-wide text-[#1a1a1a]">
+                  Herramientas de prueba
+                </h2>
+                <DevToolsPanel openMicId={openMicId} openMic={openMic} onSeedDone={handleSaved} />
+              </div>
             </div>
             </div>{/* /paper-drop */}
           </div>

@@ -1,3 +1,10 @@
+## [0.34.2] - 2026-03-19
+
+### Fix — configurador: no navega al guardar + no pierde datos al cambiar pestaña
+
+- **`OpenMicDetail`**: `handleSaved` ya no llama `setView('info')` — el usuario se queda en la pestaña activa y ve el feedback "✓ Guardado" de cada configurador
+- **`OpenMicDetail`**: los tres panels (INFO / SCORING / DEV) se renderizan siempre y se ocultan con `hidden`; al cambiar de pestaña el estado del formulario se preserva en memoria
+
 ## [0.34.1] - 2026-03-19
 
 ### Fix — lineup validado no persistía al volver atrás
