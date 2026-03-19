@@ -8,6 +8,18 @@ SaaS multi-tenant para gestión de open mics de comedia. Automatiza la recogida 
 
 ---
 
+## ¿Por qué existe esto?
+
+Llevo años subiéndome a contar mis cosas en open mics de stand-up. Con el tiempo tuve la oportunidad de organizar alguno, y hablé con otros que también lo hacen. Todos coincidíamos en lo mismo: **gestionar el lineup es la parte más horrible del proceso**. Peor incluso que cuando el público no ríe.
+
+Decidí automatizarlo, pero había partes que se me escapaban técnicamente. Hasta que llegó este máster y vi la oportunidad.
+
+El resultado no es solo "un formulario que muestra nombres". El sistema gestiona prioridades según tus preferencias: puedes dar prioridad a los cómicos más veteranos (**lista gold**), a gente de confianza (**priority**), o directamente filtrar a ese tipo que solo hace chistes malos (**restricted**). Puedes aplicar **paridad de género** para que el lineup no sea un monolito, gracias a una IA que infiere el género a partir del nombre e Instagram — y que el host puede corregir si se equivoca. Si alguien solo puede una fecha concreta, también se pondera. Y así con varios criterios más, todos configurables.
+
+Todo esto viene acompañado de **@ailineup_bot**, un bot de Telegram que te informa del lineup de la semana, tus open mics activos y el estado de las solicitudes — sin tener que abrir ningún panel.
+
+---
+
 ## Funcionalidades principales
 
 ### Gestión de open mics
