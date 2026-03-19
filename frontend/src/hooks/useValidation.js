@@ -83,7 +83,7 @@ export function useValidation({
       const approvedIds = selectedCandidates
         .map((c) => c.solicitud_id)
         .filter(Boolean);
-      const { error: upsertError } = await supabase.rpc('upsert_confirmed_lineup', {
+      const { error: upsertError } = await supabase.schema('silver').rpc('upsert_confirmed_lineup', {
         p_open_mic_id: openMicId,
         p_fecha_evento: rpcEventDate,
         p_approved_solicitud_ids: approvedIds,

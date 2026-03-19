@@ -1,3 +1,10 @@
+## [0.34.1] - 2026-03-19
+
+### Fix — lineup validado no persistía al volver atrás
+
+- **`useValidation.js`**: `upsert_confirmed_lineup` llamado con `.schema('silver')` correcto — sin él Supabase buscaba el RPC en `public`, fallaba silenciosamente, y los slots nunca se insertaban en `silver.lineup_slots`
+- Efecto visible: al volver a la vista del lineup tras validar, `fetchCandidates` encontraba 0 slots confirmados y reseteaba `isValidated` a `false`
+
 ## [0.34.0] - 2026-03-19
 
 ### Infra — Dockerización del backend
