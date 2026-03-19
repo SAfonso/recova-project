@@ -277,14 +277,15 @@ class GoogleFormBuilder:
     def _create_form(self, nombre: str, info: dict | None = None, bg_color: str = "") -> str:
         """Crea el form con descripción contextual y devuelve su form_id."""
         info = info or {}
-        body = {
-            "info": {
-                "title": f"Solicitudes — {nombre}",
-                "description": self._build_description(nombre, info),
-            }
-        }
-        result = self._forms.forms().create(body=body).execute()
-        return result["formId"]
+        result = self._forms.forms().create(body={"info": {"title": f"Solicitudes — {nombre}"}}).execute()
+        form_id = result["formId"]
+        # La Forms API solo permite title en create; description va en batchUpdate
+        description = self._build_description(nombre, info)
+        self._forms.forms().batchUpdate(
+            formId=form_id,
+            body={"requests": [{"updateFormInfo": {"info": {"description": description}, "updateMask": "description"}}]},
+        ).execute()
+        return form_id
 
     def _add_questions(self, form_id: str, info: dict | None = None) -> None:
         """Añade los campos via batchUpdate.
