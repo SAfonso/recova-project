@@ -28,7 +28,7 @@ EXPECTED_API_KEY = os.getenv("WEBHOOK_API_KEY", "")
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
 SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "")
-FRONTEND_URL = os.getenv("FRONTEND_URL", "https://recova-project-z5zp.vercel.app")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "https://recova.machango.org")
 
 _ALLOWED_ORIGINS = [
     FRONTEND_URL,

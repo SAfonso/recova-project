@@ -81,12 +81,12 @@
     <text x="81" y="95" text-anchor="middle" font-size="10" fill="#fed7aa">📝 Form Builder</text>
 
     <rect x="10" y="112" width="143" height="26" rx="6" fill="#431407" stroke="#fb923c" stroke-width="1"/>
-    <text x="81" y="129" text-anchor="middle" font-size="10" fill="#fed7aa">🖼️ Renderer :5050</text>
+    <text x="81" y="129" text-anchor="middle" font-size="10" fill="#fed7aa">🧮 Scoring Engine</text>
 
     <rect x="10" y="146" width="143" height="26" rx="6" fill="#431407" stroke="#fb923c" stroke-width="1"/>
-    <text x="81" y="163" text-anchor="middle" font-size="10" fill="#fed7aa">🤖 Gemini Vision</text>
+    <text x="81" y="163" text-anchor="middle" font-size="10" fill="#fed7aa">🤖 Gemini Agent</text>
 
-    <text x="81" y="216" text-anchor="middle" font-size="9" fill="#9a3412">Flask :5000 · FastAPI :5050</text>
+    <text x="81" y="216" text-anchor="middle" font-size="9" fill="#9a3412">Flask :5000 · Gunicorn · Docker</text>
   </g>
 
   <!-- Arrow 3→4 -->
@@ -109,7 +109,7 @@
     <text x="81" y="129" text-anchor="middle" font-size="10" fill="#6ee7b7">🥇 Gold — confirmed</text>
 
     <rect x="10" y="146" width="143" height="26" rx="6" fill="#065f46" stroke="#a7f3d0" stroke-width="1" stroke-dasharray="4,3"/>
-    <text x="81" y="163" text-anchor="middle" font-size="10" fill="#a7f3d0">☁️ Storage (posters)</text>
+    <text x="81" y="163" text-anchor="middle" font-size="10" fill="#a7f3d0">🔑 Auth · RLS · JWT</text>
 
     <text x="81" y="216" text-anchor="middle" font-size="9" fill="#047857">PostgreSQL · Medallion</text>
   </g>
@@ -131,7 +131,7 @@
     <text x="81" y="95" text-anchor="middle" font-size="10" fill="#fbcfe8">🧮 Scoring IA</text>
 
     <rect x="10" y="112" width="143" height="26" rx="6" fill="#500724" stroke="#f472b6" stroke-width="1"/>
-    <text x="81" y="129" text-anchor="middle" font-size="10" fill="#fbcfe8">🎨 Render Poster</text>
+    <text x="81" y="129" text-anchor="middle" font-size="10" fill="#fbcfe8">🔔 Notificación</text>
 
     <rect x="10" y="146" width="143" height="26" rx="6" fill="#500724" stroke="#f472b6" stroke-width="1"/>
     <text x="81" y="163" text-anchor="middle" font-size="10" fill="#fbcfe8">📲 Envío Telegram</text>
@@ -156,7 +156,7 @@
     <text x="87" y="95" text-anchor="middle" font-size="10" fill="#bae6fd">✈️ @ailineup_bot</text>
 
     <rect x="10" y="112" width="155" height="26" rx="6" fill="#2e1065" stroke="#c084fc" stroke-width="1"/>
-    <text x="87" y="129" text-anchor="middle" font-size="10" fill="#e9d5ff">🖼️ PNG Poster</text>
+    <text x="87" y="129" text-anchor="middle" font-size="10" fill="#e9d5ff">📊 Google Sheets</text>
 
     <rect x="10" y="146" width="155" height="26" rx="6" fill="#1c1917" stroke="#57534e" stroke-width="1"/>
     <text x="87" y="163" text-anchor="middle" font-size="10" fill="#d6d3d1">🌐 Vercel + Traefik</text>

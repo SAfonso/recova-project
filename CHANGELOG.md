@@ -1,3 +1,36 @@
+## [0.34.6] - 2026-03-20
+
+### Docs — auditoría y depreciación de specs obsoletas
+
+- **`specs/mcp_agnostic_renderer_spec.md`**: marcado como **OBSOLETO** — describe arquitectura Template Catalog + Vision-to-Code con Playwright que nunca se implementó; el pipeline real usa Gemini Vision + Pillow
+- **`specs/frontend/auth_host_spec.md`**: marcado como **OBSOLETO** — describe flujo de magic link puro; reemplazado por Google OAuth (`google_oauth_open_registration_spec.md`)
+- **`specs/google_form_campos_spec.md`**: marcado como **SUPERSEDIDO** — absorbido por `smart_form_ingestion_spec.md` y `smart_form_generation_spec.md`
+
+## [0.34.5] - 2026-03-19
+
+### Docs — eliminación referencias al poster
+
+- **`README.md`**: eliminadas referencias a poster en funcionalidades, árbol de estructura y módulos core
+- **`docs/architecture.svg`**: nodos Renderer :5050, Storage (posters), Render Poster y PNG Poster reemplazados por Scoring Engine, Auth·RLS, Notificación y Google Sheets
+- **`docs/dataflow.svg`**: lane OUTPUT simplificada — n8n Notif conecta directamente a Telegram; eliminados nodos Renderer :5050 y Storage
+- **`docs/architecture.md`**: eliminados subgraph Renderer, Storage(posters), flujo App→Playwright, N8N_BACKEND_RENDER_URL y Renderer API de la tabla de servicios
+- **`docs/openapi.yaml`**: eliminados tag Poster y endpoint `/api/render-poster`
+
+## [0.34.4] - 2026-03-19
+
+### Docs & UX
+
+- **`DevToolsPanel.jsx`**: aviso explicativo al inicio de la pestaña Dev — describe que ingesta y scoring se lanzan por CRON en producción, e incluye el flujo recomendado (poblar → ingesta → scoring)
+- **`README.md`**: añadida sección "Funcionalidades principales" y URL de producción `recova.machango.org`
+
+## [0.34.3] - 2026-03-19
+
+### Fix — CORS, error message form, Google Forms API
+
+- **`shared.py`**: `FRONTEND_URL` por defecto actualizado a `https://recova.machango.org` — el dominio anterior (`recova-project-z5zp.vercel.app`) bloqueaba requests desde el dominio personalizado
+- **`ScoringConfigurator.jsx`**: leer `data.error.message` en lugar de `data.message` al crear form — `api_error()` anida el mensaje en `error.message`, no en el top level; ahora se muestra el error real del backend
+- **`google_form_builder.py`**: mover `description` a `batchUpdate` — la Forms API solo acepta `title` en `create`; enviar `description` en el create causaba HTTP 400
+
 ## [0.34.2] - 2026-03-19
 
 ### Fix — configurador: no navega al guardar + no pierde datos al cambiar pestaña

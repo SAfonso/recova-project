@@ -221,7 +221,7 @@ export function ScoringConfigurator({ openMicId, openMicName, onSaved }) {
       const res = await authFetch('/api/open-mic/create-form', { open_mic_id: openMicId, nombre: openMicName });
       const data = await res.json();
       if (!res.ok) {
-        setFormCreateError(data.message ?? 'Error creando el form');
+        setFormCreateError(data.error?.message ?? data.message ?? 'Error creando el form');
         return;
       }
       fetchConfig();

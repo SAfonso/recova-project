@@ -21,21 +21,17 @@ flowchart TD
     subgraph n8n ["n8n Orquestador"]
         Ingesta[Ingesta-Solicitudes]
         Scoring[Scoring & Draft]
-        Render[LineUp / Render]
+        Notif[Notificación Telegram]
     end
 
     subgraph Supabase
         DB[(Bronze / Silver / Gold)]
-        Storage[(Storage: posters, poster-backgrounds)]
+        Storage[(Auth · RLS · JWT)]
     end
 
     subgraph Google
         GF[Google Forms]
         GS[Google Sheets]
-    end
-
-    subgraph Renderer ["Renderer API (:5050)"]
-        Playwright[PlaywrightRenderer]
     end
 
     %% Flujo principal
@@ -51,9 +47,6 @@ flowchart TD
     App -- "scoring / lineup" --> DB
     App -- "valida lineup" --> Scoring
     Scoring --> DB
-
-    App -- "POST /render-lineup" --> Playwright
-    Playwright --> Storage
 
     Frontend -- "auth + data" --> Supabase
 ```
@@ -71,7 +64,6 @@ flowchart TD
 | Servicio | Puerto | Proceso PM2 |
 |----------|--------|-------------|
 | Webhook ingesta | `:5000` | `webhook-ingesta` |
-| Renderer API | `:5050` | `recova-renderer` |
 
 ## Variables de entorno clave
 
@@ -89,7 +81,6 @@ GOOGLE_OAUTH_REFRESH_TOKEN=
 TELEGRAM_BOT_USERNAME=
 N8N_BACKEND_INGEST_URL=
 N8N_BACKEND_SCORING_URL=
-N8N_BACKEND_RENDER_URL=
 ```
 
 ### `frontend/.env` (solo variables Vite)

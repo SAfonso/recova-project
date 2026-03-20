@@ -82,9 +82,24 @@ export function DevToolsPanel({ openMicId, openMic, onSeedDone }) {
 
   return (
     <div className="space-y-6">
-      <p className="text-xs text-[#6B5C4A]">
-        Herramientas solo para pruebas. No usar en producción real.
-      </p>
+      {/* Aviso dev */}
+      <div className="rounded-lg border-2 border-[#F59E0B] bg-[#FFFBEB] p-4 space-y-2">
+        <p className="text-sm font-bold text-[#92400E]">⚠️ Zona de desarrollo — solo para pruebas</p>
+        <p className="text-xs text-[#78350F] leading-relaxed">
+          Este apartado está disponible exclusivamente para tareas de desarrollo y evitar tener que
+          esperar a que sea la fecha indicada para ver el lineup propuesto.
+        </p>
+        <p className="text-xs text-[#78350F] leading-relaxed">
+          En producción, tanto la <strong>ingesta</strong> (lectura del Google Form / Sheet) como
+          el <strong>scoring</strong> se lanzan automáticamente mediante un <strong>CRON de n8n</strong>{' '}
+          a la hora configurada. Los botones de abajo replican exactamente ese comportamiento
+          de forma manual e inmediata.
+        </p>
+        <p className="text-xs text-[#78350F] leading-relaxed">
+          Flujo recomendado para probar: <strong>1. Poblar datos → 2. Forzar ingesta → 3. Forzar scoring</strong>.
+          Tras el scoring, los candidatos aparecerán en la vista principal con su puntuación.
+        </p>
+      </div>
 
       {/* Seed */}
       <div className="space-y-2">
