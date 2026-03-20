@@ -1,6 +1,7 @@
 ## [0.34.7] - 2026-03-20
 
 ### Feat — rate limiting por host en endpoints MCP (Telegram)
+### Docs — CLAUDE.md y README actualizados con nuevos límites
 
 - **`shared.py`**: `rate_limit` acepta parámetro opcional `key_fn` — callable sin args que devuelve la clave de discriminación; permite limitar por `host_id`/`open_mic_id` en lugar de por IP
 - **`mcp_agent.py`**: todos los endpoints `/mcp/*` protegidos con rate limit por identificador de recurso:

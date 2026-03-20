@@ -48,7 +48,7 @@ Todo esto viene acompañado de **@ailineup_bot**, un bot de Telegram que te info
 
 ### Infraestructura y seguridad
 - Auth con JWT (Supabase) en todos los endpoints sensibles; sin API keys expuestas en el frontend
-- Rate limiting in-memory por endpoint; CORS manual con origin dinámico
+- Rate limiting in-memory por endpoint (por IP o por `host_id`/`open_mic_id` según el contexto); CORS manual con origin dinámico
 - CD automático vía GitHub Actions → SSH → Docker Compose en VPS Hetzner
 
 ---
