@@ -62,7 +62,7 @@ def api_error(code: str, message: str, status: int, details: str | None = None) 
 
 
 # ---------------------------------------------------------------------------
-# Rate limiting — in-memory por IP
+# Rate limiting — in-memory, por IP o clave personalizada
 # ---------------------------------------------------------------------------
 
 _rate_limit_store: dict[str, list[float]] = {}
@@ -75,16 +75,19 @@ def _cleanup_timestamps(timestamps: list[float], window: float, now: float) -> l
     return [t for t in timestamps if t > cutoff]
 
 
-def rate_limit(max_requests: int = 10, window_seconds: int = 60):
-    """Decorador que limita requests por IP con ventana deslizante.
+def rate_limit(max_requests: int = 10, window_seconds: int = 60, key_fn=None):
+    """Decorador que limita requests con ventana deslizante.
+
+    Por defecto limita por IP. Si se pasa `key_fn` (callable sin args que devuelve str),
+    usa esa clave en su lugar — útil para limitar por host_id, open_mic_id, etc.
 
     Devuelve 429 si se excede el límite. Añade headers X-RateLimit-* a cada respuesta.
     """
     def decorator(fn):
         @functools.wraps(fn)
         def wrapper(*args, **kwargs):
-            ip = request.remote_addr or "unknown"
-            key = f"{fn.__name__}:{ip}"
+            discriminator = key_fn() if key_fn is not None else (request.remote_addr or "unknown")
+            key = f"{fn.__name__}:{discriminator}"
             now = time.monotonic()
 
             with _rate_limit_lock:
