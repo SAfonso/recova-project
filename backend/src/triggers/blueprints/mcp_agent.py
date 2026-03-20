@@ -4,7 +4,7 @@ import logging
 
 from flask import Blueprint, jsonify, request
 
-from backend.src.triggers.shared import api_error, require_api_key, _sb_client, execute_scoring, validate_json
+from backend.src.triggers.shared import api_error, rate_limit, require_api_key, _sb_client, execute_scoring, validate_json
 
 bp = Blueprint("mcp_agent", __name__)
 
@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 @bp.route("/mcp/open-mics", methods=["GET"])
+@rate_limit(max_requests=20, window_seconds=60, key_fn=lambda: request.args.get("host_id") or "unknown")
 def mcp_list_open_mics() -> tuple:
     """Lista los open mics del host."""
     err = require_api_key()
@@ -59,6 +60,7 @@ def mcp_list_open_mics() -> tuple:
 
 
 @bp.route("/mcp/lineup", methods=["GET"])
+@rate_limit(max_requests=20, window_seconds=60, key_fn=lambda: request.args.get("open_mic_id") or "unknown")
 def mcp_get_lineup() -> tuple:
     """Devuelve el lineup confirmado para un open mic y fecha."""
     err = require_api_key()
@@ -107,6 +109,7 @@ def mcp_get_lineup() -> tuple:
 
 
 @bp.route("/mcp/candidates", methods=["GET"])
+@rate_limit(max_requests=20, window_seconds=60, key_fn=lambda: request.args.get("open_mic_id") or "unknown")
 def mcp_get_candidates() -> tuple:
     """Devuelve candidatos ordenados por score para un open mic."""
     err = require_api_key()
@@ -151,6 +154,7 @@ def mcp_get_candidates() -> tuple:
 
 
 @bp.route("/mcp/run-scoring", methods=["POST"])
+@rate_limit(max_requests=5, window_seconds=300, key_fn=lambda: (request.get_json(silent=True) or {}).get("open_mic_id") or "unknown")
 @validate_json({"open_mic_id": str})
 def mcp_run_scoring() -> tuple:
     """Ejecuta el motor de scoring para un open mic."""
@@ -172,6 +176,7 @@ def mcp_run_scoring() -> tuple:
 
 
 @bp.route("/mcp/reopen-lineup", methods=["POST"])
+@rate_limit(max_requests=5, window_seconds=300, key_fn=lambda: (request.get_json(silent=True) or {}).get("open_mic_id") or "unknown")
 @validate_json({"open_mic_id": str, "fecha_evento": str})
 def mcp_reopen_lineup() -> tuple:
     """Resetea los slots confirmados de un lineup para permitir cambios."""

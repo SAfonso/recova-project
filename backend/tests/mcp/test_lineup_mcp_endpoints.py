@@ -1,9 +1,6 @@
 """Tests TDD para los endpoints /mcp/* del Telegram Lineup Agent.
 
-Fase roja: los endpoints aún no existen en webhook_listener.py.
-Estos tests definen el contrato antes de la implementación.
-
-Cobertura (spec §9):
+Cobertura:
   1. test_get_lineup_returns_slots
   2. test_get_lineup_empty_when_no_slots
   3. test_get_candidates_returns_sorted
@@ -11,6 +8,9 @@ Cobertura (spec §9):
   5. test_reopen_lineup_calls_reset_rpc
   6. test_list_open_mics_filters_by_host
   7. test_mcp_endpoints_require_api_key
+  8. test_mcp_rate_limit_read_endpoints      — 20 req/min por open_mic_id/host_id
+  9. test_mcp_rate_limit_heavy_endpoints     — 5 req/5min por open_mic_id
+ 10. test_mcp_rate_limit_independent_keys   — límites independientes por clave
 """
 
 from __future__ import annotations
@@ -258,3 +258,78 @@ def test_mcp_endpoints_require_api_key(method, url, payload):
             resp = client.post(url, json=payload)  # sin header de auth
 
     assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# 8. Rate limit — lecturas (20 req/min por open_mic_id)
+# ---------------------------------------------------------------------------
+
+def test_mcp_rate_limit_read_endpoints():
+    """El endpoint /mcp/lineup devuelve 429 al superar 20 req/min para el mismo open_mic_id."""
+    sb = _sb_mock([])
+
+    with patch("backend.src.triggers.blueprints.mcp_agent._sb_client", return_value=sb):
+        with app.test_client() as client:
+            for _ in range(20):
+                resp = client.get(
+                    f"/mcp/lineup?open_mic_id={OM_ID}&fecha_evento={FECHA}",
+                    headers=AUTH_HEADERS,
+                )
+                assert resp.status_code == 200
+
+            # La solicitud 21 debe ser bloqueada
+            resp = client.get(
+                f"/mcp/lineup?open_mic_id={OM_ID}&fecha_evento={FECHA}",
+                headers=AUTH_HEADERS,
+            )
+
+    assert resp.status_code == 429
+    assert resp.headers.get("Retry-After") == "60"
+
+
+# ---------------------------------------------------------------------------
+# 9. Rate limit — endpoints pesados (5 req/5min por open_mic_id)
+# ---------------------------------------------------------------------------
+
+def test_mcp_rate_limit_heavy_endpoints():
+    """El endpoint /mcp/run-scoring devuelve 429 al superar 5 req en 5 min."""
+    scoring_result = {"status": "ok", "open_mic_id": OM_ID, "filas_procesadas": 0,
+                      "filas_insertadas_gold": 0, "filas_descartadas_restriccion": 0, "top_sugeridos": []}
+
+    with patch("backend.src.triggers.blueprints.mcp_agent.execute_scoring", return_value=scoring_result):
+        with app.test_client() as client:
+            for _ in range(5):
+                resp = client.post("/mcp/run-scoring", json={"open_mic_id": OM_ID}, headers=AUTH_HEADERS)
+                assert resp.status_code == 200
+
+            resp = client.post("/mcp/run-scoring", json={"open_mic_id": OM_ID}, headers=AUTH_HEADERS)
+
+    assert resp.status_code == 429
+    assert resp.headers.get("Retry-After") == "300"
+
+
+# ---------------------------------------------------------------------------
+# 10. Rate limit — claves independientes por open_mic_id
+# ---------------------------------------------------------------------------
+
+def test_mcp_rate_limit_independent_keys():
+    """Dos open_mic_id distintos tienen contadores independientes."""
+    OM_ID_2 = "00000000-0000-0000-0000-000000000002"
+    sb = _sb_mock([])
+
+    with patch("backend.src.triggers.blueprints.mcp_agent._sb_client", return_value=sb):
+        with app.test_client() as client:
+            # Agotar límite para OM_ID
+            for _ in range(20):
+                client.get(
+                    f"/mcp/lineup?open_mic_id={OM_ID}&fecha_evento={FECHA}",
+                    headers=AUTH_HEADERS,
+                )
+
+            # OM_ID_2 no debe estar bloqueado
+            resp = client.get(
+                f"/mcp/lineup?open_mic_id={OM_ID_2}&fecha_evento={FECHA}",
+                headers=AUTH_HEADERS,
+            )
+
+    assert resp.status_code == 200

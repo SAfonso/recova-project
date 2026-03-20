@@ -1,3 +1,13 @@
+## [0.34.7] - 2026-03-20
+
+### Feat — rate limiting por host en endpoints MCP (Telegram)
+
+- **`shared.py`**: `rate_limit` acepta parámetro opcional `key_fn` — callable sin args que devuelve la clave de discriminación; permite limitar por `host_id`/`open_mic_id` en lugar de por IP
+- **`mcp_agent.py`**: todos los endpoints `/mcp/*` protegidos con rate limit por identificador de recurso:
+  - Lecturas (`/mcp/open-mics`, `/mcp/lineup`, `/mcp/candidates`): 20 req/min por `host_id`/`open_mic_id`
+  - Pesados (`/mcp/run-scoring`, `/mcp/reopen-lineup`): 5 req/5 min por `open_mic_id`
+- **`test_lineup_mcp_endpoints.py`**: 3 tests nuevos (límite lectura, límite pesado, claves independientes)
+
 ## [0.34.6] - 2026-03-20
 
 ### Docs — auditoría y depreciación de specs obsoletas
