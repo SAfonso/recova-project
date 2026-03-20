@@ -1,5 +1,9 @@
 # Spec: Auth de Host — Magic Link (Supabase)
 
+> ⚠️ **OBSOLETO** — Esta spec describe autenticación exclusivamente por magic link.
+> Fue reemplazada por Google OAuth en `specs/frontend/google_oauth_open_registration_spec.md`.
+> El `LoginScreen.jsx` actual implementa un híbrido Google OAuth + OTP que no corresponde a esta spec.
+
 **Archivos afectados:**
 - `frontend/src/supabaseClient.js` — activar `persistSession: true`
 - `frontend/src/components/LoginScreen.jsx` (NEW)

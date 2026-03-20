@@ -1,5 +1,9 @@
 # Spec: Google Form por Open Mic — campos y pipeline de ingesta
 
+> ⚠️ **SUPERSEDIDO** — Esta spec (v3.0) fue absorbida y ampliada por versiones posteriores.
+> Ver: `specs/smart_form_ingestion_spec.md` (mapeo dinámico de campos vía Gemini) y
+> `specs/smart_form_generation_spec.md` (generación con cadencia, fechas y colores).
+
 **Afecta a:**
 - Google Forms (configuración manual por el Host)
 - `bronze.solicitudes` — nueva columna `open_mic_id`

@@ -1,5 +1,9 @@
 # Especificación SDD: Capa de Abstracción MCP (Agnostic Renderer)
 
+> ⚠️ **OBSOLETO** — Esta spec describe una arquitectura (Template Catalog + Vision-to-Code con Playwright) que nunca se implementó.
+> El pipeline real de posters usa Gemini Vision + Pillow (`poster_composer.py`, `poster_detector_gemini.py`, blueprint `poster.py`).
+> No tiene spec de reemplazo directa; ver el código en `backend/src/core/` y `backend/src/triggers/blueprints/poster.py`.
+
 ## 1) Objetivo y alcance
 
 Esta especificación define la **Fuente de Verdad técnica** para la nueva Capa de Abstracción MCP (Agnostic Renderer) del sistema AI LineUp Architect.

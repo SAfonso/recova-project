@@ -1,3 +1,11 @@
+## [0.34.6] - 2026-03-20
+
+### Docs — auditoría y depreciación de specs obsoletas
+
+- **`specs/mcp_agnostic_renderer_spec.md`**: marcado como **OBSOLETO** — describe arquitectura Template Catalog + Vision-to-Code con Playwright que nunca se implementó; el pipeline real usa Gemini Vision + Pillow
+- **`specs/frontend/auth_host_spec.md`**: marcado como **OBSOLETO** — describe flujo de magic link puro; reemplazado por Google OAuth (`google_oauth_open_registration_spec.md`)
+- **`specs/google_form_campos_spec.md`**: marcado como **SUPERSEDIDO** — absorbido por `smart_form_ingestion_spec.md` y `smart_form_generation_spec.md`
+
 ## [0.34.5] - 2026-03-19
 
 ### Docs — eliminación referencias al poster
