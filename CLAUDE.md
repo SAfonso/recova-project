@@ -49,8 +49,14 @@ SaaS multi-tenant para gestión de open mics de comedia. Stack: React+Vite (fron
 
 ### Flask — Rate limiting
 - Usar `@rate_limit(max_requests, window_seconds)` de `shared.py` en endpoints públicos o sensibles. El decorador va **antes** de `@validate_json` en el stack de decoradores.
-- Límites actuales: form-submission 5/min, telegram/register 10/min, validate-view/* 30/min.
-- No usar Redis — PM2 corre un solo worker; el store in-memory es suficiente.
+- `rate_limit` acepta `key_fn` opcional (callable sin args → str) para discriminar por `host_id`/`open_mic_id` en lugar de por IP. Imprescindible en endpoints llamados desde n8n (IP fija).
+- Límites actuales:
+  - form-submission: 5/min por IP
+  - telegram/register: 10/min por IP
+  - validate-view/*: 30/min por IP
+  - /mcp/open-mics, lineup, candidates: 20/min por `host_id`/`open_mic_id`
+  - /mcp/run-scoring, reopen-lineup: 5/5min por `open_mic_id`
+- No usar Redis — Docker corre un solo worker; el store in-memory es suficiente.
 
 ### Flask — CORS
 - NO usar `flask-cors` (la v6.x está rota silenciosamente). Usar handlers manuales `@before_request`/`@after_request` con `_cors_headers()` dinámico en `shared.py`.
